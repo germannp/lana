@@ -3,7 +3,7 @@ lana
 
 A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simulations based on [numpy](http://www.numpy.org/), [matplotlib](http://matplotlib.org/) and [seaborn](http://web.stanford.edu/~mwaskom/software/seaborn/).
 
-![alt text](Examples/sweep.png "Logo Title Text 1")
+![alt text](Examples/sweep.png "Plot of a parameter sweep")
 
 
 Modules
