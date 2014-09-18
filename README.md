@@ -1,7 +1,7 @@
 lana
 ====
 
-A toolbox to analyze lymphocyte tracks from microscopy or simulations based on numpy, matplotlib and seaborn.
+A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simulations based on numpy, matplotlib and seaborn.
 
 
 Modules
