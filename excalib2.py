@@ -107,19 +107,13 @@ def sweep(Simulation, parameters, all_combinations=True, dry_run=False,
     if timesteps == '':
         timesteps = np.ones(values.__len__())
 
-    if ndim == 2:
-        rand_angles_2D = True
-        rand_angles_3D = False
-    if ndim == 3:
-        rand_angles_2D = False
-        rand_angles_3D = True
-
     velocities = []; turning_angles = []; displacements = []; times = [] 
     legends = []
     for i, pair in enumerate(values):
         labels = []
         start = timeit.default_timer()
         print('\nSimulation {} of {}:'.format(i+1, values.__len__()))
+        print('------------------')
         for j, name in enumerate(names):
             Simulation.set_parameter(
                 name, pair[j], verbose=True, dry_run=dry_run)
@@ -132,9 +126,8 @@ def sweep(Simulation, parameters, all_combinations=True, dry_run=False,
                 timestep=timesteps[i], ndim=ndim)
             if save_runs:
                 CurrentMotility.plot(save_as='_'.join([Simulation.cmd, 
-                    '-'.join(labels).replace(' = ', '')]), 
-                    rand_angles_2D=rand_angles_2D,
-                    rand_angles_3D=rand_angles_3D, palette=palette)
+                    '-'.join(labels).replace(' = ', '')]), ndim=ndim,
+                    palette=palette)
         velocities.append(CurrentMotility.velocities().reshape(-1))
         turning_angles.append(CurrentMotility.turning_angles().reshape(-1))
         displacements.append(CurrentMotility.displacements())
@@ -156,29 +149,25 @@ def sweep(Simulation, parameters, all_combinations=True, dry_run=False,
         legends = ''
 
     lana.motility_plot(velocities, turning_angles, displacements, times, 
-        legends=legends, save_as=save_as, palette=palette)
+        legends=legends, save_as=save_as, ndim=ndim, palette=palette)
 
 
-def versus(commands, dry_run=False, save_runs=False):
+def versus(commands, dry_run=False, save_runs=False, ndim=2):
     """Simulates all commands and parameter files from a dict"""
-    velocities = []; turning_angles = []; displacements = []; times = []
+    motilities = []
     for i, cmd in enumerate(commands.keys()):
         start = timeit.default_timer()
-        print(''.join(
-            ['\nSimulation ', str(i+1), '/', 
-            str(commands.keys().__len__()), ':']))
+        print('\nSimulation {} of {}:'.format(i+1, commands.keys().__len__()))
+        print('------------------')
         if dry_run:
-            CurrentMotility = lana.Motility()
+            motilities.append(lana.Motility(label=cmd))
         else:
-            with Simulation(cmd, parfile=commands[cmd]) as Command:
-                Command.run()
-                CurrentMotility = lana.Motility(Command.read_positions())
+            with Simulation(cmd, parfile=commands[cmd]) as command:
+                command.run()
+                motilities.append(lana.Motility(command.read_positions(), 
+                    label=cmd))
                 if save_runs:
-                    CurrentMotility.plot(save_as=cmd)
-        velocities.append(CurrentMotility.velocities().reshape(-1))
-        turning_angles.append(CurrentMotility.turning_angles().reshape(-1))
-        displacements.append(CurrentMotility.displacements())
-        times.append(CurrentMotility.times())
+                    motilities[-1].plot(save_as=cmd)
         end = timeit.default_timer()
         print('Finished in {} seconds'.format(end-start))
 
@@ -187,17 +176,16 @@ def versus(commands, dry_run=False, save_runs=False):
     else:
         save_as = '_versus_'.join(commands.keys())
 
-    lana.motility_plot(velocities, turning_angles, displacements, times, 
-        legends=commands.keys(), save_as=save_as)
+    lana.motility_classes_plot(motilities, save_as=save_as)
 
 
 if __name__ == "__main__":
     """Illustrates dry run parameter sweep"""
-    with Simulation('persistence') as Persistence:
-        sweep(Persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True, save_runs=True)
-        # sweep(Persistence, {'graphics': [1,1337]}, dry_run=True)
-        # sweep(Persistence, {'graphics': [1,1337], 'descht': [1,2,3]}, dry_run=True)
+    # with Simulation('persistence') as Persistence:
+    #     sweep(Persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True)
+    #     # sweep(Persistence, {'graphics': [1,1337]}, dry_run=True)
+    #     # sweep(Persistence, {'graphics': [1,1337], 'descht': [1,2,3]}, dry_run=True)
 
     """Illustrates dry run run over several commands"""
     commands = {'cmd1': 'parfile1', 'cmd2': '', 'cmd3': '', 'cmd4': ''}
-    versus(commands, dry_run=True)
+    versus(commands, dry_run=True, ndim=3)
