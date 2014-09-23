@@ -89,9 +89,8 @@ class Simulation:
             return
 
 
-def sweep(Simulation, parameters, all_combinations=True, dry_run=False,
-        timesteps='', ndim=2, save_runs=False, wo_legend=False, 
-        palette='PuRd'):
+def sweep(simulation, parameters, all_combinations=True, dry_run=False,
+        timesteps='', ndim=2, save_runs=False, palette='PuRd'):
     """Simulates all combinations or pairs of parameters from a dict"""
     try:
         names = parameters.keys()
@@ -107,49 +106,38 @@ def sweep(Simulation, parameters, all_combinations=True, dry_run=False,
     if timesteps == '':
         timesteps = np.ones(values.__len__())
 
-    velocities = []; turning_angles = []; displacements = []; times = [] 
-    legends = []
+    motilities = []
     for i, pair in enumerate(values):
-        labels = []
         start = timeit.default_timer()
         print('\nSimulation {} of {}:'.format(i+1, values.__len__()))
         print('------------------')
+        labels = []
         for j, name in enumerate(names):
-            Simulation.set_parameter(
+            simulation.set_parameter(
                 name, pair[j], verbose=True, dry_run=dry_run)
             labels.append(' = '.join([name, str(pair[j])]))
         if dry_run:
-            CurrentMotility = lana.Motility()
+            motilities.append(lana.Motility(label=', '.join(labels)))
         else:
-            Simulation.run()
-            CurrentMotility = lana.Motility(Simulation.read_positions(),
-                timestep=timesteps[i], ndim=ndim)
+            simulation.run()
+            motilities.append(lana.Motility(simulation.read_positions(),
+                timestep=timesteps[i], ndim=ndim, label=', '.join(labels)))
             if save_runs:
-                CurrentMotility.plot(save_as='_'.join([Simulation.cmd, 
-                    '-'.join(labels).replace(' = ', '')]), ndim=ndim,
-                    palette=palette)
-        velocities.append(CurrentMotility.velocities().reshape(-1))
-        turning_angles.append(CurrentMotility.turning_angles().reshape(-1))
-        displacements.append(CurrentMotility.displacements())
-        times.append(CurrentMotility.times())
-        legends.append(', '.join(labels))
+                motilities[-1].plot(save_as='_'.join([simulation.cmd, 
+                    '-'.join(labels).replace(' = ', '')]), palette=palette)
         end = timeit.default_timer()
         print('Finished in {} seconds'.format(end-start))
 
     if dry_run:
         save_as = ''
     else:
-        save_as = ''.join(
-             [Simulation.cmd, '_', '-'.join(parameters.keys()), '-Sweep'])
+        save_as = '{}_{}-Sweep'.format(simulation.cmd, 
+            '-'.join(parameters.keys()))
         with open('{}.py{}kl'.format(save_as, sys.version[0]), 'wb') as pikl:
             pickle.dump([velocities, turning_angles, displacements], pikl)
             # Might not be readable from other python version.
 
-    if wo_legend:
-        legends = ''
-
-    lana.motility_plot(velocities, turning_angles, displacements, times, 
-        legends=legends, save_as=save_as, ndim=ndim, palette=palette)
+    lana.motility_plot(motilities, save_as=save_as, palette=palette)
 
 
 def versus(commands, dry_run=False, save_runs=False, ndim=2):
@@ -176,15 +164,15 @@ def versus(commands, dry_run=False, save_runs=False, ndim=2):
     else:
         save_as = '_versus_'.join(commands.keys())
 
-    lana.motility_classes_plot(motilities, save_as=save_as)
+    lana.motility_plot(motilities, save_as=save_as)
 
 
 if __name__ == "__main__":
     """Illustrates dry run parameter sweep"""
-    # with Simulation('persistence') as Persistence:
-    #     sweep(Persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True)
-    #     # sweep(Persistence, {'graphics': [1,1337]}, dry_run=True)
-    #     # sweep(Persistence, {'graphics': [1,1337], 'descht': [1,2,3]}, dry_run=True)
+    with Simulation('persistence') as persistence:
+        sweep(persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True)
+        # sweep(persistence, {'graphics': [1,1337]}, dry_run=True)
+        # sweep(persistence, {'graphics': [1,1337], 'descht': [1,2,3]}, dry_run=True)
 
     """Illustrates dry run run over several commands"""
     commands = {'cmd1': 'parfile1', 'cmd2': '', 'cmd3': '', 'cmd4': ''}
