@@ -41,7 +41,7 @@ def motility_plot(motilities, save_as='', palette='deep'):
         motilities = foo
 
     sns.set(style="white", palette=sns.color_palette(
-        palette, int(max(10,1))))
+        palette, motilities.__len__()))
     sns.set_context("paper", font_scale=1.5)
     figure, axes = plt.subplots(ncols=3, figsize=(12,6))
     plt.tight_layout()
@@ -59,17 +59,17 @@ def motility_plot(motilities, save_as='', palette='deep'):
     axes[1].set_xlim([0,np.pi])
     axes[1].set_xticks([0, np.pi/2, np.pi])
     axes[1].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
-    # if motility.ndim == 2:
-    #     axes[1].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
-    # if motility.ndim == 3:
-    #     x = np.arange(0, np.pi, 0.1)
-    #     axes[1].plot(x, np.sin(x)/2, '--k')
 
     axes[2].set_title('Mean Displacements')
     axes[2].set_xlabel('sqrt of time')
 
     for i, motility in enumerate(motilities):
         sns.kdeplot(motility.velocities().reshape(-1), shade=True, ax=axes[0])
+        if motility.ndim == 2:
+            axes[1].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
+        if motility.ndim == 3:
+            x = np.arange(0, np.pi, 0.1)
+            axes[1].plot(x, np.sin(x)/2, '--k')
         turning_angles = motility.turning_angles().reshape(-1)
         if motility.ndim == 2:
             turning_angles = np.concatenate((

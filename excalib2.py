@@ -6,6 +6,7 @@ import itertools
 import timeit
 import pickle
 import sys
+import datetime
 
 import numpy as np
 
@@ -75,6 +76,8 @@ class Simulation:
 
     def run(self):
         try:
+            print('Starting "{}" on {}'.format(self.cmd, 
+                datetime.datetime.now().strftime("%d.%m. at %H:%M")))
             subprocess.call('./{}'.format(self.cmd))
             print('Command "{}" run'.format(self.cmd))
         except OSError:
@@ -126,7 +129,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
                 motilities[-1].plot(save_as='_'.join([simulation.cmd, 
                     '-'.join(labels).replace(' = ', '')]), palette=palette)
         end = timeit.default_timer()
-        print('Finished in {} seconds'.format(end-start))
+        print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
     if dry_run:
         save_as = ''
@@ -134,7 +137,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
         save_as = '{}_{}-Sweep'.format(simulation.cmd, 
             '-'.join(parameters.keys()))
         with open('{}.py{}kl'.format(save_as, sys.version[0]), 'wb') as pikl:
-            pickle.dump([velocities, turning_angles, displacements], pikl)
+            pickle.dump(motilities, pikl)
             # Might not be readable from other python version.
 
     lana.motility_plot(motilities, save_as=save_as, palette=palette)
@@ -153,11 +156,11 @@ def versus(commands, dry_run=False, save_runs=False, ndim=2):
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
                 motilities.append(lana.Motility(command.read_positions(), 
-                    label=cmd))
+                    ndim=ndim, label=cmd))
                 if save_runs:
                     motilities[-1].plot(save_as=cmd)
         end = timeit.default_timer()
-        print('Finished in {} seconds'.format(end-start))
+        print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
     if dry_run:
         save_as = ''
