@@ -84,12 +84,14 @@ class Simulation:
             print ('Error: Command "{}" not found!'.format(self.cmd))
             return
 
-    def read_positions(self):
+    def read_positions(self, ndim=2):
         try:
-            return np.loadtxt(self.posfile)
+            positions = np.loadtxt(self.posfile)
         except:
             print ('Error: Cannot read positions file!')
             return
+        tracks = [positions[:,ndim*i:ndim*(i+1)] 
+            for i in range(0,positions.shape[1])]
 
 
 def sweep(simulation, parameters, all_combinations=True, dry_run=False,
@@ -123,7 +125,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
             motilities.append(lana.Motility(label=', '.join(labels)))
         else:
             simulation.run()
-            motilities.append(lana.Motility(simulation.read_positions(),
+            motilities.append(lana.Motility(simulation.read_positions(ndim),
                 timestep=timesteps[i], ndim=ndim, label=', '.join(labels)))
             if save_runs:
                 motilities[-1].plot(save_as='_'.join([simulation.cmd, 
@@ -140,7 +142,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
             pickle.dump(motilities, pikl)
             # Might not be readable from other python version.
 
-    lana.motility_plot(motilities, save_as=save_as, palette=palette)
+    lana.plot_motility(motilities, save_as=save_as, palette=palette)
 
 
 def versus(commands, dry_run=False, save_runs=False, ndim=2):
@@ -155,7 +157,7 @@ def versus(commands, dry_run=False, save_runs=False, ndim=2):
         else:
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
-                motilities.append(lana.Motility(command.read_positions(), 
+                motilities.append(lana.Motility(command.read_positions(ndim), 
                     ndim=ndim, label=cmd))
                 if save_runs:
                     motilities[-1].plot(save_as=cmd)
@@ -167,7 +169,7 @@ def versus(commands, dry_run=False, save_runs=False, ndim=2):
     else:
         save_as = '_versus_'.join(commands.keys())
 
-    lana.motility_plot(motilities, save_as=save_as)
+    lana.plot_motility(motilities, save_as=save_as)
 
 
 if __name__ == "__main__":
