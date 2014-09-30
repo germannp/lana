@@ -18,7 +18,7 @@ def silly_track(init_position=np.random.rand(1,2), steps=25, step_size=1):
             angle = (np.sign(x) - 1)/2*np.pi + np.sign(x)*np.arcsin(y)
         silly_angle = angle + np.random.lognormal(0, 0.5) \
             * (2*np.random.randint(0, 2) - 1)
-        silly_displacement = np.random.lognormal(0, 0.5)
+        silly_displacement = step_size*np.random.lognormal(0, 0.5)
         silly_step = silly_displacement*np.asarray(
             [np.cos(silly_angle),
             np.sin(silly_angle)]).reshape(1,2)
@@ -40,7 +40,7 @@ def plot_tracks(motilities, save_as='', palette='deep'):
     plt.axis('equal')
 
     for i, motility in enumerate(motilities):
-        color = sns.color_palette()[-1]
+        color = sns.color_palette()[i]
         for track in motility.tracks:
             plt.plot(track[:,0]-track[0,0], track[:,1]-track[0,1], color=color)
 
@@ -82,10 +82,10 @@ def plot_motility(motilities, save_as='', palette='deep'):
 
     for i, motility in enumerate(motilities):
         if motility.label == '':
-            sns.kdeplot(motility.velocities().reshape(-1),
+            sns.kdeplot(motility.velocities(),
                 shade=True, ax=axes[0])
         else:
-            sns.kdeplot(motility.velocities().reshape(-1), 
+            sns.kdeplot(motility.velocities(), 
                 shade=True, ax=axes[0], label=motility.label)
         turning_angles = motility.turning_angles()
         if motility.ndim == 2:
@@ -143,7 +143,7 @@ class Motility:
             differences = track[1:] - track[:-1]
             dot_products = np.sum(differences[1:]*differences[:-1], axis=1)
             difference_norms = np.linalg.norm(differences, axis=1)
-            norm_products = np.sqrt(difference_norms[1:]*difference_norms[:-1])
+            norm_products = difference_norms[1:]*difference_norms[:-1]
             turning_angles.append(np.arccos(
                 np.nan_to_num(np.clip(dot_products/norm_products, -1, 1))))
         return np.hstack(turning_angles)
@@ -172,5 +172,4 @@ if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     T_cells = Motility()
     T_cells.plot()
-    # plot_tracks(T_cells)
-    # print(T_cells.displacements().shape, T_cells.times().shape)
+    plot_tracks(T_cells)
