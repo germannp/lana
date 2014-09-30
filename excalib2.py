@@ -91,7 +91,8 @@ class Simulation:
             print ('Error: Cannot read positions file!')
             return
         tracks = [positions[:,ndim*i:ndim*(i+1)] 
-            for i in range(0,positions.shape[1])]
+            for i in range(0,positions.shape[1]/ndim)]
+        return tracks
 
 
 def sweep(simulation, parameters, all_combinations=True, dry_run=False,
@@ -176,8 +177,6 @@ if __name__ == "__main__":
     """Illustrates dry run parameter sweep"""
     with Simulation('persistence') as persistence:
         sweep(persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True)
-        # sweep(persistence, {'graphics': [1,1337]}, dry_run=True)
-        # sweep(persistence, {'graphics': [1,1337], 'descht': [1,2,3]}, dry_run=True)
 
     """Illustrates dry run run over several commands"""
     commands = {'cmd1': 'parfile1', 'cmd2': '', 'cmd3': '', 'cmd4': ''}
