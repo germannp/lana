@@ -27,7 +27,7 @@ def silly_track(init_position=np.random.rand(1,2), steps=25, step_size=1):
 
 
 def plot_tracks(motilities, save_as='', palette='deep'):
-    """Plots the tracks of a (list of) Motility class(es)"""
+    """Plots the x-y-tracks of a (list of) Motility class(es)"""
     if not isinstance(motilities, list):
         foo = []
         foo.append(motilities)
@@ -83,10 +83,10 @@ def plot_motility(motilities, save_as='', palette='deep'):
     for i, motility in enumerate(motilities):
         if motility.label == '':
             sns.kdeplot(motility.velocities(),
-                shade=True, ax=axes[0])
+                shade=True, ax=axes[0], gridsize=500)
         else:
             sns.kdeplot(motility.velocities(), 
-                shade=True, ax=axes[0], label=motility.label)
+                shade=True, ax=axes[0], gridsize=500, label=motility.label)
         turning_angles = motility.turning_angles()
         if motility.ndim == 2:
             turning_angles = np.concatenate(( # Mirror at boundaries.
@@ -97,7 +97,7 @@ def plot_motility(motilities, save_as='', palette='deep'):
             axes[1].plot(x, np.sin(x)/2, '--k')
         sns.kdeplot(turning_angles, shade=True, ax=axes[1])
         color = sns.color_palette(n_colors=i+1)[-1]
-        sns.tsplot(motility.displacements(), time='sqrt of time', unit='cell', 
+        sns.tsplot(motility.displacements(), time='sqrt of time', unit='cell',
             value='displacement', ax=axes[2], color=color)
 
     if save_as == '':
