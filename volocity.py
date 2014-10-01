@@ -5,6 +5,7 @@ import lana
 
 
 def read_tracks(volocity_file, min_track_length=5):
+	"""Reads a list of numpy arrays from Volocity files"""
 	with open(volocity_file, 'r') as volocity_file:
 	    lines = volocity_file.readlines()
 
