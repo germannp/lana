@@ -44,6 +44,7 @@ def read_tracks(volocity_file, min_track_length=5):
 
 
 if __name__ == '__main__':
+    """Illustrates the analysis of Volocity data"""
 	tracks = read_tracks('Examples/Volocity_example.txt')
 	volocity_example = lana.Motility(tracks, ndim=3, timestep=1)
 	volocity_example.plot()
