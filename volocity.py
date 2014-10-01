@@ -48,4 +48,3 @@ if __name__ == '__main__':
 	volocity_example = lana.Motility(tracks, ndim=3, timestep=1)
 	volocity_example.plot()
 	lana.plot_tracks(volocity_example)
-	print([track.__len__() for track in volocity_example.tracks])
