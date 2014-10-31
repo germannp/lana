@@ -84,7 +84,7 @@ class Simulation:
             print ('Error: Command "{}" not found!'.format(self.cmd))
             return
 
-    def read_positions(self, ndim=2):
+    def read_tracks(self, ndim=2):
         try:
             positions = np.loadtxt(self.posfile)
         except:
@@ -126,7 +126,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
             motilities.append(lana.Motility(label=', '.join(labels)))
         else:
             simulation.run()
-            motilities.append(lana.Motility(simulation.read_positions(ndim),
+            motilities.append(lana.Motility(simulation.read_tracks(ndim),
                 timestep=timesteps[i], ndim=ndim, label=', '.join(labels)))
             if save_runs:
                 motilities[-1].plot(save_as='_'.join([simulation.cmd, 
@@ -158,7 +158,7 @@ def versus(commands, dry_run=False, save_runs=False, ndim=2):
         else:
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
-                motilities.append(lana.Motility(command.read_positions(ndim), 
+                motilities.append(lana.Motility(command.read_tracks(ndim), 
                     ndim=ndim, label=cmd))
                 if save_runs:
                     motilities[-1].plot(save_as=cmd)

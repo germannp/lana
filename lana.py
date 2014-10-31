@@ -1,8 +1,11 @@
 """Tools to analyze and plot cell motility from tracks within lymph nodes"""
+import random
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 
 def silly_track(init_position=np.random.rand(1,2), steps=25, step_size=1):
@@ -26,24 +29,38 @@ def silly_track(init_position=np.random.rand(1,2), steps=25, step_size=1):
     return track
 
 
-def plot_tracks(motilities, save_as='', palette='deep'):
+def plot_tracks(motilities, ntracks=15, save_as='', palette='deep'):
     """Plots the x-y-tracks of a (list of) Motility class(es)"""
     if not isinstance(motilities, list):
         foo = []
         foo.append(motilities)
         motilities = foo
 
+    ndim = min([motility.ndim for motility in motilities])
+    ntracks = min(ntracks, min([motility.tracks.__len__() for motility in motilities]))
+
     sns.set(style="white", palette=sns.color_palette(
         palette, motilities.__len__()))
     sns.set_context("paper", font_scale=1.5)
 
-    plt.axis('equal')
+    plt.title('Superimposed Tracks')
+    for i in range(ndim-1):
+        plt.subplot(1, ndim-1, i+1)
+        plt.axis('equal')
+        for j, motility in enumerate(motilities):
+            color = sns.color_palette()[j]
+            for track in random.sample(motility.tracks, ntracks):
+                plt.ylabel('x-axis')
+                plt.xlabel(['y-axis', 'z-axis'][i])
+                plt.plot(track[:,0]-track[0,0], track[:,i+1]-track[0,i+1],
+                    color=color)
+                # track = track - track[1]
+                # track = track.reshape(-1, 1, 2)
+                # segments = np.concatenate([track[:-1], track[1:]], axis=1)
+                # lc = LineCollection(segments, cmap=plt.get_cmap('copper'))
+                # plt.gca().add_collection(lc)
 
-    for i, motility in enumerate(motilities):
-        color = sns.color_palette()[i]
-        for track in motility.tracks:
-            plt.plot(track[:,0]-track[0,0], track[:,1]-track[0,1], color=color)
-
+    plt.tight_layout()
     if save_as == '':
         plt.show()
     else:
