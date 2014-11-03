@@ -5,12 +5,17 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import mpl_toolkits.mplot3d.axes3d as p3
+import matplotlib.animation as animation
 from matplotlib.collections import LineCollection
 
 
-def silly_track(init_position=np.random.rand(1,2), steps=25, step_size=1):
+def silly_track(init_position=None, steps=25, step_size=1):
     """Generates a 2D random walk after Nombela-Arrieta et al. 2007"""
+    if init_position == None:
+        init_position = 10*np.random.rand(1,2)
     track = init_position
+
     for _ in range(steps):
         if track.shape[0] == 1:
             angle = 2*np.pi*np.random.rand()
@@ -65,6 +70,42 @@ def plot_tracks(motilities, ntracks=15, save_as='', palette='deep'):
         plt.show()
     else:
         plt.savefig('{}.png'.format(save_as))
+
+
+def animate_tracks(motilities, ntracks=15, palette='deep'):
+    """Shows an animation of the tracks"""
+    if not isinstance(motilities, list):
+        foo = []
+        foo.append(motilities)
+        motilities = foo
+
+    ndim = min([motility.ndim for motility in motilities])
+    ntracks = min(ntracks, min([motility.tracks.__len__() 
+        for motility in motilities]))
+    tmax = max([track.shape[0] 
+        for track in motility.tracks 
+        for motility in motilities])
+
+    sns.set(style="white", palette=sns.color_palette(
+        palette, motilities.__len__()))
+    sns.set_context("paper", font_scale=1.5)
+
+    plt.title('Animated Tracks')
+    plt.axis('equal')
+    sample = random.sample(motility.tracks, ntracks)
+    for t in range(tmax):
+        for j, motility in enumerate(motilities):
+            positions = np.empty((0, ndim))
+            for track in sample:
+                try:
+                    positions = np.append(positions, track[t])
+                except:
+                    pass
+            positions = positions.reshape(-1,ndim)
+            color = sns.color_palette()[j]
+            plt.clf()
+            points = plt.plot(positions[:,0], positions[:,1], 'o')
+        plt.pause(1)
 
 
 def plot_motility(motilities, save_as='', palette='deep'):
@@ -184,9 +225,13 @@ class Motility:
     def plot(self, *args, **kwargs):
         plot_motility(self, *args, **kwargs)
 
+    def animate(self, *args, **kwargs):
+        animate_tracks(self, *args, **kwargs)
+
 
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     T_cells = Motility()
     T_cells.plot()
     plot_tracks(T_cells)
+    # animate_tracks(T_cells)
