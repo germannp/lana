@@ -9,8 +9,35 @@ import sys
 import datetime
 
 import numpy as np
+import pandas as pd
 
 import lana
+
+
+def read_tracks(posfile='positions.txt', ndim=2):
+    try:
+        positions = np.loadtxt(posfile)
+    except:
+        print ('Error: Cannot read positions file!')
+        return
+
+    tracks = pd.DataFrame()
+
+    for track_id in range(positions.shape[1]/ndim):
+        if np.var (positions[:,ndim*track_id]) != 0:
+            if ndim == 3:
+                tracks = tracks.append(pd.DataFrame({
+                    'Track_ID': track_id,
+                    'X': positions[:,ndim*track_id],
+                    'Y': positions[:,ndim*track_id+1],
+                    'Z': positions[:,ndim*track_id+2]}))
+            else:
+                tracks = tracks.append(pd.DataFrame({
+                    'Track_ID': track_id,
+                    'X': positions[:,ndim*track_id],
+                    'Y': positions[:,ndim*track_id+1]}))
+
+    return tracks
 
 
 class Simulation:
@@ -85,19 +112,12 @@ class Simulation:
             return
 
     def read_tracks(self, ndim=2):
-        try:
-            positions = np.loadtxt(self.posfile)
-        except:
-            print ('Error: Cannot read positions file!')
-            return
-        tracks = [positions[:,ndim*i:ndim*(i+1)] 
-            for i in range(0,positions.shape[1]/ndim)
-            if np.var(positions[:,ndim*i]) != 0]
+        tracks = read_tracks(self.posfile, ndim)
         return tracks
 
 
 def sweep(simulation, parameters, all_combinations=True, dry_run=False,
-        timesteps='', ndim=2, save_runs=False, palette='PuRd'):
+    timesteps='', ndim=2, save=False, save_runs=False, palette='PuRd'):
     """Simulates all combinations or pairs of parameters from a dict"""
     try:
         names = parameters.keys()
@@ -113,7 +133,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
     if timesteps == '':
         timesteps = np.ones(values.__len__())
 
-    motilities = []
+    tracks = pd.DataFrame()
     for i, pair in enumerate(values):
         start = timeit.default_timer()
         print('\nSimulation {} of {}:'.format(i+1, values.__len__()))
@@ -124,61 +144,65 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
                 name, pair[j], verbose=True, dry_run=dry_run)
             labels.append(' = '.join([name, str(pair[j])]))
         if dry_run:
-            motilities.append(lana.Motility(label=', '.join(labels)))
+            run_tracks = lana.silly_tracks()
         else:
             simulation.run()
-            motilities.append(lana.Motility(simulation.read_tracks(ndim),
-                timestep=timesteps[i], ndim=ndim, label=', '.join(labels)))
-            if save_runs:
-                motilities[-1].plot(save_as='_'.join([simulation.cmd, 
-                    '-'.join(labels).replace(' = ', '')]), palette=palette)
+            run_tracks = simulation.read_tracks(ndim)
+
+        run_tracks['Condition'] = ', '.join(labels)
+        if save_runs:
+            run_tracks = lana.analyze_tracks(run_tracks)
+            lana.plot_motility(run_tracks, save=True, palette=palette)
+
+        tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
-    if dry_run:
-        save_as = ''
-    else:
-        save_as = '{}_{}-Sweep'.format(simulation.cmd, 
-            '-'.join(parameters.keys()))
-        with open('{}.py{}kl'.format(save_as, sys.version[0]), 'wb') as pikl:
-            pickle.dump(motilities, pikl)
-            # Might not be readable from other python version.
+    if not save_runs:
+        tracks = lana.analyze_tracks(tracks)
+    lana.plot_motility(tracks, save=save, palette=palette)
 
-    lana.plot_motility(motilities, save_as=save_as, palette=palette)
+    return tracks
 
 
-def versus(commands, dry_run=False, save_runs=False, ndim=2):
+def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
     """Simulates all commands and parameter files from a dict"""
-    motilities = []
+    tracks = pd.DataFrame()
     for i, cmd in enumerate(commands.keys()):
         start = timeit.default_timer()
         print('\nSimulation {} of {}:'.format(i+1, commands.keys().__len__()))
         print('------------------')
         if dry_run:
-            motilities.append(lana.Motility(label=cmd))
+            run_tracks = lana.silly_tracks()
         else:
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
-                motilities.append(lana.Motility(command.read_tracks(ndim), 
-                    ndim=ndim, label=cmd))
-                if save_runs:
-                    motilities[-1].plot(save_as=cmd)
+                run_tracks = command.read_tracks(ndim)
+        run_tracks['Condition'] = cmd
+        if save_runs:
+            run_tracks = lana.analyze_tracks(run_tracks)
+            lana.plot_motility(run_tracks, save=True)
+        tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
-    if dry_run:
-        save_as = ''
-    else:
-        save_as = '_versus_'.join(commands.keys())
+    if not save_runs:
+        tracks = lana.analyze_tracks(tracks)
+    lana.plot_motility(tracks, save=save)
 
-    lana.plot_motility(motilities, save_as=save_as)
+    return tracks
 
 
 if __name__ == "__main__":
+    """Illustrates loading and analyzing file"""
+    # tracks = read_tracks('Examples/positions.txt')
+    # tracks = lana.analyze_tracks(tracks)
+    # lana.plot_motility(tracks)
+
     """Illustrates dry run parameter sweep"""
     with Simulation('persistence') as persistence:
         sweep(persistence, {'descht': [1,2], 'tschegg': [3,4,5]}, dry_run=True)
 
     """Illustrates dry run run over several commands"""
     commands = {'cmd1': 'parfile1', 'cmd2': '', 'cmd3': '', 'cmd4': ''}
-    versus(commands, dry_run=True, ndim=3)
+    versus(commands, dry_run=True)

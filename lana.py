@@ -9,7 +9,7 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def silly_track(init_position=None, steps=25, step_size=1):
+def silly_steps(init_position=None, steps=25, step_size=1):
     """Generates a 2D random walk after Nombela-Arrieta et al. 2007"""
     if init_position == None:
         init_position = 10*np.random.rand(1,2)
@@ -37,7 +37,7 @@ def silly_tracks(ntracks=25):
     """Generates a DataFrame with tracks"""
     tracks = pd.DataFrame()
     for track_id in range(ntracks):
-        track = silly_track()
+        track = silly_steps()
         tracks = tracks.append(pd.DataFrame({
             'Track_ID': track_id, 'X': track[:,0], 'Y': track[:,1]}))
     return tracks
@@ -116,7 +116,7 @@ def animate_tracks(tracks, palette='deep'):
 
 
 def analyze_track(track):
-    """Calculates displacements, velocities and turning angles for a track"""
+    """Calculates displacements, velocities and turning angles for a track"""    
     if 'Z' in track.columns:
         positions = track[['X', 'Y', 'Z']]
     else:
@@ -188,7 +188,7 @@ def plot_motility(tracks, save=False, palette='deep'):
         sns.kdeplot(cond_tracks['Velocity'].dropna(), 
             shade=True, ax=axes[0], gridsize=500, label=cond)
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
-        if 'Z' in tracks.index:
+        if 'Z' in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
             axes[1].plot(x, np.sin(x)/2, '--k')
         else:
