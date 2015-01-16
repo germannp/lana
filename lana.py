@@ -43,7 +43,7 @@ def silly_tracks(ntracks=25):
     return tracks
 
 
-def plot_tracks(tracks, save_as='', palette='deep'):
+def plot_tracks(tracks, save=False, palette='deep'):
     """Plots the x-y-tracks of a (list of) Motility class(es)"""
     if 'Z' in tracks.columns:
         ndim = 3
@@ -80,10 +80,12 @@ def plot_tracks(tracks, save_as='', palette='deep'):
 
     plt.legend()
     plt.tight_layout()
-    if save_as == '':
-        plt.show()
+    if save:
+        conditions = [cond.replace('= ', '') 
+            for cond in tracks['Condition'].unique()]
+        plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
-        plt.savefig('{}.png'.format(save_as))
+        plt.show()
 
 
 def animate_tracks(tracks, palette='deep'):
@@ -202,7 +204,8 @@ def plot_motility(tracks, save=False, palette='deep'):
             value='Displacement', ax=axes[2], color=color)
 
     if save:
-        conditions = [cond for cond in tracks['Condition'].unique()]
+        conditions = [cond.replace('= ', '') 
+            for cond in tracks['Condition'].unique()]
         plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
@@ -223,7 +226,7 @@ def plot_joint_motility(tracks, save=False, palette='deep'):
             stat_func=None, xlim=[0, np.pi], space=0,
             ylim=[0, np.percentile(tracks['Velocity'].dropna(), 99.5)])
         if save:
-            plt.savefig('Joint-Motility_' + cond + '.png')
+            plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
         else:
             plt.show()
 
