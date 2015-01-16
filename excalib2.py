@@ -4,7 +4,6 @@ import subprocess
 import shutil
 import itertools
 import timeit
-import pickle
 import sys
 import datetime
 
