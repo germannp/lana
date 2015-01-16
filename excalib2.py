@@ -52,7 +52,7 @@ class Simulation:
         with open(self.parfile, 'r') as parfile:
             lines = parfile.readlines()
         for i, line in enumerate(lines):
-            if parameter in line:
+            if line.startswith(parameter):
                 words = line.split()
                 words[1] = str(value)
                 words.append('\n')
@@ -91,7 +91,8 @@ class Simulation:
             print ('Error: Cannot read positions file!')
             return
         tracks = [positions[:,ndim*i:ndim*(i+1)] 
-            for i in range(0,positions.shape[1]/ndim)]
+            for i in range(0,positions.shape[1]/ndim)
+            if np.var(positions[:,ndim*i]) != 0]
         return tracks
 
 
