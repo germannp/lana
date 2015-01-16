@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 from matplotlib.collections import LineCollection
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def silly_track(init_position=None, steps=25, step_size=1):
@@ -92,6 +93,8 @@ def animate_tracks(motilities, ntracks=15, palette='deep'):
 
     plt.title('Animated Tracks')
     plt.axis('equal')
+    if ndim == 3:
+        ax = plt.gca(projection='3d')
     sample = random.sample(motility.tracks, ntracks)
     for t in range(tmax):
         for j, motility in enumerate(motilities):
@@ -104,7 +107,10 @@ def animate_tracks(motilities, ntracks=15, palette='deep'):
             positions = positions.reshape(-1,ndim)
             color = sns.color_palette()[j]
             plt.clf()
-            points = plt.plot(positions[:,0], positions[:,1], 'o')
+            if ndim == 3:
+                ax.scatter(positions[:,0], positions[:,1], positions[:,2], c='red')
+            else:
+                points = plt.plot(positions[:,0], positions[:,1], 'o')
         plt.pause(1)
 
 
@@ -173,7 +179,7 @@ class Motility:
             self.tracks = [silly_track(step_size=rand) for _ in range(100)]
         else:
             self.tracks = tracks
-        self.ndim = ndim
+        self.ndim = ndim # TODO: Automatize!
         self.ncells = self.tracks.__len__()
         self.timestep = int(timestep)
         self.label = label
@@ -231,7 +237,15 @@ class Motility:
 
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
-    T_cells = Motility()
-    T_cells.plot()
-    plot_tracks(T_cells)
-    # animate_tracks(T_cells)
+    # T_cells = Motility()
+    # T_cells.plot()
+    # plot_tracks(T_cells)
+
+    import os
+    import excalib2
+
+    os.chdir('../cpm_lymph_node_T-cell_persistence')
+    with excalib2.Simulation('persistence') as persistence:
+        T_cells = Motility(persistence.read_tracks(ndim=3), ndim=3)
+        plot_tracks(T_cells)
+        animate_tracks(T_cells)
