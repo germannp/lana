@@ -49,3 +49,6 @@ if __name__ == '__main__':
     volocity_example = lana.Motility(tracks, ndim=3, timestep=1)
     volocity_example.plot()
     lana.plot_tracks(volocity_example)
+    volocity_example.displacements()['time'].value_counts().plot()
+    import matplotlib.pyplot as plt
+    plt.show()
