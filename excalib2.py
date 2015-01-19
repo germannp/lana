@@ -13,7 +13,7 @@ import pandas as pd
 import lana
 
 
-def read_tracks(posfile='positions.txt', ndim=2):
+def read_tracks(posfile='positions.txt', ndim=2, condition=None):
     try:
         positions = np.loadtxt(posfile)
     except:
@@ -35,6 +35,9 @@ def read_tracks(posfile='positions.txt', ndim=2):
                     'Track_ID': track_id,
                     'X': positions[:,ndim*track_id],
                     'Y': positions[:,ndim*track_id+1]}))
+
+    if condition != None:
+        tracks['Condition'] = sample
 
     return tracks
 
