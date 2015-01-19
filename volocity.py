@@ -2,9 +2,9 @@
 import pandas as pd
 
 
-def read_tracks(volocity_file, min_track_length=5):
+def read_tracks(path, condition=None, sample=None, min_track_length=5):
     """Reads a Pandas DataFrame from Volocity files"""
-    with open(volocity_file, 'r') as volocity_file:
+    with open(path, 'r') as volocity_file:
         lines = volocity_file.readlines()
 
     for i, line in enumerate(lines):
@@ -33,6 +33,12 @@ def read_tracks(volocity_file, min_track_length=5):
             tracks.loc[i, 'Z'] = float(words[index_X+2])
         except ValueError:
             pass
+
+    if condition != None:
+        tracks['Condition'] = condition
+
+    if sample != None:
+        tracks['Sample'] = sample
 
     for track_id, track in tracks.groupby('Track_ID'):
         if track.__len__() < min_track_length:
