@@ -49,3 +49,4 @@ if __name__ == '__main__':
     tracks = read_tracks('Examples/Volocity_example.txt')
     tracks = lana.analyze_tracks(tracks)
     lana.plot_motility(tracks)
+    lana.plot_joint_motility(tracks)

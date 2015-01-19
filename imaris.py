@@ -2,8 +2,8 @@
 import pandas as pd
 
 
-def read_tracks(path, sample=None):
-	"""Read tracks from excel file"""
+def read_tracks(path, sample=None, condition=None):
+    """Read tracks from excel file"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
     old_columns = tracks.columns 
 
@@ -13,10 +13,10 @@ def read_tracks(path, sample=None):
     tracks['Z'] = tracks['Position Z']
 
     tracks = tracks.drop(['ID', 'Category', 'Collection', 'TrackID', 
-    	'Unit', 'Position X', 'Position Y', 'Position Z'], 1)
+        'Unit', 'Position X', 'Position Y', 'Position Z'], 1)
 
     if sample != None:
-    	tracks['Sample'] = sample
+        tracks['Sample'] = sample
 
     return tracks
 

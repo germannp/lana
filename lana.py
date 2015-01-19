@@ -234,7 +234,7 @@ def plot_joint_motility(tracks, save=False, palette='deep'):
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     tracks = silly_tracks()
-    plot_tracks(tracks)
+    # plot_tracks(tracks)
     # animate_tracks(tracks)
     tracks = analyze_tracks(tracks)
     plot_joint_motility(tracks)
