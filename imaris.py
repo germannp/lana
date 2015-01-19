@@ -3,6 +3,7 @@ import pandas as pd
 
 
 def read_tracks(path, sample=None):
+	"""Read tracks from excel file"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
     old_columns = tracks.columns 
 
