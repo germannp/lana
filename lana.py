@@ -155,7 +155,7 @@ def analyze_tracks(tracks):
     return tracks.groupby(['Condition', 'Track_ID']).apply(analyze_track)
 
 
-def plot_motility(tracks, save=False, palette='deep'):
+def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
     """Plots aspects of motility for a (list of) Motility class(es)"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -187,8 +187,11 @@ def plot_motility(tracks, save=False, palette='deep'):
     axes[2].set_xlabel('Time')
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
+        # Plot velocities
         sns.kdeplot(cond_tracks['Velocity'].dropna(), 
             shade=True, ax=axes[0], gridsize=500, label=cond)
+
+        # Plot turning angles
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
         if 'Z' in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
@@ -198,10 +201,23 @@ def plot_motility(tracks, save=False, palette='deep'):
                 -turning_angles, turning_angles, 2*np.pi-turning_angles))
             axes[1].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
         sns.kdeplot(turning_angles, shade=True, ax=axes[1])
+
+        # Plot displacements, inspired by http://stackoverflow.com/questions/
+        # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
-        cond_tracks['Time'] = np.sqrt(cond_tracks['Time'])
-        sns.tsplot(cond_tracks, time='Time', unit='Track_ID',
-            value='Displacement', ax=axes[2], color=color)
+        median = cond_tracks[['Time', 'Displacement']].groupby('Time').median()
+        axes[2].plot(np.sqrt(median.index), median)
+        low = cond_tracks[['Time', 'Displacement']].groupby('Time').quantile(0.25)
+        high = cond_tracks[['Time', 'Displacement']].groupby('Time').quantile(0.75)
+        axes[2].fill_between(np.sqrt(median.index), 
+            low['Displacement'], high['Displacement'], 
+            alpha=.2, color=color)
+        if plot_minmax:
+            minima = cond_tracks[['Time', 'Displacement']].groupby('Time').min()
+            maxima = cond_tracks[['Time', 'Displacement']].groupby('Time').max()
+            axes[2].fill_between(np.sqrt(median.index), 
+                minima['Displacement'], maxima['Displacement'], 
+                alpha=.2, color=color)
 
     if save:
         conditions = [cond.replace('= ', '') 
@@ -237,5 +253,5 @@ if __name__ == "__main__":
     # plot_tracks(tracks)
     # animate_tracks(tracks)
     tracks = analyze_tracks(tracks)
-    plot_joint_motility(tracks)
+    # plot_joint_motility(tracks)
     plot_motility(tracks)
