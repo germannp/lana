@@ -1,4 +1,6 @@
 """Tools to analyze and plot cell motility from tracks within lymph nodes"""
+import random
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -159,7 +161,7 @@ def analyze_tracks(tracks, condition='Condition'):
 
 def plot_motility(tracks, save=False, palette='deep', plot_minmax=False, 
     condition='Condition'):
-    """Plots aspects of motility for a (list of) Motility class(es)"""
+    """Plots aspects of motility for different conditions"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
@@ -253,6 +255,46 @@ def plot_joint_motility(tracks, save=False, palette='deep'):
             plt.show()
 
 
+def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
+    """Lag plots for velocities and turning angles"""
+    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
+        print('Error: data not found, tracks must be analyzed first.')
+        return
+
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+
+    sns.set(style="white", palette=sns.color_palette(
+        palette, tracks[condition].unique().__len__()))
+    fig, ax = plt.subplots(1,2, figsize=(8, 4.5))
+    ax[0].set_title('Velocity')    
+    ax[1].set_title('Turning Angle')
+    ax[0].set_xticks([])
+    ax[0].set_yticks([])
+    ax[0].axis('equal')
+    ax[1].set_xticks([])
+    ax[1].set_yticks([])
+    ax[1].axis('equal')
+
+    null_model = tracks.ix[random.sample(tracks.index, tracks.shape[0])]
+    pd.tools.plotting.lag_plot(null_model['Velocity'], c='0.8', ax=ax[0])
+    pd.tools.plotting.lag_plot(null_model['Turning Angle'], c='0.8', ax=ax[1])
+
+    for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
+        color = sns.color_palette()[i]
+        for _, track in cond_tracks.groupby('Track_ID'):
+            pd.tools.plotting.lag_plot(track['Velocity'], ax=ax[0], c=color)
+            pd.tools.plotting.lag_plot(track['Turning Angle'], ax=ax[1], c=color)
+
+    plt.tight_layout()
+    if save:
+        conditions = [cond.replace('= ', '') 
+            for cond in tracks[condition].unique()]
+        plt.savefig('Motility-LagPlot_' + '-'.join(conditions) + '.png')
+    else:
+        plt.show()
+
+
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     tracks = silly_tracks()
@@ -260,4 +302,5 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     tracks = analyze_tracks(tracks)
     # plot_joint_motility(tracks)
-    plot_motility(tracks)
+    # plot_motility(tracks)
+    lag_plot(tracks)
