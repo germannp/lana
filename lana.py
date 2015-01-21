@@ -271,9 +271,13 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
     ax[1].set_title('Turning Angle')
     ax[0].set_xticks([])
     ax[0].set_yticks([])
+    ax[0].set_xlabel('v(t)')
+    ax[0].set_ylabel('v(t+1)')
     ax[0].axis('equal')
     ax[1].set_xticks([])
     ax[1].set_yticks([])
+    ax[1].set_xlabel(r'$\alpha$(t)')
+    ax[1].set_ylabel(r'$\alpha$(t+1)')
     ax[1].axis('equal')
 
     null_model = tracks.ix[random.sample(tracks.index, tracks.shape[0])]
