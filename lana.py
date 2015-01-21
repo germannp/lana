@@ -139,16 +139,16 @@ def analyze_track(track):
     return track
 
 
-def analyze_tracks(tracks):
+def analyze_tracks(tracks, condition='Condition'):
     """Prepares tracks for analysis"""
-    if 'Condition' not in tracks.columns:
-        tracks['Condition'] = 'Default'
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
 
-    if sum(tracks[['Condition', 'Track_ID', 'Time']].duplicated()) != 0:
+    if sum(tracks[[condition, 'Track_ID', 'Time']].duplicated()) != 0:
         print('Error: Tracks not unique, aborting analysis.')
         return
 
