@@ -157,17 +157,21 @@ def analyze_tracks(tracks, condition='Condition'):
     return tracks.groupby([condition, 'Track_ID']).apply(analyze_track)
 
 
-def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
+def plot_motility(tracks, save=False, palette='deep', plot_minmax=False, 
+    condition='Condition'):
     """Plots aspects of motility for a (list of) Motility class(es)"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
 
-    if 'Condition' not in tracks.columns:
-        tracks['Condition'] = 'Default'
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+
+    if tracks[condition].unique().__len__() == 1:
+        plot_minmax = True
 
     sns.set(style="white", palette=sns.color_palette(
-        palette, tracks['Condition'].unique().__len__()))
+        palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
     figure, axes = plt.subplots(ncols=3, figsize=(12,6))
     plt.tight_layout()
@@ -188,7 +192,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
     axes[2].set_title('Mean Displacements')
     axes[2].set_xlabel('Time')
 
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         # Plot velocities
         sns.kdeplot(cond_tracks['Velocity'].dropna(), 
             shade=True, ax=axes[0], gridsize=500, label=cond)
@@ -223,7 +227,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
 
     if save:
         conditions = [cond.replace('= ', '') 
-            for cond in tracks['Condition'].unique()]
+            for cond in tracks[condition].unique()]
         plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
