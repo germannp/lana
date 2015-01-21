@@ -124,6 +124,8 @@ def analyze_track(track):
     else:
         positions = track[['X', 'Y']]
 
+    track['Track Time'] = track['Time'] - track['Time'].iloc[0]
+
     track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
 
     dr = positions.diff()
@@ -205,16 +207,16 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
         # Plot displacements, inspired by http://stackoverflow.com/questions/
         # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
-        median = cond_tracks[['Time', 'Displacement']].groupby('Time').median()
+        median = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').median()
         axes[2].plot(np.sqrt(median.index), median)
-        low = cond_tracks[['Time', 'Displacement']].groupby('Time').quantile(0.25)
-        high = cond_tracks[['Time', 'Displacement']].groupby('Time').quantile(0.75)
+        low = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.25)
+        high = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.75)
         axes[2].fill_between(np.sqrt(median.index), 
             low['Displacement'], high['Displacement'], 
             alpha=.2, color=color)
         if plot_minmax:
-            minima = cond_tracks[['Time', 'Displacement']].groupby('Time').min()
-            maxima = cond_tracks[['Time', 'Displacement']].groupby('Time').max()
+            minima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').min()
+            maxima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').max()
             axes[2].fill_between(np.sqrt(median.index), 
                 minima['Displacement'], maxima['Displacement'], 
                 alpha=.2, color=color)
