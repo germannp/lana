@@ -152,7 +152,7 @@ def analyze_tracks(tracks, condition='Condition'):
         print('Error: Tracks not unique, aborting analysis.')
         return
 
-    return tracks.groupby(['Condition', 'Track_ID']).apply(analyze_track)
+    return tracks.groupby([condition, 'Track_ID']).apply(analyze_track)
 
 
 def plot_motility(tracks, save=False, palette='deep', plot_minmax=False):
