@@ -266,7 +266,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
 
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
-    fig, ax = plt.subplots(1,2, figsize=(8, 4.5))
+    fig, ax = plt.subplots(1,2, figsize=(8, 4.25))
     ax[0].set_title('Velocity')    
     ax[1].set_title('Turning Angle')
     ax[0].set_xticks([])
@@ -277,14 +277,18 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
     ax[1].axis('equal')
 
     null_model = tracks.ix[random.sample(tracks.index, tracks.shape[0])]
-    pd.tools.plotting.lag_plot(null_model['Velocity'], c='0.8', ax=ax[0])
-    pd.tools.plotting.lag_plot(null_model['Turning Angle'], c='0.8', ax=ax[1])
+    ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(), 
+        facecolors='0.8')
+    ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(), 
+        facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i]
         for _, track in cond_tracks.groupby('Track_ID'):
-            pd.tools.plotting.lag_plot(track['Velocity'], ax=ax[0], c=color)
-            pd.tools.plotting.lag_plot(track['Turning Angle'], ax=ax[1], c=color)
+            ax[0].scatter(track['Velocity'], track['Velocity'].shift(),
+                facecolors=color)
+            ax[1].scatter(track['Turning Angle'], track['Turning Angle'].shift(),
+                facecolors=color)
 
     plt.tight_layout()
     if save:
