@@ -154,7 +154,8 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
         run_tracks['Condition'] = ', '.join(labels)
         if save_runs:
             run_tracks = lana.analyze_tracks(run_tracks)
-            lana.plot_motility(run_tracks, save=True, palette=palette)
+            lana.plot_motility(run_tracks, save=True, plot_minmax=True, 
+                palette=palette)
 
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
@@ -183,7 +184,7 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
         run_tracks['Condition'] = cmd
         if save_runs:
             run_tracks = lana.analyze_tracks(run_tracks)
-            lana.plot_motility(run_tracks, save=True)
+            lana.plot_motility(run_tracks, plot_minmax=True, save=True)
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
