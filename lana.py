@@ -196,7 +196,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
-    axes[0].set_title('Mean Displacements')
+    axes[0].set_title('Median Displacements')
     axes[0].set_xlabel('Time')
 
     axes[1].set_title('Velocities')
