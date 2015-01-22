@@ -113,14 +113,15 @@ def animate_tracks(tracks, palette='deep'):
         for j, (cond, cond_posis) in enumerate(posis.groupby('Condition')):
             plt.clf()
             if 'Z' in cond_posis.columns:
-                ax.scatter(cond_posis['X'], cond_posis['Y'], cond_posis['Z'], c='red')
+                ax.scatter(cond_posis['X'], cond_posis['Y'], cond_posis['Z'], 
+                    c='red')
             else:
                 plt.plot(posis['X'], posis['Y'], 'o')
         plt.pause(1)
 
 
 def analyze_track(track):
-    """Calculates displacements, velocities and turning angles for a track"""    
+    """Calculates displacements, velocities and turning angles for a track""" 
     if 'Z' in track.columns:
         positions = track[['X', 'Y', 'Z']]
     else:
@@ -141,19 +142,19 @@ def analyze_track(track):
     track['Turning Angle'] = np.arccos(dot_products[:-1]/norm_products)
 
     if 'Z' in track.columns:
-        track['Rotation Angle'] = np.nan
+        track['Rolling Angle'] = np.nan
 
         n_vectors = np.cross(dr, dr.shift())
         n_norms = np.linalg.norm(n_vectors, axis=1)
         dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
         norm_products = n_norms[1:]*n_norms[:-1]
 
-        track['Rotation Angle'].iloc[:-1] = np.arccos(dot_products/norm_products)
+        track['Rolling Angle'].iloc[:-1] = np.arccos(dot_products/norm_products)
 
     return track
 
 
-def analyze_tracks(tracks, condition='Condition'):
+def analyze_motility(tracks, condition='Condition'):
     """Prepares tracks for analysis"""
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -185,7 +186,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
-    if 'Rotation Angle' in tracks.columns:
+    if 'Rolling Angle' in tracks.columns:
         figure, axes = plt.subplots(ncols=4, figsize=(16,6))
         # axes = [axes[0][0], axes[0][1], axes[1][0], axes[1][1]]
     else:
@@ -208,8 +209,8 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
-    if 'Rotation Angle' in tracks.columns:
-        axes[3].set_title('Rotation Angles')
+    if 'Rolling Angle' in tracks.columns:
+        axes[3].set_title('Rolling Angles')
         axes[3].set_xlim([0,np.pi])
         axes[3].set_xticks([0, np.pi/2, np.pi])
         axes[3].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
@@ -247,14 +248,14 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
             axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
         sns.kdeplot(turning_angles, shade=True, ax=axes[2])
 
-        # Plot Rotation angles
-        if 'Rotation Angle' in tracks.columns:
-            rotation_angles = cond_tracks['Rotation Angle'].dropna().as_matrix()
-            rotation_angles = np.concatenate(( # Mirror at boundaries.
-                -rotation_angles, rotation_angles, 2*np.pi-rotation_angles))
+        # Plot Rolling Angles
+        if 'Rolling Angle' in tracks.columns:
+            rolling_angles = cond_tracks['Rolling Angle'].dropna().as_matrix()
+            rolling_angles = np.concatenate(( # Mirror at boundaries.
+                -rolling_angles, rolling_angles, 2*np.pi-rolling_angles))
             axes[3].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
-            # sns.distplot(rotation_angles, ax=axes[3])
-            sns.kdeplot(rotation_angles, shade=True, ax=axes[3])
+            # sns.distplot(rolling_angles, ax=axes[3])
+            sns.kdeplot(rolling_angles, shade=True, ax=axes[3])
 
     if save:
         conditions = [cond.replace('= ', '') 
@@ -295,25 +296,34 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
 
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
-    fig, ax = plt.subplots(1,2, figsize=(8, 4.25))
+    if 'Rolling Angle' in tracks.columns:
+        fig, ax = plt.subplots(1,3, figsize=(12,4.25))
+    else:
+        fig, ax = plt.subplots(1,2, figsize=(8,4.25))
+    plt.setp(ax, yticks=[])
+    plt.setp(ax, xticks=[])
     ax[0].set_title('Velocity')    
-    ax[1].set_title('Turning Angle')
-    ax[0].set_xticks([])
-    ax[0].set_yticks([])
     ax[0].set_xlabel('v(t)')
     ax[0].set_ylabel('v(t+1)')
     ax[0].axis('equal')
-    ax[1].set_xticks([])
-    ax[1].set_yticks([])
-    ax[1].set_xlabel(r'$\alpha$(t)')
-    ax[1].set_ylabel(r'$\alpha$(t+1)')
+    ax[1].set_title('Turning Angle')
+    ax[1].set_xlabel(r'$\theta$(t)')
+    ax[1].set_ylabel(r'$\theta$(t+1)')
     ax[1].axis('equal')
+    if 'Rolling Angle' in tracks.columns:
+        ax[2].set_title('Rolling Angle')
+        ax[2].set_xlabel(r'$\phi$(t)')
+        ax[2].set_ylabel(r'$\phi$(t+1)')
+        ax[2].axis('equal')
 
     null_model = tracks.ix[random.sample(tracks.index, tracks.shape[0])]
     ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(), 
         facecolors='0.8')
     ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(), 
         facecolors='0.8')
+    if 'Rolling Angle' in tracks.columns:
+        ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(), 
+            facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i]
@@ -322,6 +332,9 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
                 facecolors=color)
             ax[1].scatter(track['Turning Angle'], track['Turning Angle'].shift(),
                 facecolors=color)
+            if 'Rolling Angle' in tracks.columns:
+                ax[2].scatter(track['Rolling Angle'], track['Rolling Angle'].shift(),
+                    facecolors=color)
 
     plt.tight_layout()
     if save:
@@ -337,7 +350,7 @@ if __name__ == "__main__":
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
-    tracks = analyze_tracks(tracks)
+    tracks = analyze_motility(tracks)
     # plot_joint_motility(tracks)
-    plot_motility(tracks)
-    # lag_plot(tracks)
+    # plot_motility(tracks)
+    lag_plot(tracks)
