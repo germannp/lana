@@ -131,7 +131,7 @@ def analyze_track(track):
     track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
 
     dr = positions.diff()
-    dr_norms = np.linalg.norm(dr, axis = 1)
+    dr_norms = np.linalg.norm(dr, axis=1)
 
     track['Velocity'] = dr_norms/track['Time'].diff()
 
@@ -139,6 +139,16 @@ def analyze_track(track):
     norm_products = dr_norms[1:]*dr_norms[:-1]
 
     track['Turning Angle'] = np.arccos(dot_products[:-1]/norm_products)
+
+    if 'Z' in track.columns:
+        track['Rotation Angle'] = np.nan
+
+        n_vectors = np.cross(dr, dr.shift())
+        n_norms = np.linalg.norm(n_vectors, axis=1)
+        dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
+        norm_products = n_norms[1:]*n_norms[:-1]
+
+        track['Rotation Angle'].iloc[:-1] = np.arccos(dot_products/norm_products)
 
     return track
 
@@ -175,57 +185,76 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
-    figure, axes = plt.subplots(ncols=3, figsize=(12,6))
+    if 'Rotation Angle' in tracks.columns:
+        figure, axes = plt.subplots(ncols=4, figsize=(16,6))
+        # axes = [axes[0][0], axes[0][1], axes[1][0], axes[1][1]]
+    else:
+        figure, axes = plt.subplots(ncols=3, figsize=(12,6))
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
-    axes[0].set_title('Velocities')
-    axes[0].set_xlim(0, np.percentile(tracks['Velocity'].dropna(), 99.5))
-    axes[0].set_xticks([0])
-    axes[0].set_xticklabels([r'$0$'])
+    axes[0].set_title('Mean Displacements')
+    axes[0].set_xlabel('Time')
 
-    axes[1].set_title('Turning Angles')
-    axes[1].set_xlim([0,np.pi])
-    axes[1].set_xticks([0, np.pi/2, np.pi])
-    axes[1].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
+    axes[1].set_title('Velocities')
+    axes[1].set_xlim(0, np.percentile(tracks['Velocity'].dropna(), 99.5))
+    axes[1].set_xticks([0])
+    axes[1].set_xticklabels([r'$0$'])
 
-    axes[2].set_title('Mean Displacements')
-    axes[2].set_xlabel('Time')
+    axes[2].set_title('Turning Angles')
+    axes[2].set_xlim([0,np.pi])
+    axes[2].set_xticks([0, np.pi/2, np.pi])
+    axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
+
+    if 'Rotation Angle' in tracks.columns:
+        axes[3].set_title('Rotation Angles')
+        axes[3].set_xlim([0,np.pi])
+        axes[3].set_xticks([0, np.pi/2, np.pi])
+        axes[3].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
-        # Plot velocities
-        sns.kdeplot(cond_tracks['Velocity'].dropna(), 
-            shade=True, ax=axes[0], gridsize=500, label=cond)
-
-        # Plot turning angles
-        turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
-        if 'Z' in tracks.columns:
-            x = np.arange(0, np.pi, 0.1)
-            axes[1].plot(x, np.sin(x)/2, '--k')
-        else:
-            turning_angles = np.concatenate(( # Mirror at boundaries.
-                -turning_angles, turning_angles, 2*np.pi-turning_angles))
-            axes[1].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
-        sns.kdeplot(turning_angles, shade=True, ax=axes[1])
-
         # Plot displacements, inspired by http://stackoverflow.com/questions/
         # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
         median = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').median()
-        axes[2].plot(np.sqrt(median.index), median)
+        axes[0].plot(np.sqrt(median.index), median)
         low = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.25)
         high = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.75)
-        axes[2].fill_between(np.sqrt(median.index), 
+        axes[0].fill_between(np.sqrt(median.index), 
             low['Displacement'], high['Displacement'], 
             alpha=.2, color=color)
         if plot_minmax:
             minima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').min()
             maxima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').max()
-            axes[2].fill_between(np.sqrt(median.index), 
+            axes[0].fill_between(np.sqrt(median.index), 
                 minima['Displacement'], maxima['Displacement'], 
                 alpha=.2, color=color)
+
+        # Plot velocities
+        sns.kdeplot(cond_tracks['Velocity'].dropna(), 
+            shade=True, ax=axes[1], gridsize=500, label=cond)
+
+        # Plot turning angles
+        turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
+        if 'Z' in tracks.columns:
+            x = np.arange(0, np.pi, 0.1)
+            axes[2].plot(x, np.sin(x)/2, '--k')
+        else:
+            turning_angles = np.concatenate(( # Mirror at boundaries.
+                -turning_angles, turning_angles, 2*np.pi-turning_angles))
+            axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
+        sns.kdeplot(turning_angles, shade=True, ax=axes[2])
+
+        # Plot Rotation angles
+        if 'Rotation Angle' in tracks.columns:
+            rotation_angles = cond_tracks['Rotation Angle'].dropna().as_matrix()
+            rotation_angles = np.concatenate(( # Mirror at boundaries.
+                -rotation_angles, rotation_angles, 2*np.pi-rotation_angles))
+            axes[3].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
+            # sns.distplot(rotation_angles, ax=axes[3])
+            sns.kdeplot(rotation_angles, shade=True, ax=axes[3])
 
     if save:
         conditions = [cond.replace('= ', '') 
@@ -310,5 +339,5 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     tracks = analyze_tracks(tracks)
     # plot_joint_motility(tracks)
-    # plot_motility(tracks)
-    lag_plot(tracks)
+    plot_motility(tracks)
+    # lag_plot(tracks)
