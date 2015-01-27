@@ -83,7 +83,7 @@ def plot_tracks(tracks, save=False, palette='deep'):
     plt.legend()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '') 
+        conditions = [cond.replace('= ', '')
             for cond in tracks['Condition'].unique()]
         plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
@@ -113,7 +113,7 @@ def animate_tracks(tracks, palette='deep'):
         for j, (cond, cond_posis) in enumerate(posis.groupby('Condition')):
             plt.clf()
             if 'Z' in cond_posis.columns:
-                ax.scatter(cond_posis['X'], cond_posis['Y'], cond_posis['Z'], 
+                ax.scatter(cond_posis['X'], cond_posis['Y'], cond_posis['Z'],
                     c='red')
             else:
                 plt.plot(posis['X'], posis['Y'], 'o')
@@ -121,7 +121,7 @@ def animate_tracks(tracks, palette='deep'):
 
 
 def analyze_track(track):
-    """Calculates displacements, velocities and turning angles for a track""" 
+    """Calculates displacements, velocities and turning angles for a track"""
     if 'Z' in track.columns:
         positions = track[['X', 'Y', 'Z']]
     else:
@@ -170,7 +170,7 @@ def analyze_motility(tracks, condition='Condition'):
     return tracks.groupby([condition, 'Track_ID']).apply(analyze_track)
 
 
-def plot_motility(tracks, save=False, palette='deep', plot_minmax=False, 
+def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     condition='Condition'):
     """Plots aspects of motility for different conditions"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
@@ -223,18 +223,18 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
         axes[0].plot(np.sqrt(median.index), median)
         low = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.25)
         high = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.75)
-        axes[0].fill_between(np.sqrt(median.index), 
-            low['Displacement'], high['Displacement'], 
+        axes[0].fill_between(np.sqrt(median.index),
+            low['Displacement'], high['Displacement'],
             alpha=.2, color=color)
         if plot_minmax:
             minima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').min()
             maxima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').max()
-            axes[0].fill_between(np.sqrt(median.index), 
-                minima['Displacement'], maxima['Displacement'], 
+            axes[0].fill_between(np.sqrt(median.index),
+                minima['Displacement'], maxima['Displacement'],
                 alpha=.2, color=color)
 
         # Plot velocities
-        sns.kdeplot(cond_tracks['Velocity'].dropna(), 
+        sns.kdeplot(cond_tracks['Velocity'].dropna(),
             shade=True, ax=axes[1], gridsize=500, label=cond)
 
         # Plot turning angles
@@ -258,7 +258,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
             sns.kdeplot(rolling_angles, shade=True, ax=axes[3])
 
     if save:
-        conditions = [cond.replace('= ', '') 
+        conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
         plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
@@ -302,7 +302,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
         fig, ax = plt.subplots(1,2, figsize=(8,4.25))
     plt.setp(ax, yticks=[])
     plt.setp(ax, xticks=[])
-    ax[0].set_title('Velocity')    
+    ax[0].set_title('Velocity')
     ax[0].set_xlabel('v(t)')
     ax[0].set_ylabel('v(t+1)')
     ax[0].axis('equal')
@@ -316,13 +316,13 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
         ax[2].set_ylabel(r'$\phi$(t+1)')
         ax[2].axis('equal')
 
-    null_model = tracks.ix[random.sample(tracks.index, tracks.shape[0])]
-    ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(), 
+    null_model = tracks.ix[random.sample(list(tracks.index), tracks.shape[0])]
+    ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(),
         facecolors='0.8')
-    ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(), 
+    ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
         facecolors='0.8')
     if 'Rolling Angle' in tracks.columns:
-        ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(), 
+        ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(),
             facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
@@ -338,7 +338,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
 
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '') 
+        conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
         plt.savefig('Motility-LagPlot_' + '-'.join(conditions) + '.png')
     else:
