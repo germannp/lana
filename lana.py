@@ -345,12 +345,55 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
         plt.show()
 
 
+def summarize_tracks(tracks):
+    """Summarize track statistics"""
+    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
+        print('Error: data not found, tracks must be analyzed first.')
+        return
+
+    summary = pd.DataFrame()
+    summary.index.name = 'Track_ID'
+
+    for track_id, track in tracks.groupby('Track_ID'):
+        if 'Condition' in track.columns:
+            summary.loc[track_id, 'Condition'] = track.iloc[0]['Condition']
+        if 'Sample' in track.columns:
+            summary.loc[track_id, 'Sample'] = track.iloc[0]['Sample']
+
+        summary.loc[track_id, 'Mean Velocity'] = track['Velocity'].mean()
+        summary.loc[track_id, 'Mean Turning Angle'] = track['Turning Angle'].mean()
+        if 'Rolling Angle' in track.columns:
+            summary.loc[track_id, 'Mean Rolling Angle'] = track['Rolling Angle'].mean()
+
+        summary.loc[track_id, 'Track Duration'] = \
+            track['Track Time'].iloc[-1] - track['Track Time'].iloc[0]
+
+    return summary
+
+
+def plot_summary(summary):
+    """Plot distributions and joint distributions of the track summary"""
+    if sys.version_info[0] == 3:
+        print('Warning: PairGrind might fail.')
+        
+    sns.set(style='white')
+    g = sns.PairGrid(summary)
+    g.map_diag(plt.hist)
+    g.map_offdiag(plt.scatter)
+
+    plt.show()
+
+
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
+
     tracks = analyze_motility(tracks)
     # plot_joint_motility(tracks)
     # plot_motility(tracks)
-    lag_plot(tracks)
+    # lag_plot(tracks)
+
+    summary = summarize_tracks(tracks)
+    plot_summary(summary)

@@ -31,12 +31,16 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
 if __name__ == '__main__':
     """Illustrates loading of Imaris tracks"""
     import lana
+
     tracks = read_tracks('Examples/Imaris_example.xls', sample='Movie 1')
     tracks = lana.analyze_motility(tracks)
-    lana.plot_joint_motility(tracks)
-    lana.plot_motility(tracks)
-    lana.lag_plot(tracks)
-    print(tracks[tracks['Track_ID'] == 1000000093])
+    # lana.plot_joint_motility(tracks)
+    # lana.plot_motility(tracks)
+    # lana.lag_plot(tracks)
+    # print(tracks[tracks['Track_ID'] == 1000000093])
+
+    summary = lana.summarize_tracks(tracks)
+    lana.plot_summary(summary)
 
     # import matplotlib.pyplot as plt
     # tracks.set_index(['Time', 'Track_ID'])['Turning Angle'].unstack().plot(subplots=True, sharey=True, layout=(-1,6))
