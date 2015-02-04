@@ -120,7 +120,7 @@ class Simulation:
 
 
 def sweep(simulation, parameters, all_combinations=True, dry_run=False,
-    timesteps='', ndim=2, save=False, save_runs=False, palette='PuRd'):
+    timesteps='', ndim=2, save=False, save_runs=False, palette='RdBu'):
     """Simulates all combinations or pairs of parameters from a dict"""
     try:
         names = parameters.keys()
