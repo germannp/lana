@@ -1,4 +1,5 @@
 """Tools to analyze and plot cell motility from tracks within lymph nodes"""
+import sys
 import random
 
 import numpy as np
@@ -375,7 +376,7 @@ def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
     if sys.version_info[0] == 3:
         print('Warning: PairGrind might fail.')
-        
+
     sns.set(style='white')
     g = sns.PairGrid(summary)
     g.map_diag(plt.hist)
