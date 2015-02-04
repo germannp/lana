@@ -1,5 +1,4 @@
 """Tools to analyze and plot cell motility from tracks within lymph nodes"""
-import sys
 import random
 
 import numpy as np
@@ -155,20 +154,22 @@ def analyze_track(track):
     return track
 
 
-def analyze_motility(tracks, condition='Condition'):
+def analyze_motility(tracks, sample='Sample'):
     """Prepares tracks for analysis"""
-    if condition not in tracks.columns:
-        tracks[condition] = 'Default'
+    if sample not in tracks.columns:
+        sample = 'Condition'
+    if 'Condition' not in tracks.columns:
+        tracks[sample] = 'Default'
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
 
-    if sum(tracks[[condition, 'Track_ID', 'Time']].duplicated()) != 0:
+    if sum(tracks[[sample, 'Track_ID', 'Time']].duplicated()) != 0:
         print('Error: Tracks not unique, aborting analysis.')
         return
 
-    return tracks.groupby([condition, 'Track_ID']).apply(analyze_track)
+    return tracks.groupby([sample, 'Track_ID']).apply(analyze_track)
 
 
 def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
@@ -374,9 +375,6 @@ def summarize_tracks(tracks):
 
 def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
-    if sys.version_info[0] == 3:
-        print('Warning: PairGrind might fail.')
-
     sns.set(style='white')
     g = sns.PairGrid(summary)
     g.map_diag(plt.hist)
