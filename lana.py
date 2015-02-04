@@ -158,8 +158,8 @@ def analyze_motility(tracks, sample='Sample'):
     """Prepares tracks for analysis"""
     if sample not in tracks.columns:
         sample = 'Condition'
-    if 'Condition' not in tracks.columns:
-        tracks[sample] = 'Default'
+        if 'Condition' not in tracks.columns:
+            tracks['Condition'] = 'Default'
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
