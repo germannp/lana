@@ -14,6 +14,7 @@ import lana
 
 
 def read_tracks(posfile='positions.txt', ndim=2, condition=None):
+    """Read tracks from simulation output files into pandas DataFrame"""
     try:
         positions = np.loadtxt(posfile)
     except:
@@ -105,7 +106,7 @@ class Simulation:
 
     def run(self):
         try:
-            print('Starting "{}" on {}'.format(self.cmd, 
+            print('Starting "{}" on {}'.format(self.cmd,
                 datetime.datetime.now().strftime("%d.%m. at %H:%M")))
             subprocess.call('./{}'.format(self.cmd))
             print('Command "{}" run'.format(self.cmd))
