@@ -15,6 +15,8 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
     tracks = tracks.drop(['ID', 'Category', 'Collection', 'TrackID',
         'Unit', 'Position X', 'Position Y', 'Position Z'], 1)
 
+    tracks['Source'] = 'Imaris'
+
     if condition != None:
         tracks['Condition'] = condition
 

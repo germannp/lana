@@ -37,6 +37,8 @@ def read_tracks(posfile='positions.txt', ndim=2, condition=None):
                     'X': positions[:,ndim*track_id],
                     'Y': positions[:,ndim*track_id+1]}))
 
+    tracks['Source'] = 'excalib2'
+
     if condition != None:
         tracks['Condition'] = condition
 

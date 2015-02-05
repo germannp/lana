@@ -34,6 +34,8 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
         except ValueError:
             pass
 
+    tracks['Source'] = 'Volocity'
+
     if condition != None:
         tracks['Condition'] = condition
 
