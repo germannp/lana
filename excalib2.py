@@ -38,7 +38,7 @@ def read_tracks(posfile='positions.txt', ndim=2, condition=None):
                     'Y': positions[:,ndim*track_id+1]}))
 
     if condition != None:
-        tracks['Condition'] = sample
+        tracks['Condition'] = condition
 
     return tracks
 
