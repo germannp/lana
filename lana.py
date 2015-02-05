@@ -377,6 +377,7 @@ def summarize_tracks(tracks):
 
     summary = pd.DataFrame()
     summary.index.name = 'Track_ID'
+    tracks['Track_ID'] = tracks['Track_ID'].astype(str)
 
     for track_id, track in tracks.groupby('Track_ID'):
         if 'Condition' in track.columns:
