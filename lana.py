@@ -122,12 +122,15 @@ def animate_tracks(tracks, palette='deep'):
 
 def analyze_track(track):
     """Calculates displacements, velocities and turning angles for a track"""
+    track['Track Time'] = track['Time'] - track['Time'].iloc[0]
+    if track['Track Time'].diff().unique().__len__() > 2:
+        print('Warning: Track with different timesteps.')
+        print(track['Source'].iloc[0], track['Sample'].iloc[0], track['Track_ID'].iloc[0])
+
     if 'Z' in track.columns:
         positions = track[['X', 'Y', 'Z']]
     else:
         positions = track[['X', 'Y']]
-
-    track['Track Time'] = track['Time'] - track['Time'].iloc[0]
 
     track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
 
@@ -154,7 +157,20 @@ def analyze_track(track):
     return track
 
 
-def analyze_motility(tracks, sample='Sample'):
+def split_at_skip(track):
+    """Splits track if timestep is missing"""
+    timesteps = track['Time'].diff()
+    n_timesteps = timesteps.unique().__len__() - 1 # Remove NaN for 1st row
+    if n_timesteps > 1:
+        skips = (timesteps - timesteps.min())/timesteps.min()
+        skipsum = skips.fillna(0).cumsum()/(skips.sum() + 1)
+        track['Track_ID'] = track['Track_ID'] + skipsum
+
+    return track
+
+
+def analyze_motility(tracks, sample='Sample', uniform_timesteps=True,
+    min_length=4):
     """Prepares tracks for analysis"""
     if sample not in tracks.columns:
         sample = 'Condition'
@@ -164,10 +180,16 @@ def analyze_motility(tracks, sample='Sample'):
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
+    # Take care of missing time points
+    elif uniform_timesteps:
+        tracks = tracks.groupby([sample, 'Track_ID']).apply(split_at_skip)
 
     if sum(tracks[[sample, 'Track_ID', 'Time']].duplicated()) != 0:
         print('Error: Tracks not unique, aborting analysis.')
         return
+
+    tracks = tracks.groupby([sample, 'Track_ID']).apply(
+        lambda x: x if x.__len__() > min_length else None)
 
     return tracks.groupby([sample, 'Track_ID']).apply(analyze_track)
 
