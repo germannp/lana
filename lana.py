@@ -393,6 +393,10 @@ def summarize_tracks(tracks):
         summary.loc[track_id, 'Track Duration'] = \
             track['Track Time'].iloc[-1] - track['Track Time'].iloc[0]
 
+    for cond, cond_summary in summary.groupby('Condition'):
+        print('{} tracks in {} with {} timesteps in total.'.format(
+            cond_summary.__len__(), cond, cond_summary['Track Duration'].sum()))
+
     return summary
 
 
