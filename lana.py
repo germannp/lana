@@ -399,9 +399,10 @@ def summarize_tracks(tracks):
 def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
     sns.set(style='white')
-    g = sns.PairGrid(summary)
-    g.map_diag(plt.hist)
+    g = sns.PairGrid(summary, hue='Condition')
+    g.map_diag(sns.distplot, kde=False)
     g.map_offdiag(plt.scatter)
+    g.add_legend()
 
     plt.show()
 
