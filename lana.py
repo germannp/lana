@@ -163,8 +163,8 @@ def split_at_skip(track):
     n_timesteps = timesteps.unique().__len__() - 1 # Remove NaN for 1st row
     if n_timesteps > 1:
         skips = (timesteps - timesteps.min())/timesteps.min()
-        skipsum = skips.fillna(0).cumsum()/(skips.sum() + 1)
-        track['Track_ID'] = track['Track_ID'] + skipsum
+        skip_sum = skips.fillna(0).cumsum()/(skips.sum() + 1)
+        track['Track_ID'] = track['Track_ID'] + skip_sum
 
     return track
 
@@ -289,19 +289,23 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
         plt.show()
 
 
-def plot_joint_motility(tracks, save=False, palette='deep'):
+def plot_joint_motility(tracks, condition='Condition', save=False,
+    palette='deep', skip_color=0):
     """Plots the joint distribution of the velocities and turning angles."""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
 
-    sns.set(style="white", palette=sns.color_palette(
-        palette, tracks['Condition'].unique().__len__()))
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
 
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
-        color = sns.color_palette()[i]
+    sns.set(style="white", palette=sns.color_palette(
+        palette, tracks[condition].unique().__len__() + skip_color))
+
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+        color = sns.color_palette()[i + skip_color]
         sns.jointplot(tracks['Turning Angle'], tracks['Velocity'], kind='kde',
-            stat_func=None, xlim=[0, np.pi], space=0,
+            stat_func=None, xlim=[0, np.pi], space=0, color=color,
             ylim=[0, np.percentile(tracks['Velocity'].dropna(), 99.5)])
         if save:
             plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
@@ -309,7 +313,8 @@ def plot_joint_motility(tracks, save=False, palette='deep'):
             plt.show()
 
 
-def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
+def lag_plot(tracks, condition='Condition', save=False, palette='deep',
+    skip_color=0):
     """Lag plots for velocities and turning angles"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -319,7 +324,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
         tracks[condition] = 'Default'
 
     sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__()))
+        palette, tracks[condition].unique().__len__() + skip_color))
     if 'Rolling Angle' in tracks.columns:
         fig, ax = plt.subplots(1,3, figsize=(12,4.25))
     else:
@@ -350,7 +355,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep'):
             facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
-        color = sns.color_palette()[i]
+        color = sns.color_palette()[i + skip_color]
         for _, track in cond_tracks.groupby('Track_ID'):
             ax[0].scatter(track['Velocity'], track['Velocity'].shift(),
                 facecolors=color)
@@ -418,9 +423,9 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
 
     tracks = analyze_motility(tracks)
-    # plot_joint_motility(tracks)
+    # plot_joint_motility(tracks, skip_color=1)
     # plot_motility(tracks)
-    # lag_plot(tracks)
+    lag_plot(tracks, skip_color=1)
 
-    summary = summarize_tracks(tracks)
-    plot_summary(summary)
+    # summary = summarize_tracks(tracks)
+    # plot_summary(summary)
