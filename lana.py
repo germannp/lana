@@ -65,9 +65,13 @@ def plot_tracks(tracks, save=False, palette='deep'):
         plt.axis('equal')
         plt.ylabel('x-axis')
         plt.xlabel(['y-axis', 'z-axis'][i])
+
+        criteria = [crit
+            for crit in ['Track_ID', 'Sample']
+            if crit in tracks.columns]
         for j, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
             color = sns.color_palette()[j]
-            for (track_nr, track) in cond_tracks.groupby('Track_ID'):
+            for (track_nr, track) in cond_tracks.groupby(criteria):
                 if track_nr == 0:
                     label = cond
                 else:
@@ -125,7 +129,6 @@ def analyze_track(track):
     track['Track Time'] = track['Time'] - track['Time'].iloc[0]
     if track['Track Time'].diff().unique().__len__() > 2:
         print('Warning: Track with different timesteps.')
-        print(track['Source'].iloc[0], track['Sample'].iloc[0], track['Track_ID'].iloc[0])
 
     if 'Z' in track.columns:
         positions = track[['X', 'Y', 'Z']]
@@ -288,6 +291,23 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     else:
         plt.show()
 
+def plot_differences(tracks):
+    """Plots the differences in X, Y (and Z) to show biases"""
+    dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
+
+    differences = pd.DataFrame()
+    criteria  = [crit
+        for crit in ['Track_ID', 'Condition', 'Sample']
+        if crit in tracks.columns]
+    for _, track in tracks.groupby(criteria):
+        differences = differences.append(track[dimensions].diff()).dropna()
+
+    sns.set(style="white", palette='deep')
+    for dimension in dimensions:
+        sns.kdeplot(differences[dimension], shade=True)
+
+    plt.show()
+
 
 def plot_joint_motility(tracks, condition='Condition', save=False,
     palette='deep', skip_color=0):
@@ -421,11 +441,12 @@ if __name__ == "__main__":
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
+    plot_differences(tracks)
 
-    tracks = analyze_motility(tracks)
+    # tracks = analyze_motility(tracks)
     # plot_joint_motility(tracks, skip_color=1)
     # plot_motility(tracks)
-    lag_plot(tracks, skip_color=1)
+    # lag_plot(tracks, skip_color=1)
 
     # summary = summarize_tracks(tracks)
     # plot_summary(summary)
