@@ -296,6 +296,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
     else:
         plt.show()
 
+
 def plot_differences(tracks):
     """Plots the differences in X, Y (and Z) to show biases"""
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
@@ -409,7 +410,11 @@ def summarize_tracks(tracks):
     summary.index.name = 'Track_ID'
     tracks['Track_ID'] = tracks['Track_ID'].astype(str)
 
-    for track_id, track in tracks.groupby('Track_ID'):
+    criteria = [crit
+        for crit in ['Condition', 'Track_ID', 'Sample']
+        if crit in tracks.columns]
+
+    for track_id, track in tracks.groupby(criteria):
         if 'Condition' in track.columns:
             summary.loc[track_id, 'Condition'] = track.iloc[0]['Condition']
         else:
