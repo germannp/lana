@@ -154,8 +154,13 @@ def analyze_track(track):
         n_norms = np.linalg.norm(n_vectors, axis=1)
         dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
         norm_products = n_norms[1:]*n_norms[:-1]
+        angles = np.arccos(dot_products/norm_products)
+        cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+        cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1], axis=1)
+        cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+        signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
 
-        track['Rolling Angle'].iloc[:-1] = np.arccos(dot_products/norm_products)
+        track['Rolling Angle'].iloc[2:-1] = signs*angles[2:]
 
     return track
 
@@ -238,9 +243,9 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
 
     if 'Rolling Angle' in tracks.columns:
         axes[3].set_title('Rolling Angles')
-        axes[3].set_xlim([0,np.pi])
-        axes[3].set_xticks([0, np.pi/2, np.pi])
-        axes[3].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
+        axes[3].set_xlim([-np.pi, np.pi])
+        axes[3].set_xticks([-np.pi, 0, np.pi])
+        axes[3].set_xticklabels([r'$-\pi$', r'$0$', r'$\pi$'])
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         # Plot displacements, inspired by http://stackoverflow.com/questions/
@@ -279,8 +284,8 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
         if 'Rolling Angle' in tracks.columns:
             rolling_angles = cond_tracks['Rolling Angle'].dropna().as_matrix()
             rolling_angles = np.concatenate(( # Mirror at boundaries.
-                -rolling_angles, rolling_angles, 2*np.pi-rolling_angles))
-            axes[3].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
+                -2*np.pi+rolling_angles, rolling_angles, 2*np.pi+rolling_angles))
+            axes[3].plot([-np.pi, np.pi], [1/(6*np.pi), 1/(6*np.pi)], '--k')
             # sns.distplot(rolling_angles, ax=axes[3])
             sns.kdeplot(rolling_angles, shade=True, ax=axes[3])
 
