@@ -407,6 +407,8 @@ def summarize_tracks(tracks):
     for track_id, track in tracks.groupby('Track_ID'):
         if 'Condition' in track.columns:
             summary.loc[track_id, 'Condition'] = track.iloc[0]['Condition']
+        else:
+            summary.loc[track_id, 'Condition'] = 'Default'
         if 'Sample' in track.columns:
             summary.loc[track_id, 'Sample'] = track.iloc[0]['Sample']
 
@@ -416,7 +418,7 @@ def summarize_tracks(tracks):
             summary.loc[track_id, 'Mean Rolling Angle'] = track['Rolling Angle'].mean()
 
         summary.loc[track_id, 'Track Duration'] = \
-            track['Track Time'].iloc[-1] - track['Track Time'].iloc[0]
+            track['Time'].iloc[-1] - track['Time'].iloc[0]
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('{} tracks in {} with {} timesteps in total.'.format(
