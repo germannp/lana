@@ -1,4 +1,4 @@
-"""Tools to analyze and plot cell motility from tracks within lymph nodes"""
+"""Analyze and plot cell motility from tracks within lymph nodes"""
 import random
 
 import numpy as np
@@ -11,13 +11,13 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def silly_steps(init_position=None, steps=25, step_size=1):
+def silly_steps(init_position=None, n_steps=25, step_size=1):
     """Generates a 2D random walk after Nombela-Arrieta et al. 2007"""
     if init_position == None:
         init_position = 10*np.random.rand(1,2)
     track = init_position
 
-    for _ in range(steps):
+    for _ in range(n_steps):
         if track.shape[0] == 1:
             angle = 2*np.pi*np.random.rand()
         else:
@@ -54,6 +54,9 @@ def plot_tracks(tracks, save=False, palette='deep'):
 
     if 'Condition' not in tracks.columns:
         tracks['Condition'] = 'Default'
+
+    if 'Track_ID' not in tracks.columns:
+        tracks['Track_ID'] = 1
 
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks['Condition'].unique().__len__()))
@@ -92,6 +95,13 @@ def plot_tracks(tracks, save=False, palette='deep'):
         plt.savefig('Motility_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
+
+
+def plot_tracks_3d(tracks):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(tracks['X'], tracks['Y'], tracks['Z'])
+    plt.show()
 
 
 def animate_tracks(tracks, palette='deep'):
@@ -453,12 +463,9 @@ if __name__ == "__main__":
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
-    plot_differences(tracks)
+    # plot_differences(tracks)
 
-    # tracks = analyze_motility(tracks)
+    tracks = analyze_motility(tracks)
+    plot_motility(tracks)
     # plot_joint_motility(tracks, skip_color=1)
-    # plot_motility(tracks)
     # lag_plot(tracks, skip_color=1)
-
-    # summary = summarize_tracks(tracks)
-    # plot_summary(summary)
