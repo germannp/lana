@@ -121,11 +121,10 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
 def plot_tracks_3d(tracks):
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(1,1,1, projection='3d')
 
     criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
         if crit in tracks.dropna(axis=1).columns]
-    print(criteria)
 
     for _, track in tracks.groupby(criteria):
         ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
