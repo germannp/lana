@@ -417,27 +417,27 @@ def summarize_tracks(tracks):
         return
 
     summary = pd.DataFrame()
-    summary.index.name = 'Track_ID'
-    tracks['Track_ID'] = tracks['Track_ID'].astype(str)
 
     criteria = [crit
         for crit in ['Condition', 'Track_ID', 'Sample']
         if crit in tracks.columns]
 
-    for track_id, track in tracks.groupby(criteria):
+    for i, (_, track) in enumerate(tracks.groupby(criteria)):
+        if 'Track_ID' in track.columns:
+            summary.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
         if 'Condition' in track.columns:
-            summary.loc[track_id, 'Condition'] = track.iloc[0]['Condition']
+            summary.loc[i, 'Condition'] = track.iloc[0]['Condition']
         else:
-            summary.loc[track_id, 'Condition'] = 'Default'
+            summary.loc[i, 'Condition'] = 'Default'
         if 'Sample' in track.columns:
-            summary.loc[track_id, 'Sample'] = track.iloc[0]['Sample']
+            summary.loc[i, 'Sample'] = track.iloc[0]['Sample']
 
-        summary.loc[track_id, 'Mean Velocity'] = track['Velocity'].mean()
-        summary.loc[track_id, 'Mean Turning Angle'] = track['Turning Angle'].mean()
+        summary.loc[i, 'Mean Velocity'] = track['Velocity'].mean()
+        summary.loc[i, 'Mean Turning Angle'] = track['Turning Angle'].mean()
         if 'Rolling Angle' in track.columns:
-            summary.loc[track_id, 'Mean Rolling Angle'] = track['Rolling Angle'].mean()
+            summary.loc[i, 'Mean Rolling Angle'] = track['Rolling Angle'].mean()
 
-        summary.loc[track_id, 'Track Duration'] = \
+        summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
 
     for cond, cond_summary in summary.groupby('Condition'):
@@ -450,7 +450,7 @@ def summarize_tracks(tracks):
 def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
     sns.set(style='white')
-    g = sns.PairGrid(summary, hue='Condition')
+    g = sns.PairGrid(summary.drop('Track_ID', axis=1), hue='Condition')
     g.map_diag(sns.distplot, kde=False)
     g.map_offdiag(plt.scatter)
     g.add_legend()
