@@ -114,7 +114,8 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     r = max_spread/2
     centers = np.mean(source_extents, axis=1)
     for center, dim in zip(centers, 'xyz'):
-        getattr(source_ax, 'set_{}lim'.format(dim))(center - r/zoom, center + r/zoom)
+        getattr(source_ax, 'set_{}lim'.format(dim))(center-r/zoom, center+r/zoom)
+    source_ax.set_aspect('equal')
 
 
 def plot_tracks_3d(tracks):
@@ -130,7 +131,6 @@ def plot_tracks_3d(tracks):
         ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
 
     equalize_axis3d(ax)
-    ax.set_aspect('equal')
     plt.tight_layout()
     plt.show()
 
@@ -218,29 +218,31 @@ def split_at_skip(track):
     return track
 
 
-def analyze_motility(tracks, sample='Sample', uniform_timesteps=True,
-    min_length=4):
+def analyze_motility(tracks, uniform_timesteps=True, min_length=4):
     """Prepares tracks for analysis"""
-    if sample not in tracks.columns:
-        sample = 'Condition'
-        if 'Condition' not in tracks.columns:
-            tracks['Condition'] = 'Default'
+    criteria = [crit
+        for crit in ['Track_ID', 'Sample', 'Condition']
+        if crit in tracks.columns]
+
+    tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
     # Take care of missing time points
     elif uniform_timesteps:
-        tracks = tracks.groupby([sample, 'Track_ID']).apply(split_at_skip)
+        tracks = tracks.groupby(criteria).apply(split_at_skip)
 
-    if sum(tracks[[sample, 'Track_ID', 'Time']].duplicated()) != 0:
+    criteria.append('Time')
+    if sum(tracks[criteria].duplicated()) != 0:
         print('Error: Tracks not unique, aborting analysis.')
         return
+    criteria.pop()
 
-    tracks = tracks.groupby([sample, 'Track_ID']).apply(
+    tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
 
-    return tracks.groupby([sample, 'Track_ID']).apply(analyze_track)
+    return tracks.groupby(criteria).apply(analyze_track)
 
 
 def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
