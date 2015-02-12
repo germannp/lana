@@ -3,13 +3,23 @@ import numpy as np
 import pandas as pd
 
 
-def silly_3d_steps(n_steps=10):
-    """Generate a 3D random walk"""
-    # velocities = np.cumsum(np.ones(n_steps))
-    # turning_angles = np.zeros(n_steps-1)
-    velocities = np.random.lognormal(0, 0.5, n_steps)
-    turning_angles = np.random.lognormal(0, 0.5, n_steps-1)
-    rolling_angles = (np.random.rand(n_steps-2) - 0.5)*2*np.pi
+def silly_3d_steps(data=None, n_steps=10):
+    """Generate a walk from data (i.e. velocities, turning & rolling angles)"""
+    if type(data) != pd.core.frame.DataFrame:
+        print('No data given, using random motility parameters.')
+        # velocities = np.cumsum(np.ones(n_steps))
+        # turning_angles = np.zeros(n_steps-1)
+        # rolling_angles = np.zeros(n_steps-2)
+        velocities = np.random.lognormal(0, 0.5, n_steps)
+        turning_angles = np.random.lognormal(0, 0.5, n_steps-1)
+        rolling_angles = (np.random.rand(n_steps-2) - 0.5)*2*np.pi
+        condition = 'Random'
+    else:
+        n_steps = data.__len__()-1
+        velocities = data['Velocity'].dropna().values
+        turning_angles = data['Turning Angle'].dropna().values
+        rolling_angles = data['Rolling Angle'].dropna().values
+        condition = data['Condition'] + 'Rebuilt'
 
     # Walk in x-y plane w/ given velocity and turning angles
     dr = np.zeros((n_steps+1, 3))
@@ -34,22 +44,29 @@ def silly_3d_steps(n_steps=10):
             r[j,:] = r[j,:]*cost + cross_prod*sint + n_vec*dot_prod*(1 - cost)
         r = r - dr[i,:]
 
-    return pd.DataFrame({'X': r[:,0], 'Y': r[:,1], 'Z': r[:,2]})
+    return pd.DataFrame({'X': -r[:,0], 'Y': -r[:,1], 'Z': -r[:,2],
+        'Source': 'Silly 3D walk', 'Condition': condition})
+
+
+def remix(data=None, n_tracks=100, n_steps=60):
+    pass
 
 
 if __name__ == '__main__':
-    """Test & illustrate module"""
+    """Test & illustrate rebuilding and remixing tracks"""
     import lana
 
 
     """Rebuild a single track"""
     tracks = pd.read_csv('Examples/ctrl_data.csv')
-    track = silly_3d_steps()
-    lana.plot_tracks_3d(track)
+    ctrl = tracks[tracks.Track_ID == 1015.0]
+    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    rebuilt = silly_3d_steps(ctrl)
+    lana.plot_tracks_3d(ctrl.append(rebuilt))
 
 
     """Remix data"""
-    # track = silly_3d_steps(1000)
-    # track['Track_ID'] = 1
-    # track = lana.analyze_motility(track)
-    # lana.plot_motility(track)
+    remix = remix()
+    # tracks = tracks.append(remix)
+    # lana.analyze_motility(tracks)
+    # lana.plot_motility(tracks)
