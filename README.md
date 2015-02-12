@@ -9,6 +9,7 @@ A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simu
 Modules
 -------
   * **lana.py**: Core tools to analyze cell motility from positions within lymph nodes. Handles data from experiments or simulations and plots the analaysis.
+  * **remix.py**: Functions to remix tracks.
   * **excalib2.py**: Wrapper to configure, run and analyze excalib2 cellular Potts model simulations. Includes functions to run parameter sweeps or compare different commands.
   * **imaris.py**: Loads cell tracks from excel spreadsheets exported from [Imaris](http://www.bitplane.com/imaris/imaris).
   * **volocity.py**: Handles [Volocity](http://www.perkinelmer.co.uk/volocity) cell tracks.
