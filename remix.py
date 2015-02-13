@@ -88,8 +88,8 @@ if __name__ == '__main__':
 
     """Rebuild a single track"""
     tracks = pd.read_csv('Examples/ctrl_data.csv')
-    ctrl = tracks[tracks.Track_ID == 1015.0]
-    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    # ctrl = tracks[tracks.Track_ID == 1015.0]
+    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
     # rebuilt = silly_3d_steps(ctrl)
     # # lana.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
     # rebuilt = lana.analyze_motility(rebuilt)
@@ -111,3 +111,23 @@ if __name__ == '__main__':
     # lana.plot_motility(tracks)
     # lana.lag_plot(tracks)
     # lana.plot_joint_motility(tracks[tracks.Condition == 'Ctrl Remixed'])
+
+
+    """Remix from short vs from long tracks"""
+    summary = lana.summarize_tracks(tracks)
+
+    # Is not prefect, at least if there are non-unique Track_IDs ...
+    short_track_ids = [summary.ix[index]['Track_ID']
+        for index in summary.sort('Track Duration').index
+        if summary['Track Duration'].order().cumsum().ix[index]
+            < summary['Track Duration'].sum()/2]
+
+    short_remix = remix(tracks[tracks['Track_ID'].isin(short_track_ids)])
+    long_remix = remix(tracks[~tracks['Track_ID'].isin(short_track_ids)])
+
+    short_remix['Condition'] = 'Short Tracks Remixed'
+    long_remix['Condition'] = 'Long Tracks Remixed'
+
+    tracks = tracks.append(short_remix).append(long_remix)
+    tracks = lana.analyze_motility(tracks.reset_index())
+    lana.plot_motility(tracks)
