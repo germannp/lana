@@ -128,7 +128,7 @@ def sample_given_last_step(tracks, n_tracks=50, n_steps=60):
     else:
         new_tracks['Condition'] = 'Sampled'
 
-    return new_tracks
+    return new_tracks.reset_index()
 
 
 def sample_roll_indep(tracks, n_tracks=50, n_steps=60):
@@ -191,16 +191,60 @@ def sample_roll_indep(tracks, n_tracks=50, n_steps=60):
     else:
         new_tracks['Condition'] = 'Sampled'
 
-    return new_tracks
+    return new_tracks.reset_index()
+
+
+def sample_remix(tracks, n_tracks=50, n_steps=60):
+    """Returns remixed tracks selected for previous velocity"""
+    initial_data = tracks.dropna()
+    print('Generating  {} steps from {} steps.'.format(
+        n_tracks*n_steps, initial_data.__len__()))
+
+    # Learn conditional, multivariant KDE
+    dep_data = initial_data[initial_data['Track Time'] != 2]
+    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
+        if crit in initial_data.columns]
+    indep_data = pd.DataFrame()
+    for _, track in initial_data.groupby(criteria):
+        indep_data = indep_data.append(track.iloc[:-1])
+    next_step_kde = sm.nonparametric.KDEMultivariateConditional(
+        dep_data['Velocity'].values,
+        indep_data['Velocity'].values,
+        dep_type='c', indep_type='c', bw='normal_reference')
+    max_kde = max(next_step_kde.pdf())
+
+    # Generate new tracks
+    new_tracks = pd.DataFrame()
+    for track_id in range(n_tracks):
+        track = initial_data.ix[np.random.choice(initial_data.index.values, 1)] \
+            [['Velocity', 'Turning Angle', 'Rolling Angle']]
+        while track.__len__() < n_steps+1:
+            candidate = initial_data.ix[np.random.choice(initial_data.index.values, 1)] \
+                [['Velocity', 'Turning Angle', 'Rolling Angle']]
+            r = np.random.rand()
+            if next_step_kde.pdf(candidate['Velocity'],
+                [track.iloc[-1]['Velocity']]) > max_kde*r:
+                track = track.append(candidate)
+        # track.loc[max_index-n_steps, 'Rolling Angle'] = np.nan
+        new_track = silly_3d_steps(track)
+        new_track['Track_ID'] = track_id
+        new_tracks = new_tracks.append(new_track)
+
+    if 'Condition' in tracks.columns:
+        new_tracks['Condition'] = tracks['Condition'].iloc[0] + ' Sampled Remix'
+    else:
+        new_tracks['Condition'] = 'Sampled Remix'
+
+    return new_tracks.reset_index()
 
 
 if __name__ == '__main__':
     """Test & illustrate rebuilding and remixing tracks"""
     import lana
+    tracks = pd.read_csv('Examples/ctrl_data.csv')
 
 
     """Rebuild a single track"""
-    tracks = pd.read_csv('Examples/ctrl_data.csv')
     # ctrl = tracks[tracks.Track_ID == 1015.0]
     # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
     # rebuilt = silly_3d_steps(ctrl)
@@ -217,7 +261,7 @@ if __name__ == '__main__':
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
-    """Remix tracks"""
+    """Remix tracks from motility parameters"""
     # remix = remix(tracks)
     # tracks = tracks.append(remix).reset_index()
     # tracks = lana.analyze_motility(tracks)
@@ -256,7 +300,16 @@ if __name__ == '__main__':
 
 
     """Sample Rolling Angle independently"""
-    sample = sample_roll_indep(tracks)
+    # sample = sample_roll_indep(tracks)
+    # tracks = tracks.append(sample).reset_index()
+    # tracks = lana.analyze_motility(tracks)
+    # lana.plot_motility(tracks)
+    # lana.lag_plot(tracks)
+    # lana.plot_joint_motility(tracks)
+
+
+    """Remix with rejection based on velocity"""
+    sample = sample_remix(tracks)
     tracks = tracks.append(sample).reset_index()
     tracks = lana.analyze_motility(tracks)
     lana.plot_motility(tracks)
