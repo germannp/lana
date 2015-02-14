@@ -372,9 +372,9 @@ def plot_joint_motility(tracks, condition='Condition', save=False,
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
-        sns.jointplot(tracks['Turning Angle'], tracks['Velocity'], kind='kde',
+        sns.jointplot(cond_tracks['Turning Angle'], cond_tracks['Velocity'], kind='kde',
             stat_func=None, xlim=[0, np.pi], space=0, color=color,
-            ylim=[0, np.percentile(tracks['Velocity'].dropna(), 99.5)])
+            ylim=[0, np.percentile(cond_tracks['Velocity'].dropna(), 99.5)])
         if save:
             plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
         else:
