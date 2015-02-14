@@ -103,7 +103,7 @@ def sample_given_last_step(tracks, n_tracks=50, n_steps=60):
 
     # Generate new tracks
     new_tracks = pd.DataFrame()
-    for i in range(n_tracks):
+    for track_id in range(n_tracks):
         track = initial_data.ix[np.random.choice(initial_data.index.values, 1)] \
             [['Velocity', 'Turning Angle', 'Rolling Angle']]
         max_index = max(track.index)
@@ -120,7 +120,70 @@ def sample_given_last_step(tracks, n_tracks=50, n_steps=60):
                     'Rolling Angle': candidate[2]}, index=[max_index]))
         track.loc[max_index-n_steps, 'Rolling Angle'] = np.nan
         new_track = silly_3d_steps(track)
-        new_track['Track_ID'] = i
+        new_track['Track_ID'] = track_id
+        new_tracks = new_tracks.append(new_track)
+
+    if 'Condition' in tracks.columns:
+        new_tracks['Condition'] = tracks['Condition'].iloc[0] + ' Sampled'
+    else:
+        new_tracks['Condition'] = 'Sampled'
+
+    return new_tracks
+
+
+def sample_roll_indep(tracks, n_tracks=50, n_steps=60):
+    """Sample Rolling Angle independently"""
+    print('Generating  {} steps from {} steps.'.format(
+        n_tracks*n_steps, tracks.__len__()))
+
+    # Learn conditional, multivariant KDE of velocities & turning angles
+    initial_data = tracks.dropna()
+    dep_data = initial_data[initial_data['Track Time'] != 2]
+    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
+        if crit in initial_data.columns]
+    indep_data = pd.DataFrame()
+    for _, track in initial_data.groupby(criteria):
+        indep_data = indep_data.append(track.iloc[:-1])
+    next_step_kde = sm.nonparametric.KDEMultivariateConditional(
+        dep_data[['Velocity', 'Turning Angle']].values,
+        indep_data[['Velocity', 'Turning Angle']].values,
+        dep_type='cc', indep_type='cc', bw='normal_reference')
+    max_kde = max(next_step_kde.pdf())
+
+    # Learn Rolling Angles
+    rolling_angles_kde = sm.nonparametric.KDEUnivariate(
+        tracks['Rolling Angle'].dropna())
+    rolling_angles_kde.fit()
+    max_rolling_kde = max(rolling_angles_kde.density)
+
+    # Generate velocities and turning angles of the new tracks
+    new_tracks = pd.DataFrame()
+    for track_id in range(n_tracks):
+        track = initial_data.ix[np.random.choice(initial_data.index.values, 1)] \
+            [['Velocity', 'Turning Angle']]
+        max_index = max(track.index)
+        while track.__len__() < n_steps+1:
+            candidate = [
+                np.random.rand()*np.percentile(initial_data['Velocity'], 99.5),
+                np.random.rand()*np.pi]
+            r = np.random.rand()
+            if next_step_kde.pdf(candidate,
+                track.loc[max_index, ['Velocity', 'Turning Angle']]) > max_kde*r:
+                max_index = max_index+1
+                track = track.append(pd.DataFrame({'Velocity': candidate[0],
+                    'Turning Angle': candidate[1]}, index=[max_index]))
+            if track.__len__() <= 1:
+                rolled = True
+            else:
+                rolled = False
+            while not rolled:
+                candidate_rolling_angle = (np.random.rand() - 0.5)*2*np.pi
+                r = np.random.rand()*max_rolling_kde
+                if rolling_angles_kde.evaluate(candidate_rolling_angle) > r:
+                    track.loc[max_index, 'Rolling Angle'] = candidate_rolling_angle
+                    rolled = True
+        new_track = silly_3d_steps(track)
+        new_track['Track_ID'] = track_id
         new_tracks = new_tracks.append(new_track)
 
     if 'Condition' in tracks.columns:
@@ -184,7 +247,16 @@ if __name__ == '__main__':
 
 
     """Sample from KDE given last step"""
-    sample = sample_given_last_step(tracks)
+    # sample = sample_given_last_step(tracks)
+    # tracks = tracks.append(sample).reset_index()
+    # tracks = lana.analyze_motility(tracks)
+    # lana.plot_motility(tracks)
+    # lana.lag_plot(tracks)
+    # lana.plot_joint_motility(tracks)
+
+
+    """Sample Rolling Angle independently"""
+    sample = sample_roll_indep(tracks)
     tracks = tracks.append(sample).reset_index()
     tracks = lana.analyze_motility(tracks)
     lana.plot_motility(tracks)
