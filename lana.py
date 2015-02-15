@@ -382,7 +382,7 @@ def plot_joint_motility(tracks, condition='Condition', save=False,
 
 
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
-    skip_color=0):
+    skip_color=0, null_model=True):
     """Lag plots for velocities and turning angles"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -413,14 +413,15 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         ax[2].set_ylabel(r'$\phi$(t+1)')
         ax[2].axis('equal')
 
-    null_model = tracks.ix[random.sample(list(tracks.index), tracks.shape[0])]
-    ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(),
-        facecolors='0.8')
-    ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
-        facecolors='0.8')
-    if 'Rolling Angle' in tracks.columns:
-        ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(),
+    if null_model:
+        null_model = tracks.ix[random.sample(list(tracks.index), tracks.shape[0])]
+        ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(),
             facecolors='0.8')
+        ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
+            facecolors='0.8')
+        if 'Rolling Angle' in tracks.columns:
+            ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(),
+                facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
