@@ -107,7 +107,7 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
     return new_tracks.reset_index()
 
 
-def remix_preserving_lag(tracks, n_tracks=50, n_steps=60):
+def remix_preserving_velocity_lag(tracks, n_tracks=50, n_steps=60):
     """Return new tracks generating by remixing while preserving velocity lag"""
     def mean_lag(tracks):
         """Calculate mean lag in velocity of track(s)"""
@@ -175,8 +175,8 @@ def remix_preserving_lag(tracks, n_tracks=50, n_steps=60):
     return new_tracks.reset_index()
 
 
-def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
-    """Return new tracks generating by remixing while preserving velocity lag"""
+def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
+    """Return new tracks preserving velocity & turning angle lags"""
     def mean_lags(tracks):
         """Calculate mean lag in velocity of track(s)"""
         criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
@@ -196,22 +196,19 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     remix['Track_ID'] = 0
 
     # Shuffle until mean lag is preserved
-    mean_lags_ctrl = mean_lags(tracks)
-    mean_lags_remix = mean_lags(remix)
-    lmda = mean_lags_ctrl[0]/mean_lags_ctrl[1]
-    ctrl_lag = (mean_lags_ctrl[0] + lmda*mean_lags_ctrl[1])*(n_tracks*n_steps-1)
-    remix_lag = (mean_lags_remix[0] + lmda*mean_lags_remix[1])*(n_tracks*n_steps-1)
+    ctrl_lags = mean_lags(tracks)*(n_tracks*n_steps-1)
+    remix_lags = mean_lags(remix)*(n_tracks*n_steps-1)
 
     remix = remix.reset_index(drop=True)
 
     iterations = 0
-    print('Starting at {} total lag with ratio {}, aiming for {} w/ {}.'.format(
-        remix_lag, mean_lags_remix[0]/mean_lags_remix[1],
-        ctrl_lag, mean_lags_ctrl[0]/mean_lags_ctrl[1]))
-    while remix_lag > ctrl_lag:
+    delta_lags = np.zeros(2)
+    print('Starting at {} total lags, aiming for {}.'.format(
+        remix_lags, ctrl_lags))
+    while (remix_lags[0] > ctrl_lags[0]) or (remix_lags[1] > ctrl_lags[1]):
         index = remix.index.values
         cand = np.random.choice(index[1:-1], 2, replace=False)
-        delta_lag = \
+        delta_lags[0] = \
             - abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])*(cand[0] != cand[1]+1) \
             - abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])*(cand[0] != cand[1]-1) \
             - abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])*(cand[0] != cand[1]-1) \
@@ -220,7 +217,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
             + abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity']) \
             + abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity']) \
             + abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])
-        delta_lag += lmda*( \
+        delta_lags[1] = \
             - abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])*(cand[0] != cand[1]+1) \
             - abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])*(cand[0] != cand[1]-1) \
             - abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])*(cand[0] != cand[1]-1) \
@@ -228,21 +225,22 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
             + abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle']) \
             + abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle']) \
             + abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle']) \
-            + abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle']))
-        if delta_lag < 0:
-            remix_lag += delta_lag
+            + abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])
+        if (delta_lags[0] < 0) and (delta_lags[1] < 0):
+            remix_lags += delta_lags
             index[cand[0]], index[cand[1]] = \
                 index[cand[1]], index[cand[0]]
             remix = remix.iloc[index].reset_index(drop=True)
         iterations += 1
         if iterations % 1000 == 0:
-            print('  iteration {}, total lag {}.'.format(iterations, remix_lag))
+            print('  iteration {}, total lag {}.'.format(iterations, remix_lags))
 
+    print(remix_lags)
     mean_lags_remix = mean_lags(remix)
-    print('Final lag of {} with ratio {} after {} iterations.'.format(
-        (mean_lags_remix[0] + lmda*mean_lags_remix[1])*(n_tracks*n_steps-1),
-        mean_lags_remix[0]/mean_lags_remix[1], iterations))
+    print('Final lags of {} after {} iterations.'.format(
+        mean_lags(remix)*(n_tracks*n_steps-1), iterations))
 
+    # Generate new tracks
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
         track_data = remix.iloc[n_steps*i:n_steps*(i+1)]
@@ -551,7 +549,7 @@ if __name__ == '__main__':
 
 
     """Remix with preserved lag"""
-    # remix_lag = remix_preserving_lag(tracks)
+    # remix_lag = remix_preserving_velocity_lag(tracks)
     # remix = remix(tracks)
     # tracks = tracks.append(remix_lag)
     # tracks = tracks.append(remix).reset_index()
@@ -562,7 +560,7 @@ if __name__ == '__main__':
 
     """Remix with preserved lags"""
     remix_lags = remix_preserving_lags(tracks)
-    remix_lag = remix_preserving_lag(tracks)
+    remix_lag = remix_preserving_velocity_lag(tracks)
     remix = remix(tracks)
     tracks = tracks.append(remix)
     tracks = tracks.append(remix_lag)
@@ -570,3 +568,4 @@ if __name__ == '__main__':
     tracks = lana.analyze_motility(tracks)
     lana.plot_motility(tracks)
     lana.lag_plot(tracks, null_model=False)
+    tracks.to_csv('remix.csv')
