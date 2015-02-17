@@ -183,7 +183,7 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
             if crit in tracks.columns]
         means = []
         for _, track in tracks.groupby(criteria):
-            means.append(track[['Velocity', 'Turning Angle']].diff().abs().mean())
+            means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
         return np.mean(means, axis=0)
 
     print('Generating  {} steps from {} steps.\n'.format(
@@ -209,23 +209,23 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
         index = remix.index.values
         cand = np.random.choice(index[1:-1], 2, replace=False)
         delta_lags[0] = \
-            - abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])*(cand[0] != cand[1]+1) \
-            - abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])*(cand[0] != cand[1]-1) \
-            - abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])*(cand[0] != cand[1]-1) \
-            - abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])*(cand[0] != cand[1]+1) \
-            + abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]-1]['Velocity']) \
-            + abs(remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity']) \
-            + abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity']) \
-            + abs(remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])
+            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2*(cand[0] != cand[1]+1) \
+            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2*(cand[0] != cand[1]+1) \
+            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2 \
+            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2 \
+            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2 \
+            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2
         delta_lags[1] = \
-            - abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])*(cand[0] != cand[1]+1) \
-            - abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])*(cand[0] != cand[1]-1) \
-            - abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])*(cand[0] != cand[1]-1) \
-            - abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])*(cand[0] != cand[1]+1) \
-            + abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle']) \
-            + abs(remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle']) \
-            + abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle']) \
-            + abs(remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])
+            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2 \
+            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2 \
+            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2 \
+            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2
         if (delta_lags[0] < 0) and (delta_lags[1] < 0):
             remix_lags += delta_lags
             index[cand[0]], index[cand[1]] = \
@@ -235,8 +235,6 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
         if iterations % 1000 == 0:
             print('  iteration {}, total lag {}.'.format(iterations, remix_lags))
 
-    print(remix_lags)
-    mean_lags_remix = mean_lags(remix)
     print('Final lags of {} after {} iterations.'.format(
         mean_lags(remix)*(n_tracks*n_steps-1), iterations))
 
