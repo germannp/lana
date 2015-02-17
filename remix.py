@@ -175,7 +175,7 @@ def remix_preserving_velocity_lag(tracks, n_tracks=50, n_steps=60):
     return new_tracks.reset_index()
 
 
-def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
+def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     """Return new tracks preserving velocity & turning angle lags"""
     def mean_lags(tracks):
         """Calculate mean lag in velocity of track(s)"""
@@ -201,11 +201,12 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
 
     remix = remix.reset_index(drop=True)
 
-    iterations = 0
-    delta_lags = np.zeros(2)
     print('Starting at {} total lags, aiming for {}.'.format(
         remix_lags, ctrl_lags))
-    while (remix_lags[0] > ctrl_lags[0]) or (remix_lags[1] > ctrl_lags[1]):
+    iterations = 0
+    delta_lags = np.zeros(2)
+    diff_lags = remix_lags - ctrl_lags
+    while (diff_lags[0] > 0) or (diff_lags[1] > 0):
         index = remix.index.values
         cand = np.random.choice(index[1:-1], 2, replace=False)
         delta_lags[0] = \
@@ -226,8 +227,10 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
             + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2 \
             + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2 \
             + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2
-        if (delta_lags[0] < 0) and (delta_lags[1] < 0):
+        if (np.sign(delta_lags[0]) != np.sign(diff_lags[0])) \
+            and (np.sign(delta_lags[1]) != np.sign(diff_lags[1])):
             remix_lags += delta_lags
+            diff_lags += delta_lags
             index[cand[0]], index[cand[1]] = \
                 index[cand[1]], index[cand[0]]
             remix = remix.iloc[index].reset_index(drop=True)
@@ -235,6 +238,7 @@ def remix_preserving_lags(tracks, n_tracks=44, n_steps=60):
         if iterations % 1000 == 0:
             print('  iteration {}, total lag {}.'.format(iterations, remix_lags))
 
+    # print(remix_lags)
     print('Final lags of {} after {} iterations.'.format(
         mean_lags(remix)*(n_tracks*n_steps-1), iterations))
 
