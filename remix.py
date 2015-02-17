@@ -1,7 +1,6 @@
 """Remix cell tracks"""
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 
 
 def silly_3d_steps(track_data=None, n_steps=10):
@@ -34,19 +33,29 @@ def silly_3d_steps(track_data=None, n_steps=10):
         dr[i,0] = (cosa*dr[i-1,0] - sina*dr[i-1,1])*velocities[i-1]/velocities[i-2]
         dr[i,1] = (sina*dr[i-1,0] + cosa*dr[i-1,1])*velocities[i-1]/velocities[i-2]
 
-    # Add z = 0 and move 2nd position to origin
-    r = np.cumsum(dr, axis=0) - dr[1,:] - dr[2,:]
+    # Add up and move 1st turn to origin
+    r = np.cumsum(dr, axis=0) - dr[1,:]
 
     # Rotate moved positions minus the rolling angles around the next step
-    for i in range(3, n_steps+1):
-        cost = np.cos(-rolling_angles[i-3])
-        sint = np.sin(-rolling_angles[i-3])
-        n_vec = dr[i-1,:]/np.sqrt(np.sum(dr[i-1,:]*dr[i-1,:]))
-        for j in range(i-1):
+    for i in range(2, n_steps+1):
+        r = r - dr[i,:]
+        if i == n_steps:
+            t = (np.random.rand() - 0.5)*2*np.pi
+            cost = np.cos(t)
+            sint = np.sin(t)
+            theta = np.random.rand()*2*np.pi
+            phi = np.arccos(2*np.random.rand() - 1)
+            n_vec[0] = np.sin(theta)*np.sin(phi)
+            n_vec[1] = np.cos(theta)*np.sin(phi)
+            n_vec[2] = np.cos(phi)
+        else:
+            cost = np.cos(-rolling_angles[i-2])
+            sint = np.sin(-rolling_angles[i-2])
+            n_vec = dr[i,:]/np.sqrt(np.sum(dr[i,:]*dr[i,:]))
+        for j in range(i):
             cross_prod = np.cross(n_vec, r[j,:])
             dot_prod = np.sum(n_vec*r[j,:])
             r[j,:] = r[j,:]*cost + cross_prod*sint + n_vec*dot_prod*(1 - cost)
-        r = r - dr[i,:]
 
     return pd.DataFrame({'Time': np.arange(n_steps+1), 'X': -r[:,0], 'Y': -r[:,1],
         'Z': -r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
@@ -200,12 +209,12 @@ if __name__ == '__main__':
 
 
     """Rebuild a single track"""
-    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
-    # rebuilt = silly_3d_steps(ctrl)
-    # # lana.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
-    # rebuilt = lana.analyze_motility(rebuilt)
-    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    rebuilt = silly_3d_steps(ctrl)
+    lana.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
+    rebuilt = lana.analyze_motility(rebuilt)
+    print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
     """Remix Ctrl"""
@@ -236,12 +245,12 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    remidx = remidx(tracks)
-    remix = remix(tracks)
-    remix_lags = remix_preserving_lags(tracks)
-    tracks = tracks.append(remidx)
-    tracks = tracks.append(remix)
-    tracks = tracks.append(remix_lags).reset_index()
-    tracks = lana.analyze_motility(tracks)
-    lana.plot_motility(tracks)
-    lana.lag_plot(tracks, null_model=False)
+    # remidx = remidx(tracks)
+    # remix = remix(tracks)
+    # remix_lags = remix_preserving_lags(tracks)
+    # tracks = tracks.append(remidx)
+    # tracks = tracks.append(remix)
+    # tracks = tracks.append(remix_lags).reset_index()
+    # tracks = lana.analyze_motility(tracks)
+    # lana.plot_motility(tracks)
+    # lana.lag_plot(tracks, null_model=False)
