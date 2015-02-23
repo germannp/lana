@@ -46,7 +46,7 @@ def silly_tracks(ntracks=25):
 
 
 def plot_tracks(tracks, save=False, palette='deep'):
-    """Plots the x-y-tracks of a (list of) Motility class(es)"""
+    """Plots the tracks in a DataFrame in the x-y (and x-z) plane(s)"""
     if 'Z' in tracks.columns:
         ndim = 3
     else:
@@ -98,8 +98,8 @@ def plot_tracks(tracks, save=False, palette='deep'):
 
 
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
-    '''after http://stackoverflow.com/questions/8130823/
-    set-matplotlib-3d-plot-aspect-ratio'''
+    """Equalizes axis for a mpl3d plot; after
+    http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
     if target_ax == None:
         target_ax = source_ax
     elif zoom != 1:
@@ -119,6 +119,7 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
 
 
 def plot_tracks_3d(tracks):
+    """Plots tracks in 3D"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
@@ -164,61 +165,63 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def analyze_track(track):
-    """Calculates displacements, velocities and turning angles for a track"""
-    track['Track Time'] = track['Time'] - track['Time'].iloc[0]
-    if track['Track Time'].diff().unique().__len__() > 2:
-        print('Warning: Track with different timesteps.')
-
-    if 'Z' in track.columns:
-        positions = track[['X', 'Y', 'Z']]
-    else:
-        positions = track[['X', 'Y']]
-
-    track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
-
-    dr = positions.diff()
-    dr_norms = np.linalg.norm(dr, axis=1)
-
-    track['Velocity'] = dr_norms/track['Time'].diff()
-
-    dot_products = np.sum(dr.shift(-1)*dr, axis=1)
-    norm_products = dr_norms[1:]*dr_norms[:-1]
-
-    track['Turning Angle'] = np.arccos(dot_products[:-1]/norm_products)
-
-    if 'Z' in track.columns:
-        track['Rolling Angle'] = np.nan
-
-        n_vectors = np.cross(dr, dr.shift())
-        n_norms = np.linalg.norm(n_vectors, axis=1)
-        dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
-        norm_products = n_norms[1:]*n_norms[:-1]
-        angles = np.arccos(dot_products/norm_products)
-        cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-        cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1], axis=1)
-        cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-        signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
-
-        track['Rolling Angle'].iloc[2:-1] = signs*angles[2:]
-
-    return track
-
-
-def split_at_skip(track):
-    """Splits track if timestep is missing"""
-    timesteps = track['Time'].diff()
-    n_timesteps = timesteps.unique().__len__() - 1 # Remove NaN for 1st row
-    if n_timesteps > 1:
-        skips = (timesteps - timesteps.min())/timesteps.min()
-        skip_sum = skips.fillna(0).cumsum()/(skips.sum() + 1)
-        track['Track_ID'] = track['Track_ID'] + skip_sum
-
-    return track
-
-
 def analyze_motility(tracks, uniform_timesteps=True, min_length=4):
-    """Prepares tracks for analysis"""
+    """Return DataFrame with velocity, turning angle & rolling angle"""
+
+
+    def split_at_skip(track):
+        """Splits track if timestep is missing"""
+        timesteps = track['Time'].diff()
+        n_timesteps = timesteps.unique().__len__() - 1 # Remove NaN for 1st row
+        if n_timesteps > 1:
+            skips = (timesteps - timesteps.min())/timesteps.min()
+            skip_sum = skips.fillna(0).cumsum()/(skips.sum() + 1)
+            track['Track_ID'] = track['Track_ID'] + skip_sum
+
+        return track
+
+
+    def analyze_track(track):
+        """Calculates velocity and angles for a single track"""
+        track['Track Time'] = track['Time'] - track['Time'].iloc[0]
+        if track['Track Time'].diff().unique().__len__() > 2:
+            print('Warning: Track with different timesteps.')
+
+        if 'Z' in track.columns:
+            positions = track[['X', 'Y', 'Z']]
+        else:
+            positions = track[['X', 'Y']]
+
+        track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
+
+        dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
+
+        track['Velocity'] = dr_norms/track['Time'].diff()
+
+        dot_products = np.sum(dr.shift(-1)*dr, axis=1)
+        norm_products = dr_norms[1:]*dr_norms[:-1]
+
+        track['Turning Angle'] = np.arccos(dot_products[:-1]/norm_products)
+
+        if 'Z' in track.columns:
+            track['Rolling Angle'] = np.nan
+
+            n_vectors = np.cross(dr, dr.shift())
+            n_norms = np.linalg.norm(n_vectors, axis=1)
+            dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
+            norm_products = n_norms[1:]*n_norms[:-1]
+            angles = np.arccos(dot_products/norm_products)
+            cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+            cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1], axis=1)
+            cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+            signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
+
+            track['Rolling Angle'].iloc[2:-1] = signs*angles[2:]
+
+        return track
+
+    # Prepare analysis
     criteria = [crit
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
