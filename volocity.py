@@ -52,9 +52,9 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
 if __name__ == '__main__':
     """Illustrates the analysis of Volocity data"""
     import matplotlib.pyplot as plt
-    import lana
+    import motility
 
     tracks = read_tracks('Examples/Volocity_example.txt')
-    tracks = lana.analyze_motility(tracks)
-    lana.plot_motility(tracks)
-    lana.plot_joint_motility(tracks)
+    tracks = motility.analyze(tracks)
+    motility.plot_motility(tracks)
+    motility.plot_joint_motility(tracks)

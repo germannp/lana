@@ -165,7 +165,7 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def analyze_motility(tracks, uniform_timesteps=True, min_length=4):
+def analyze(tracks, uniform_timesteps=True, min_length=4):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
@@ -501,7 +501,7 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     # plot_differences(tracks)
 
-    tracks = analyze_motility(tracks)
+    tracks = analyze(tracks)
     plot_motility(tracks)
     # plot_joint_motility(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)

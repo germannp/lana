@@ -10,7 +10,7 @@ import datetime
 import numpy as np
 import pandas as pd
 
-import lana
+import motility
 
 
 def read_tracks(posfile='positions.txt', ndim=2, condition=None):
@@ -149,23 +149,23 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
                 name, pair[j], verbose=True, dry_run=dry_run)
             labels.append(' = '.join([name, str(pair[j])]))
         if dry_run:
-            run_tracks = lana.silly_tracks()
+            run_tracks = motility.silly_tracks()
         else:
             simulation.run()
             run_tracks = simulation.read_tracks(ndim)
 
         run_tracks['Condition'] = ', '.join(labels)
         if save_runs:
-            run_tracks = lana.analyze_motility(run_tracks)
-            lana.plot_motility(run_tracks, save=True, palette=palette)
+            run_tracks = motility.analyze(run_tracks)
+            motility.plot_motility(run_tracks, save=True, palette=palette)
 
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
     if not save_runs:
-        tracks = lana.analyze_motility(tracks)
-    lana.plot_motility(tracks, save=save, palette=palette)
+        tracks = motility.analyze(tracks)
+    motility.plot_motility(tracks, save=save, palette=palette)
 
     return tracks
 
@@ -178,22 +178,22 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
         print('\nSimulation {} of {}:'.format(i+1, commands.keys().__len__()))
         print('------------------')
         if dry_run:
-            run_tracks = lana.silly_tracks()
+            run_tracks = motility.silly_tracks()
         else:
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
                 run_tracks = command.read_tracks(ndim)
         run_tracks['Condition'] = cmd
         if save_runs:
-            run_tracks = lana.analyze_motility(run_tracks)
-            lana.plot_motility(run_tracks, save=True)
+            run_tracks = motility.analyze(run_tracks)
+            motility.plot_motility(run_tracks, save=True)
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
     if not save_runs:
-        tracks = lana.analyze_motility(tracks)
-    lana.plot_motility(tracks, save=save)
+        tracks = motility.analyze(tracks)
+    motility.plot_motility(tracks, save=save)
 
     return tracks
 
@@ -201,8 +201,8 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
 if __name__ == "__main__":
     """Illustrates loading and analyzing file"""
     # tracks = read_tracks('Examples/positions.txt')
-    # tracks = lana.analyze_motility(tracks)
-    # lana.plot_motility(tracks)
+    # tracks = motility.analyze(tracks)
+    # motility.plot_motility(tracks)
 
     """Illustrates dry run parameter sweep"""
     with Simulation('persistence') as persistence:

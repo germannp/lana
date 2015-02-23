@@ -202,24 +202,24 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
 
 if __name__ == '__main__':
     """Test & illustrate rebuilding and remixing tracks"""
-    import lana
+    import motility
     tracks = pd.read_csv('Examples/ctrl_data.csv')
     tracks = tracks.drop('index', axis=1)
     ctrl = tracks[tracks.Track_ID == 1015.0]
 
 
     """Rebuild a single track"""
-    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
-    # rebuilt = silly_3d_steps(ctrl)
-    # lana.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
-    # rebuilt = lana.analyze_motility(rebuilt)
-    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    rebuilt = silly_3d_steps(ctrl)
+    motility.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
+    rebuilt = motility.analyze(rebuilt)
+    print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
     """Remix Ctrl"""
     # remix = remix(ctrl, n_tracks=1, n_steps=5)
-    # remix = lana.analyze_motility(remix)
+    # remix = motility.analyze(remix)
     # print(remix[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
@@ -231,31 +231,31 @@ if __name__ == '__main__':
     # tracks = tracks.append(remidx)
     # tracks = tracks.append(remix)
     # tracks = tracks.append(remix_lags).reset_index()
-    # tracks = lana.analyze_motility(tracks)
-    # lana.plot_motility(tracks)
-    # lana.lag_plot(tracks, null_model=False)
+    # tracks = motility.analyze(tracks)
+    # motility.plot_motility(tracks)
+    # motility.lag_plot(tracks, null_model=False)
 
 
     """Remix from short vs from long tracks"""
-    summary = lana.summarize_tracks(tracks)
-
-    # Is not prefect, at least if there are non-unique Track_IDs ...
-    short_track_ids = [summary.ix[index]['Track_ID']
-        for index in summary.sort('Track Duration').index
-        if summary['Track Duration'].order().cumsum().ix[index]
-            < summary['Track Duration'].sum()/2]
-
-    short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
-        n_tracks=25, n_steps=60)
-    long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
-        n_tracks=25, n_steps=60)
-
-    short_remix['Condition'] = 'Short Tracks Remixed'
-    long_remix['Condition'] = 'Long Tracks Remixed'
-
-    tracks = tracks.append(short_remix).append(long_remix)
-    tracks = lana.analyze_motility(tracks.reset_index())
-    lana.plot_motility(tracks)
+    # summary = motility.summarize_tracks(tracks)
+    #
+    # # Is not prefect, at least if there are non-unique Track_IDs ...
+    # short_track_ids = [summary.ix[index]['Track_ID']
+    #     for index in summary.sort('Track Duration').index
+    #     if summary['Track Duration'].order().cumsum().ix[index]
+    #         < summary['Track Duration'].sum()/2]
+    #
+    # short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
+    #     n_tracks=25, n_steps=60)
+    # long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
+    #     n_tracks=25, n_steps=60)
+    #
+    # short_remix['Condition'] = 'Short Tracks Remixed'
+    # long_remix['Condition'] = 'Long Tracks Remixed'
+    #
+    # tracks = tracks.append(short_remix).append(long_remix)
+    # tracks = motility.analyze(tracks.reset_index())
+    # motility.plot_motility(tracks)
 
 
     """Create long tracks"""
