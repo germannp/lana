@@ -1,6 +1,4 @@
 """Analyze and plot cell motility from tracks within lymph nodes"""
-import random
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -169,16 +167,18 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
-    def split_at_skip(track):
-        """Splits track if timestep is missing"""
-        timesteps = track['Time'].diff()
-        n_timesteps = timesteps.unique().__len__() - 1 # Remove NaN for 1st row
-        if n_timesteps > 1:
+    def split_at_skip(tracks, criteria):
+        """Splits track if timestep is missing in the original DataFrame"""
+        max_track_id = tracks['Track_ID'].max()
+        for _, track in tracks.groupby(criteria):
+            timesteps = track['Time'].diff()
             skips = (timesteps - timesteps.min())/timesteps.min()
-            skip_sum = skips.fillna(0).cumsum()/(skips.sum() + 1)
-            track['Track_ID'] = track['Track_ID'] + skip_sum
-
-        return track
+            if skips.max() > 0:
+                index = track.index
+                tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
+                skip_sum = skips.fillna(0).cumsum()
+                tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
+                max_track_id += max(skip_sum) + 1
 
 
     def analyze_track(track):
@@ -221,19 +221,21 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
         return track
 
-    # Prepare analysis
     criteria = [crit
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
 
     tracks[criteria] = tracks[criteria].fillna('Default')
 
+    tracks = tracks.reset_index(drop=True) # split_at_skip() works on index!
+
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
     # Take care of missing time points
     elif uniform_timesteps:
-        tracks = tracks.groupby(criteria).apply(split_at_skip)
+        split_at_skip(tracks, criteria)
+
 
     criteria.append('Time')
     if sum(tracks[criteria].duplicated()) != 0:
@@ -243,6 +245,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
     tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
+    tracks = tracks.reset_index(drop=True) # Clean up nested index from removal
 
     return tracks.groupby(criteria).apply(analyze_track)
 
@@ -417,7 +420,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         ax[2].axis('equal')
 
     if null_model:
-        null_model = tracks.ix[random.sample(list(tracks.index), tracks.shape[0])]
+        null_model = tracks.ix[np.random.choice(tracks.index, tracks.shape[0])]
         ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(),
             facecolors='0.8')
         ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
@@ -504,4 +507,4 @@ if __name__ == "__main__":
     tracks = analyze(tracks)
     plot_motility(tracks)
     # plot_joint_motility(tracks, skip_color=1)
-    # lag_plot(tracks, skip_color=1)
+    lag_plot(tracks, skip_color=1)
