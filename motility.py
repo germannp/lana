@@ -534,6 +534,38 @@ def plot_summary(summary):
     plt.show()
 
 
+def find_uturns(tracks, skip_steps=3):
+    """Find u-turns in cell tracks"""
+    uturns = pd.DataFrame()
+
+    criteria = [crit
+        for crit in ['Condition', 'Track_ID', 'Sample']
+        if crit in tracks.columns]
+
+    for i, (_, track) in enumerate(tracks.groupby(criteria)):
+        if 'Track_ID' in track.columns:
+            uturns.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
+        if 'Condition' in track.columns:
+            uturns.loc[i, 'Condition'] = track.iloc[0]['Condition']
+        else:
+            uturns.loc[i, 'Condition'] = 'Default'
+        if 'Sample' in track.columns:
+            uturns.loc[i, 'Sample'] = track.iloc[0]['Sample']
+
+        if 'Z' in track.columns:
+            positions = track[['X', 'Y', 'Z']]
+        else:
+            positions = track[['X', 'Y']]
+
+        dr = positions.diff()
+
+        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1)
+
+        uturns.loc[i, 'Max Dot Product'] = dot_products.abs().max()
+
+    return uturns
+
+
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
     tracks = silly_tracks()
