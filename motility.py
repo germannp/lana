@@ -185,7 +185,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         """Calculates velocity and angles for a single track"""
         track['Track Time'] = track['Time'] - track['Time'].iloc[0]
         if track['Track Time'].diff().unique().__len__() > 2:
-            print('Warning: Track with different timesteps.')
+            print('Warning: Track with non-uniform timesteps.')
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]

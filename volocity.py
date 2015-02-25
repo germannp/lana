@@ -2,7 +2,35 @@
 import pandas as pd
 
 
-def read_tracks(path, condition=None, sample=None, min_track_length=5):
+def read_tracks_excel(path, condition=None, sample=None, min_track_length=5):
+    """Read tracks from excel file into pandas DataFrame"""
+    tracks = pd.read_excel(path)
+
+    tracks['Track_ID'] = tracks['Track ID']
+    tracks['Time'] = tracks['Timepoint']
+    tracks['X'] = tracks['Centroid X (µm)']
+    tracks['Y'] = tracks['Centroid Y (µm)']
+    tracks['Z'] = tracks['Centroid Z (µm)']
+
+    tracks = tracks.drop(['Name', 'Track ID', 'Centroid X (µm)', 'Timepoint',
+        'Centroid Y (µm)', 'Centroid Z (µm)'], 1)
+
+    tracks['Source'] = 'Volocity'
+
+    if condition != None:
+        tracks['Condition'] = condition
+
+    if sample != None:
+        tracks['Sample'] = sample
+
+    for track_id, track in tracks.groupby('Track_ID'):
+        if track.__len__() < min_track_length:
+            tracks = tracks[tracks['Track_ID'] != track_id]
+
+    return tracks.sort('Time')
+
+
+def read_tracks_txt(path, condition=None, sample=None, min_track_length=5):
     """Reads a Pandas DataFrame from Volocity files"""
     with open(path, 'r') as volocity_file:
         lines = volocity_file.readlines()
@@ -45,7 +73,7 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
         if track.__len__() < min_track_length:
             tracks = tracks[tracks['Track_ID'] != track_id]
 
-    return tracks.dropna()
+    return tracks.dropna().sort('Time')
 
 
 if __name__ == '__main__':
@@ -53,8 +81,15 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import motility
 
-    tracks = read_tracks('Examples/Volocity_example.txt', sample='Movie 1')
-    tracks = motility.analyze(tracks)
-    motility.plot(tracks)
-    motility.joint_plot(tracks)
-    motility.lag_plot(tracks)
+    # tracks = read_tracks_txt('Examples/Volocity_example.txt', sample='Movie 1')
+    # tracks = motility.analyze(tracks)
+    # motility.plot(tracks)
+    # motility.joint_plot(tracks)
+    # motility.lag_plot(tracks)
+
+    tracks = read_tracks_excel('Examples/Volocity_example.xlsx')
+    print(tracks[tracks.Track_ID == 4474])
+    # tracks = motility.analyze(tracks)
+    # motility.plot(tracks)
+    # motility.joint_plot(tracks)
+    # motility.lag_plot(tracks)

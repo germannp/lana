@@ -5,7 +5,6 @@ import pandas as pd
 def read_tracks(path, condition=None, sample=None, min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
-    old_columns = tracks.columns
 
     tracks['Track_ID'] = tracks['TrackID']
     tracks['X'] = tracks['Position X']
@@ -27,7 +26,7 @@ def read_tracks(path, condition=None, sample=None, min_track_length=5):
         if track.__len__() < min_track_length:
             tracks = tracks[tracks['Track_ID'] != track_id]
 
-    return tracks
+    return tracks.sort('Time')
 
 
 if __name__ == '__main__':
