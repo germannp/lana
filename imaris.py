@@ -1,4 +1,4 @@
-    """Handle tracks in excel files from imaris"""
+"""Handle tracks in excel files from imaris"""
 import pandas as pd
 
 
@@ -36,13 +36,13 @@ if __name__ == '__main__':
 
     tracks = read_tracks('Examples/Imaris_example.xls', sample='Movie 1')
     tracks = motility.analyze(tracks)
-    # motility.plot_joint_motility(tracks)
-    # motility.plot_motility(tracks)
-    # motility.lag_plot(tracks)
+    # motility.joint_plot(tracks)
+    # motility.plot(tracks)
+    motility.lag_plot(tracks)
     # print(tracks[tracks['Track_ID'] == 1000000093])
 
-    summary = motility.summarize_tracks(tracks)
-    motility.plot_summary(summary)
+    # summary = motility.summarize_tracks(tracks)
+    # motility.plot_summary(summary)
 
     # import matplotlib.pyplot as plt
     # tracks.set_index(['Time', 'Track_ID'])['Turning Angle'].unstack().plot(subplots=True, sharey=True, layout=(-1,6))

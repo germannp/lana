@@ -250,7 +250,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
     return tracks.groupby(criteria).apply(analyze_track)
 
 
-def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
+def plot(tracks, save=False, palette='deep', plot_minmax=False,
     condition='Condition'):
     """Plots aspects of motility for different conditions"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
@@ -345,7 +345,7 @@ def plot_motility(tracks, save=False, palette='deep', plot_minmax=False,
         plt.show()
 
 
-def plot_differences(tracks):
+def plot_xyz_differences(tracks):
     """Plots the differences in X, Y (and Z) to show biases"""
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
 
@@ -363,7 +363,7 @@ def plot_differences(tracks):
     plt.show()
 
 
-def plot_joint_motility(tracks, condition='Condition', save=False,
+def joint_plot(tracks, condition='Condition', save=False,
     palette='deep', skip_color=0):
     """Plots the joint distribution of the velocities and turning angles."""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
@@ -502,9 +502,9 @@ if __name__ == "__main__":
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
-    # plot_differences(tracks)
+    # plot_xyz_differences(tracks)
 
     tracks = analyze(tracks)
-    plot_motility(tracks)
-    # plot_joint_motility(tracks, skip_color=1)
+    plot(tracks)
+    joint_plot(tracks, skip_color=1)
     lag_plot(tracks, skip_color=1)

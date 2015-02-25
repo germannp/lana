@@ -209,12 +209,12 @@ if __name__ == '__main__':
 
 
     """Rebuild a single track"""
-    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
-    rebuilt = silly_3d_steps(ctrl)
-    motility.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
-    rebuilt = motility.analyze(rebuilt)
-    print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    # rebuilt = silly_3d_steps(ctrl)
+    # motility.plot_tracks_3d(ctrl.append(rebuilt)) # TODO: Nice rotation ...
+    # rebuilt = motility.analyze(rebuilt)
+    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
     """Remix Ctrl"""
@@ -225,15 +225,15 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    # remidx = remidx(tracks)
-    # remix = remix(tracks)
-    # remix_lags = remix_preserving_lags(tracks)
-    # tracks = tracks.append(remidx)
-    # tracks = tracks.append(remix)
-    # tracks = tracks.append(remix_lags).reset_index()
-    # tracks = motility.analyze(tracks)
-    # motility.plot_motility(tracks)
-    # motility.lag_plot(tracks, null_model=False)
+    remidx = remidx(tracks)
+    remix = remix(tracks)
+    remix_lags = remix_preserving_lags(tracks)
+    tracks = tracks.append(remidx)
+    tracks = tracks.append(remix)
+    tracks = tracks.append(remix_lags).reset_index()
+    tracks = motility.analyze(tracks)
+    motility.plot(tracks)
+    motility.lag_plot(tracks, null_model=False)
 
 
     """Remix from short vs from long tracks"""
@@ -255,7 +255,7 @@ if __name__ == '__main__':
     #
     # tracks = tracks.append(short_remix).append(long_remix)
     # tracks = motility.analyze(tracks.reset_index())
-    # motility.plot_motility(tracks)
+    # motility.plot(tracks)
 
 
     """Create long tracks"""
