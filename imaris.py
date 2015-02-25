@@ -40,7 +40,7 @@ if __name__ == '__main__':
     motility.lag_plot(tracks)
     # print(tracks[tracks['Track_ID'] == 1000000093])
 
-    # summary = motility.summarize_tracks(tracks)
+    # summary = motility.summarize(tracks)
     # motility.plot_summary(summary)
 
     # import matplotlib.pyplot as plt

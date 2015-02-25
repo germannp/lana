@@ -449,7 +449,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         plt.show()
 
 
-def summarize_tracks(tracks):
+def summarize(tracks):
     """Summarize track statistics"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')

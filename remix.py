@@ -237,7 +237,7 @@ if __name__ == '__main__':
 
 
     """Remix from short vs from long tracks"""
-    # summary = motility.summarize_tracks(tracks)
+    # summary = motility.summarize(tracks)
     #
     # # Is not prefect, at least if there are non-unique Track_IDs ...
     # short_track_ids = [summary.ix[index]['Track_ID']
