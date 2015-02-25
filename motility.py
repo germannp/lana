@@ -543,25 +543,28 @@ def find_uturns(tracks, skip_steps=3):
         if crit in tracks.columns]
 
     for i, (_, track) in enumerate(tracks.groupby(criteria)):
-        if 'Track_ID' in track.columns:
-            uturns.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
-        if 'Condition' in track.columns:
-            uturns.loc[i, 'Condition'] = track.iloc[0]['Condition']
-        else:
-            uturns.loc[i, 'Condition'] = 'Default'
-        if 'Sample' in track.columns:
-            uturns.loc[i, 'Sample'] = track.iloc[0]['Sample']
-
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
         else:
             positions = track[['X', 'Y']]
 
         dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
 
-        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1)
+        velocities = dr_norms/track['Time'].diff()
 
-        uturns.loc[i, 'Max Dot Product'] = dot_products.abs().max()
+        mean_velocities = [velocities[i:i+skip_steps].mean()
+            for i in range(velocities.__len__() - 1 - skip_steps)]
+
+        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
+        norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
+
+        angles = np.arccos(dot_products/norm_products[1:])
+
+        uturns = uturns.append(pd.DataFrame({
+            'Condition': track['Condition'].iloc[0],
+            'Angle t+{}'.format(skip_steps): angles,
+            'Mean Velocity': mean_velocities}))
 
     return uturns
 
