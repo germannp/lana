@@ -387,6 +387,43 @@ def joint_plot(tracks, condition='Condition', save=False,
             plt.show()
 
 
+def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
+    save=False, palette='deep', skip_color=0):
+    """Plots tracks in velocities-turning-angles-space"""
+    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
+        print('Error: data not found, tracks must be analyzed first.')
+        return
+
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+
+    sns.set(style="white", palette=sns.color_palette(
+        palette, tracks[condition].unique().__len__() + skip_color))
+    fig, ax = plt.subplots(figsize=(8,8))
+    ax.set_xlabel('Turning Angle')
+    ax.set_xlim([0,np.pi])
+    ax.set_xticks([0, np.pi/2, np.pi])
+    ax.set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
+    ax.set_ylabel('Velocity')
+    for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
+        color = sns.color_palette()[i + skip_color]
+        if n_tracks != None:
+            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
+                np.random.choice(cond_tracks['Track_ID'], n_tracks))]
+        for _, track in cond_tracks.groupby('Track_ID'):
+            ax.plot(track['Turning Angle'], track['Velocity'],
+                color=color, alpha=0.5)
+
+    plt.tight_layout()
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in tracks[condition].unique()]
+        plt.savefig('Motility-TracksInParameterSpace_' + '-'.join(conditions)
+            + '.png')
+    else:
+        plt.show()
+
+
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, null_model=True):
     """Lag plots for velocities and turning angles"""
