@@ -376,11 +376,13 @@ def joint_plot(tracks, condition='Condition', save=False,
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__() + skip_color))
 
+    y_upper_lim = np.percentile(tracks['Velocity'].dropna(), 99.5)
+
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
         sns.jointplot(cond_tracks['Turning Angle'], cond_tracks['Velocity'], kind='kde',
             stat_func=None, xlim=[0, np.pi], space=0, color=color,
-            ylim=[0, np.percentile(cond_tracks['Velocity'].dropna(), 99.5)])
+            ylim=[0, y_upper_lim])
         if save:
             plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
         else:
@@ -486,7 +488,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         plt.show()
 
 
-def summarize(tracks):
+def summarize(tracks, uturn_steps=4, uturn_angle=3/4*np.pi):
     """Summarize track statistics"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -516,6 +518,28 @@ def summarize(tracks):
         summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
 
+        if 'Z' in track.columns:
+            positions = track[['X', 'Y', 'Z']]
+        else:
+            positions = track[['X', 'Y']]
+
+        dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
+        dot_products = np.sum(dr.shift(-uturn_steps)*dr, axis=1).dropna()
+        norm_products = dr_norms[uturn_steps:]*dr_norms[:-uturn_steps]
+        angles = np.arccos(dot_products/norm_products[1:])
+
+        mean_velocities = [track['Velocity'][i:i+uturn_steps].mean()
+            for i in range(track['Velocity'].__len__() - 1 - uturn_steps)
+            if angles.iloc[i] > uturn_angle]
+
+        try:
+            max_mean_velocity = min(mean_velocities)
+        except ValueError:
+            max_mean_velocity = np.nan
+
+        summary.loc[i, 'Min Velocity over U-Turn'] = max_mean_velocity
+
     for cond, cond_summary in summary.groupby('Condition'):
         print('{} tracks in {} with {} timesteps in total.'.format(
             cond_summary.__len__(), cond, cond_summary['Track Duration'].sum()))
@@ -526,7 +550,8 @@ def summarize(tracks):
 def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
     sns.set(style='white')
-    g = sns.PairGrid(summary.drop('Track_ID', axis=1), hue='Condition')
+    g = sns.PairGrid(summary.drop(['Track_ID', 'Min Velocity over U-Turn'],
+        axis=1), hue='Condition')
     g.map_diag(sns.distplot, kde=False)
     g.map_offdiag(plt.scatter)
     g.add_legend()
@@ -542,7 +567,7 @@ def find_uturns(tracks, skip_steps=3):
         for crit in ['Condition', 'Track_ID', 'Sample']
         if crit in tracks.columns]
 
-    for i, (_, track) in enumerate(tracks.groupby(criteria)):
+    for i, (crits, track) in enumerate(tracks.groupby(criteria)):
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
         else:
@@ -563,6 +588,7 @@ def find_uturns(tracks, skip_steps=3):
 
         uturns = uturns.append(pd.DataFrame({
             'Condition': track['Condition'].iloc[0],
+            'Track ID': crits[1],
             'Angle t+{}'.format(skip_steps): angles,
             'Mean Velocity': mean_velocities}))
 
