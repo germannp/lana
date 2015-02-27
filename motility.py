@@ -149,6 +149,7 @@ def animate_tracks(tracks, palette='deep'):
     # TODO: Scale axis properly ...
     if 'Z' in tracks.columns:
         ax = plt.gca(projection='3d')
+        # equalize_axis3d(ax)
     else:
         plt.axis('equal')
 
@@ -559,9 +560,13 @@ def plot_summary(summary):
     plt.show()
 
 
-def find_uturns(tracks, skip_steps=3):
-    """Find u-turns in cell tracks"""
-    uturns = pd.DataFrame()
+def analyze_turns(tracks, skip_steps=3):
+    """Analyze turns between t and t+skip_steps in cell tracks"""
+    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
+        print('Error: data not found, tracks must be analyzed first.')
+        return
+
+    turns = pd.DataFrame()
 
     criteria = [crit
         for crit in ['Condition', 'Track_ID', 'Sample']
@@ -586,13 +591,14 @@ def find_uturns(tracks, skip_steps=3):
 
         angles = np.arccos(dot_products/norm_products[1:])
 
-        uturns = uturns.append(pd.DataFrame({
+        turns = turns.append(pd.DataFrame({
             'Condition': track['Condition'].iloc[0],
             'Track ID': crits[1],
             'Angle t+{}'.format(skip_steps): angles,
-            'Mean Velocity': mean_velocities}))
+            'Mean Velocity Over Turn': mean_velocities,
+            'Mean Track Velocity': track['Velocity'].mean()}))
 
-    return uturns
+    return turns
 
 
 if __name__ == "__main__":
