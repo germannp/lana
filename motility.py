@@ -359,12 +359,42 @@ def plot_xyz_differences(tracks):
         for crit in ['Track_ID', 'Condition', 'Sample']
         if crit in tracks.columns]
     for _, track in tracks.groupby(criteria):
-        differences = differences.append(track[dimensions].diff()).dropna()
+        differences = differences.append(track[dimensions].diff().dropna())
+        if 'Track_ID' in differences.columns:
+            differences = differences.fillna(track['Track_ID'].iloc[0])
+        else:
+            differences['Track_ID'] = track['Track_ID'].iloc[0]
 
     sns.set(style="white", palette='deep')
-    for dimension in dimensions:
-        sns.kdeplot(differences[dimension], shade=True)
+    fig, axes = plt.subplots(ncols=3, figsize=(12,4.25))
+    plt.setp(axes, yticks=[])
+    plt.setp(axes, xticks=[])
 
+    axes[0].set_title('Differences in Coordinates')
+    axes[0].set_xticks([0])
+    axes[0].set_xticklabels([r'$0$'])
+
+    for dimension in dimensions:
+        sns.kdeplot(differences[dimension], shade=True, ax=axes[0])
+
+    axes[1].set_title('Joint Distribution')
+    axes[1].set_xlabel(r'$\Delta x$')
+    axes[1].set_ylabel(r'$\Delta y$')
+    axes[1].axis('equal')
+    axes[1].set_xlim([differences['X'].quantile(0.1), differences['X'].quantile(0.9)])
+    axes[1].set_ylim([differences['Y'].quantile(0.1), differences['Y'].quantile(0.9)])
+    sns.kdeplot(differences[['X', 'Y']], shade=True, cmap='Greys', ax=axes[1])
+
+    axes[2].set_title(r'$\Delta \vec r$ Lag Plot')
+    axes[2].axis('equal')
+    axes[2].set_xlabel(r'$\Delta r_i(t)$')
+    axes[2].set_ylabel(r'$\Delta r_i(t+1)$')
+    for i, dim in enumerate(dimensions):
+        color = sns.color_palette()[i]
+        for _, track in differences.groupby('Track_ID'):
+            axes[2].scatter(track[dim], track[dim].shift(), facecolors=color)
+
+    plt.tight_layout()
     plt.show()
 
 
