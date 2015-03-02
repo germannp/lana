@@ -116,17 +116,21 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     source_ax.set_aspect('equal')
 
 
-def plot_tracks_3d(tracks):
+def plot_tracks_3d(tracks, condition='Condition'):
     """Plots tracks in 3D"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
 
     criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
-        if crit in tracks.dropna(axis=1).columns]
+        if crit in tracks.dropna(axis=1).columns
+        if crit != condition]
 
-    for _, track in tracks.groupby(criteria):
-        ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
+    for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
+        color = sns.color_palette(n_colors=i+1)[-1]
+        for _, track in cond_tracks.groupby(criteria):
+            ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
+                color=color)
 
     equalize_axis3d(ax)
     plt.tight_layout()
@@ -560,7 +564,7 @@ def plot_summary(summary):
     plt.show()
 
 
-def analyze_turns(tracks, skip_steps=3):
+def analyze_turns(tracks, skip_steps=4):
     """Analyze turns between t and t+skip_steps in cell tracks"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -591,11 +595,16 @@ def analyze_turns(tracks, skip_steps=3):
 
         angles = np.arccos(dot_products/norm_products[1:])
 
+        displacements = [np.linalg.norm(
+            positions.values[i] - positions.values[i+skip_steps+1])
+            for i in range(positions.shape[0] - 1 - skip_steps)]
+
         turns = turns.append(pd.DataFrame({
             'Condition': track['Condition'].iloc[0],
             'Track ID': crits[1],
             'Angle t+{}'.format(skip_steps): angles,
             'Mean Velocity Over Turn': mean_velocities,
+            'Displacement Over Turn': displacements,
             'Mean Track Velocity': track['Velocity'].mean()}))
 
     return turns
