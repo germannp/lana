@@ -9,31 +9,7 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def silly_steps(init_position=None, n_steps=25, step_size=1):
-    """Generates a 2D random walk after Nombela-Arrieta et al. 2007"""
-    if init_position == None:
-        init_position = 10*np.random.rand(1,2)
-    track = init_position
-
-    for _ in range(n_steps):
-        if track.shape[0] == 1:
-            angle = 2*np.pi*np.random.rand()
-        else:
-            last_step = track[-1] - track[-2]
-            x = last_step[0]/np.linalg.norm(last_step)
-            y = last_step[1]/np.linalg.norm(last_step)
-            angle = (np.sign(x) - 1)/2*np.pi + np.sign(x)*np.arcsin(y)
-        silly_angle = angle + np.random.lognormal(0, 0.5) \
-            * (2*np.random.randint(0, 2) - 1)
-        silly_displacement = step_size*np.random.lognormal(0, 0.5)
-        silly_step = silly_displacement*np.asarray(
-            [np.cos(silly_angle),
-            np.sin(silly_angle)]).reshape(1,2)
-        track = np.concatenate((track, track[-1] + silly_step))
-    return track
-
-
-def silly_3d_steps(track_data=None, n_steps=10):
+def silly_3d_steps(track_data=None, n_steps=25):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
     if type(track_data) != pd.core.frame.DataFrame:
         print('No track data given, using random motility parameters.')
@@ -95,9 +71,10 @@ def silly_tracks(ntracks=25):
     """Generates a DataFrame with tracks"""
     tracks = pd.DataFrame()
     for track_id in range(ntracks):
-        track = silly_steps()
-        tracks = tracks.append(pd.DataFrame({
-            'Track_ID': track_id, 'X': track[:,0], 'Y': track[:,1]}))
+        track = silly_3d_steps()
+        track['Track_ID'] = track_id
+        tracks = tracks.append(track)
+
     return tracks
 
 
