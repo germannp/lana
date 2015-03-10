@@ -78,58 +78,6 @@ def silly_tracks(ntracks=25):
     return tracks
 
 
-def plot_tracks(tracks, save=False, palette='deep'):
-    """Plots the tracks in a DataFrame in the x-y (and x-z) plane(s)"""
-    if 'Z' in tracks.columns:
-        ndim = 3
-    else:
-        ndim = 2
-
-    if 'Condition' not in tracks.columns:
-        tracks['Condition'] = 'Default'
-
-    if 'Track_ID' not in tracks.columns:
-        tracks['Track_ID'] = 1
-
-    sns.set(style="white", palette=sns.color_palette(
-        palette, tracks['Condition'].unique().__len__()))
-    sns.set_context("paper", font_scale=1.5)
-
-    plt.title('Superimposed Tracks')
-    for i, dim in enumerate(('Y', 'Z')[:ndim-1]):
-        plt.subplot(1, ndim-1, i+1)
-        plt.axis('equal')
-        plt.ylabel('x-axis')
-        plt.xlabel(['y-axis', 'z-axis'][i])
-
-        criteria = [crit
-            for crit in ['Track_ID', 'Sample']
-            if crit in tracks.columns]
-        for j, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
-            color = sns.color_palette()[j]
-            for (track_nr, track) in cond_tracks.groupby(criteria):
-                if track_nr == 0:
-                    label = cond
-                else:
-                    label = ''
-                plt.plot(track['X']-track['X'][0], track[dim]-track[dim][0],
-                    color=color, label=label)
-                # track = track - track[1]
-                # track = track.reshape(-1, 1, 2)
-                # segments = np.concatenate([track[:-1], track[1:]], axis=1)
-                # lc = LineCollection(segments, cmap=plt.get_cmap('copper'))
-                # plt.gca().add_collection(lc)
-
-    plt.legend()
-    plt.tight_layout()
-    if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks['Condition'].unique()]
-        plt.savefig('Motility_' + '-'.join(conditions) + '.png')
-    else:
-        plt.show()
-
-
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalizes axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
