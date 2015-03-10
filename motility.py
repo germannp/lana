@@ -116,21 +116,30 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     source_ax.set_aspect('equal')
 
 
-def plot_tracks_3d(tracks, condition='Condition'):
+def plot_tracks_3d(tracks, summary=None, condition='Condition'):
     """Plots tracks in 3D"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
 
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+
     criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
         if crit in tracks.dropna(axis=1).columns
         if crit != condition]
+
+    print(tracks.columns)
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(criteria):
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
                 color=color)
+            # if summary != None:
+            #     track_id = track['Track_ID'].iloc[0]
+            #     idx_turn = summary[summary['Track_ID'] == track_id]
+            #     print(idx_turn)
 
     equalize_axis3d(ax)
     plt.tight_layout()
@@ -523,7 +532,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         plt.show()
 
 
-def summarize(tracks, uturn_steps=4, uturn_angle=3/4*np.pi):
+def summarize(tracks, steps=4):
     """Summarize track statistics"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -560,20 +569,13 @@ def summarize(tracks, uturn_steps=4, uturn_angle=3/4*np.pi):
 
         dr = positions.diff()
         dr_norms = np.linalg.norm(dr, axis=1)
-        dot_products = np.sum(dr.shift(-uturn_steps)*dr, axis=1).dropna()
-        norm_products = dr_norms[uturn_steps:]*dr_norms[:-uturn_steps]
-        angles = np.arccos(dot_products/norm_products[1:])
+        dot_products = np.sum(dr.shift(-steps)*dr, axis=1).dropna()
+        norm_products = dr_norms[steps:]*dr_norms[:-steps]
+        u_turns = np.arccos(dot_products/norm_products[1:])
 
-        mean_velocities = [track['Velocity'][i:i+uturn_steps].mean()
-            for i in range(track['Velocity'].__len__() - 1 - uturn_steps)
-            if angles.iloc[i] > uturn_angle]
+        summary.loc[i, 'Max. Turn Over {} Steps'.format(steps)] = max(u_turns)
 
-        try:
-            max_mean_velocity = min(mean_velocities)
-        except ValueError:
-            max_mean_velocity = np.nan
-
-        summary.loc[i, 'Min Velocity over U-Turn'] = max_mean_velocity
+        summary.loc[i, 'Max. Turn Start'] = u_turns.idxmax() - 1
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('{} tracks in {} with {} timesteps in total.'.format(
@@ -584,9 +586,12 @@ def summarize(tracks, uturn_steps=4, uturn_angle=3/4*np.pi):
 
 def plot_summary(summary):
     """Plot distributions and joint distributions of the track summary"""
+    to_drop = [column
+        for column in summary.columns
+        if column != 'Condition' and summary[column].var() == 0]
+    to_drop.extend(['Track_ID', 'Max. Turn Start'])
     sns.set(style='white')
-    g = sns.PairGrid(summary.drop(['Track_ID', 'Min Velocity over U-Turn'],
-        axis=1), hue='Condition')
+    g = sns.PairGrid(summary.drop(to_drop, axis=1), hue='Condition')
     g.map_diag(sns.distplot, kde=False)
     g.map_offdiag(plt.scatter)
     g.add_legend()
@@ -648,6 +653,11 @@ if __name__ == "__main__":
     # plot_xyz_differences(tracks)
 
     tracks = analyze(tracks)
-    plot(tracks)
-    joint_plot(tracks, skip_color=1)
-    lag_plot(tracks, skip_color=1)
+    # plot(tracks)
+    # joint_plot(tracks, skip_color=1)
+    # lag_plot(tracks, skip_color=1)
+
+    summary = summarize(tracks)
+    # plot_summary(summary)
+    # plot_tracks_3d(tracks, summary)
+    plot_tracks_3d(tracks)
