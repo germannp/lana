@@ -9,75 +9,6 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def silly_3d_steps(track_data=None, n_steps=25):
-    """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
-    if type(track_data) != pd.core.frame.DataFrame:
-        print('No track data given, using random motility parameters.')
-        # velocities = np.cumsum(np.ones(n_steps))
-        # turning_angles = np.zeros(n_steps-1)
-        # rolling_angles = np.zeros(n_steps-2)
-        velocities = np.random.lognormal(0, 0.5, n_steps)
-        turning_angles = np.random.lognormal(0, 0.5, n_steps-1)
-        rolling_angles = (np.random.rand(n_steps-2) - 0.5)*2*np.pi
-        condition = 'Random'
-    else:
-        velocities = track_data['Velocity'].dropna().values
-        turning_angles = track_data['Turning Angle'].dropna().values
-        rolling_angles = track_data['Rolling Angle'].dropna().values
-        if 'Condtion' in track_data.columns:
-            condition = track_data['Condition'].iloc[0] + ' Rebuilt'
-        else:
-            condition = 'Rebuilt'
-        n_steps = velocities.__len__()
-
-    # Walk in x-y plane w/ given velocity and turning angles
-    dr = np.zeros((n_steps+1, 3))
-    dr[1,0] = velocities[0]
-    for i in range(2, n_steps+1):
-        cosa = np.cos(turning_angles[i-2])
-        sina = np.sin(turning_angles[i-2])
-        dr[i,0] = (cosa*dr[i-1,0] - sina*dr[i-1,1])*velocities[i-1]/velocities[i-2]
-        dr[i,1] = (sina*dr[i-1,0] + cosa*dr[i-1,1])*velocities[i-1]/velocities[i-2]
-
-    # Add up and move 1st turn to origin
-    r = np.cumsum(dr, axis=0) - dr[1,:]
-
-    # Rotate moved positions minus the rolling angles around the next step
-    for i in range(2, n_steps+1):
-        r = r - dr[i,:]
-        if i == n_steps:
-            t = (np.random.rand() - 0.5)*2*np.pi
-            cost = np.cos(t)
-            sint = np.sin(t)
-            theta = np.random.rand()*2*np.pi
-            phi = np.arccos(2*np.random.rand() - 1)
-            n_vec[0] = np.sin(theta)*np.sin(phi)
-            n_vec[1] = np.cos(theta)*np.sin(phi)
-            n_vec[2] = np.cos(phi)
-        else:
-            cost = np.cos(-rolling_angles[i-2])
-            sint = np.sin(-rolling_angles[i-2])
-            n_vec = dr[i,:]/np.sqrt(np.sum(dr[i,:]*dr[i,:]))
-        for j in range(i):
-            cross_prod = np.cross(n_vec, r[j,:])
-            dot_prod = np.sum(n_vec*r[j,:])
-            r[j,:] = r[j,:]*cost + cross_prod*sint + n_vec*dot_prod*(1 - cost)
-
-    return pd.DataFrame({'Time': np.arange(n_steps+1), 'X': -r[:,0], 'Y': -r[:,1],
-        'Z': -r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
-
-
-def silly_tracks(ntracks=25):
-    """Generates a DataFrame with tracks"""
-    tracks = pd.DataFrame()
-    for track_id in range(ntracks):
-        track = silly_3d_steps()
-        track['Track_ID'] = track_id
-        tracks = tracks.append(track)
-
-    return tracks
-
-
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalizes axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
@@ -100,7 +31,7 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
 
 
 def plot_tracks_3d(tracks, summary=None, condition='Condition'):
-    """Plots tracks in 3D"""
+    """Plots tracks"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
@@ -630,6 +561,8 @@ def analyze_turns(tracks, skip_steps=4):
 
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
+    from remix import silly_tracks
+
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
