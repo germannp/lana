@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 import motility
+import remix
 
 
 def read_tracks(posfile='positions.txt', ndim=2, condition=None):
@@ -149,7 +150,7 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
                 name, pair[j], verbose=True, dry_run=dry_run)
             labels.append(' = '.join([name, str(pair[j])]))
         if dry_run:
-            run_tracks = motility.silly_tracks()
+            run_tracks = remix.silly_tracks()
         else:
             simulation.run()
             run_tracks = simulation.read_tracks(ndim)
@@ -178,7 +179,7 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
         print('\nSimulation {} of {}:'.format(i+1, commands.keys().__len__()))
         print('------------------')
         if dry_run:
-            run_tracks = motility.silly_tracks()
+            run_tracks = remix.silly_tracks()
         else:
             with Simulation(cmd, parfile=commands[cmd]) as command:
                 command.run()
