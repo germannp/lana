@@ -39,7 +39,7 @@ def plot_tracks_3d(tracks, summary=None, condition='Condition'):
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
+    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID', 'Source']
         if crit in tracks.dropna(axis=1).columns
         if crit != condition]
 
@@ -97,13 +97,17 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
     def split_at_skip(tracks, criteria):
         """Splits track if timestep is missing in the original DataFrame"""
-        max_track_id = tracks['Track_ID'].max()
+        if 'Track_ID' in tracks.columns:
+            max_track_id = tracks['Track_ID'].max()
+        else:
+            max_track_id = 0
         for _, track in tracks.groupby(criteria):
             timesteps = track['Time'].diff()
             skips = (timesteps - timesteps.min())/timesteps.min()
             if skips.max() > 0:
                 index = track.index
-                tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
+                if 'Track_ID' in track.columns:
+                    tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
                 skip_sum = skips.fillna(0).cumsum()
                 tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
                 max_track_id += max(skip_sum) + 1

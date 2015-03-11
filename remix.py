@@ -6,7 +6,6 @@ import pandas as pd
 def silly_3d_steps(track_data=None, n_steps=25):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
     if type(track_data) != pd.core.frame.DataFrame:
-        print('No track data given, using random motility parameters.')
         # velocities = np.cumsum(np.ones(n_steps))
         # turning_angles = np.zeros(n_steps-1)
         # rolling_angles = np.zeros(n_steps-2)
@@ -269,7 +268,6 @@ if __name__ == '__main__':
     """Rebuild a single track"""
     ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
     rebuilt = silly_3d_steps(ctrl)
-    rebuilt['Track_ID'] = 1337
     motility.plot_tracks_3d(ctrl.append(rebuilt))
     rebuilt = motility.analyze(rebuilt)
     print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
