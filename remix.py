@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def silly_3d_steps(track_data=None, n_steps=25):
+def silly_steps(track_data=None, n_steps=25):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
     if type(track_data) != pd.core.frame.DataFrame:
         # velocities = np.cumsum(np.ones(n_steps))
@@ -64,14 +64,14 @@ def silly_tracks(ntracks=25):
     """Generates a DataFrame with random tracks"""
     tracks = pd.DataFrame()
     for track_id in range(ntracks):
-        track = silly_3d_steps()
+        track = silly_steps()
         track['Track_ID'] = track_id
         tracks = tracks.append(track)
 
     return tracks
 
 
-def remidx(tracks, n_tracks=50, n_steps=60):
+def remix_dr(tracks, n_tracks=50, n_steps=60):
     """Remix dx, dy & dz to generate new tracks (Gerard et al. 2014)"""
     criteria = [crit for crit in ['Condition', 'Track_ID', 'Sample']
         if crit in tracks.columns]
@@ -160,7 +160,7 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
             remaining_data.ix[np.random.choice(remaining_data.index.values, n_steps-2)])
         track_data = track_data.append(pd.DataFrame({'Velocity':
             velocities_only[np.random.choice(velocities_only.index.values, 1)]}))
-        new_track = silly_3d_steps(track_data)
+        new_track = silly_steps(track_data)
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
 
@@ -244,7 +244,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     for i in range(n_tracks):
         track_data = remix.iloc[n_steps*i:n_steps*(i+1)]
         track_data.loc[n_steps*i, 'Rolling Angle'] = np.nan
-        new_track = silly_3d_steps(track_data)
+        new_track = silly_steps(track_data)
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
 
@@ -267,8 +267,8 @@ if __name__ == '__main__':
 
     """Rebuild a single track"""
     ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
-    rebuilt = silly_3d_steps(ctrl)
-    motility.plot_tracks_3d(ctrl.append(rebuilt))
+    rebuilt = silly_steps(ctrl)
+    motility.plot_tracks(ctrl.append(rebuilt))
     rebuilt = motility.analyze(rebuilt)
     print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
@@ -286,10 +286,10 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    # remidx = remidx(tracks)
+    # remix_dr = remix_dr(tracks)
     # remix = remix(tracks)
     # remix_lags = remix_preserving_lags(tracks)
-    # tracks = tracks.append(remidx)
+    # tracks = tracks.append(remix_dr)
     # tracks = tracks.append(remix)
     # tracks = tracks.append(remix_lags).reset_index()
     # tracks = motility.analyze(tracks)

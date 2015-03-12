@@ -30,7 +30,7 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     source_ax.set_aspect('equal')
 
 
-def plot_tracks_3d(tracks, summary=None, condition='Condition'):
+def plot_tracks(tracks, summary=None, condition='Condition'):
     """Plots tracks"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
@@ -277,7 +277,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
         plt.show()
 
 
-def plot_xyz_differences(tracks):
+def plot_dr(tracks):
     """Plots the differences in X, Y (and Z) to show biases"""
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
 
@@ -297,7 +297,7 @@ def plot_xyz_differences(tracks):
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
-    axes[0].set_title('Differences in Coordinates')
+    axes[0].set_title(r'$\Delta \vec r$')
     axes[0].set_xticks([0])
     axes[0].set_xticklabels([r'$0$'])
 
@@ -570,7 +570,7 @@ if __name__ == "__main__":
     tracks = silly_tracks()
     # plot_tracks(tracks)
     # animate_tracks(tracks)
-    # plot_xyz_differences(tracks)
+    plot_dr(tracks)
 
     tracks = analyze(tracks)
     # plot(tracks)
@@ -579,5 +579,5 @@ if __name__ == "__main__":
 
     summary = summarize(tracks)
     # plot_summary(summary)
-    # plot_tracks_3d(tracks, summary)
-    plot_tracks_3d(tracks)
+    # plot_tracks(tracks, summary)
+    plot_tracks(tracks)
