@@ -488,18 +488,31 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
 
+        summary.loc[i, 'Arrest Coefficient'] = \
+            track[track['Velocity'] < 2].__len__()/summary.loc[i, 'Track Duration']
+
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
+            ndim = 3
         else:
             positions = track[['X', 'Y']]
+            ndim = 2
+
+        summary.loc[i, 'Motility Coefficient'] = np.pi* \
+            track['Displacement'].iloc[-1]/(2*ndim)/track['Track Time'].max()
 
         dr = positions.diff()
         dr_norms = np.linalg.norm(dr, axis=1)
+
+        summary.loc[i, 'Corr. Confinement Ratio'] = track['Displacement'].iloc[-1] \
+            /dr_norms[1:].sum()*np.sqrt(track['Track Time'].max())
+
         dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
         norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
         u_turns = np.arccos(dot_products/norm_products[1:])
 
-        summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = max(u_turns)
+        summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
+            max(u_turns)
 
         summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time'] - 1
 
@@ -515,10 +528,10 @@ def plot_summary(summary):
     to_drop = [column
         for column in summary.columns
         if column != 'Condition' and summary[column].var() == 0]
-    to_drop.extend(['Track_ID', 'Max. Turn Start'])
+    to_drop.extend(['Track_ID', 'Turn Time'])
     sns.set(style='white')
     g = sns.PairGrid(summary.drop(to_drop, axis=1), hue='Condition')
-    g.map_diag(sns.distplot, kde=False)
+    g.map_diag(sns.distplot, kde=True, kde_kws={"shade": True})
     g.map_offdiag(plt.scatter)
     g.add_legend()
 
@@ -576,20 +589,20 @@ if __name__ == "__main__":
     import remix
 
 
-    # Single Track
-    track = pd.DataFrame({
-        'Velocity':np.ones(7),
-        'Turning Angle': np.sort(np.random.rand(7))/100,
-        'Rolling Angle': np.random.rand(7)/100
-    })
-    track.loc[3, 'Turning Angle'] = 2.5
-
-    tracks = remix.silly_steps(track)
-    tracks['Track_ID'] = 0
-    tracks['Time'] = np.arange(8)
-    tracks = analyze(tracks)
-    summary = summarize(tracks, skip_steps=1)
-    plot_tracks(tracks, summary)
+    # # Single Track
+    # track = pd.DataFrame({
+    #     'Velocity':np.ones(7),
+    #     'Turning Angle': np.sort(np.random.rand(7))/100,
+    #     'Rolling Angle': np.random.rand(7)/100
+    # })
+    # track.loc[3, 'Turning Angle'] = 2.5
+    #
+    # tracks = remix.silly_steps(track)
+    # tracks['Track_ID'] = 0
+    # tracks['Time'] = np.arange(8)
+    # tracks = analyze(tracks)
+    # summary = summarize(tracks, skip_steps=1)
+    # plot_tracks(tracks, summary)
 
 
     # Several tracks
@@ -603,5 +616,6 @@ if __name__ == "__main__":
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    # plot_summary(summary)
-    plot_tracks(tracks, summary)
+    print(summary)
+    plot_summary(summary)
+    # plot_tracks(tracks, summary)

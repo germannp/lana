@@ -9,7 +9,7 @@ def silly_steps(track_data=None, n_steps=25):
         # velocities = np.cumsum(np.ones(n_steps))
         # turning_angles = np.zeros(n_steps-1)
         # rolling_angles = np.zeros(n_steps-2)
-        velocities = np.random.lognormal(0, 0.5, n_steps)
+        velocities = np.random.lognormal(0, 0.5, n_steps)*3
         turning_angles = np.random.lognormal(0, 0.5, n_steps-1)
         rolling_angles = (np.random.rand(n_steps-2) - 0.5)*2*np.pi
         condition = 'Random'
