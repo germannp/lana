@@ -32,9 +32,13 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
 
 def plot_tracks(tracks, summary=None, condition='Condition'):
     """Plots tracks"""
-    sns.set_style('white')
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(1,1,1, projection='3d')
+    if type(summary) == pd.core.frame.DataFrame:
+        alpha = 0.33
+        skip_steps = int(next(word
+            for column in summary.columns
+            for word in column.split() if word.isdigit()))
+    else:
+        alpha = 1
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -43,17 +47,21 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
         if crit in tracks.dropna(axis=1).columns
         if crit != condition]
 
-    print(tracks.columns)
-
+    sns.set_style('white')
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_subplot(1,1,1, projection='3d')
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(criteria):
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
-                color=color)
-            # if summary != None:
-            #     track_id = track['Track_ID'].iloc[0]
-            #     idx_turn = summary[summary['Track_ID'] == track_id]
-            #     print(idx_turn)
+                color=color, alpha=alpha)
+            if type(summary) == pd.core.frame.DataFrame:
+                track_id = track['Track_ID'].iloc[0]
+                turn_time = summary[summary['Track_ID'] == track_id]['Turn Time']
+                turn_times = np.arange(turn_time, turn_time + skip_steps + 1)
+                turn = track[track['Time'].isin(turn_times)]
+                ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
+                    color=color)
 
     equalize_axis3d(ax)
     plt.tight_layout()
@@ -450,7 +458,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         plt.show()
 
 
-def summarize(tracks, steps=4):
+def summarize(tracks, skip_steps=4):
     """Summarize track statistics"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
@@ -487,13 +495,13 @@ def summarize(tracks, steps=4):
 
         dr = positions.diff()
         dr_norms = np.linalg.norm(dr, axis=1)
-        dot_products = np.sum(dr.shift(-steps)*dr, axis=1).dropna()
-        norm_products = dr_norms[steps:]*dr_norms[:-steps]
+        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
+        norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
         u_turns = np.arccos(dot_products/norm_products[1:])
 
-        summary.loc[i, 'Max. Turn Over {} Steps'.format(steps)] = max(u_turns)
+        summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = max(u_turns)
 
-        summary.loc[i, 'Max. Turn Start'] = u_turns.idxmax() - 1
+        summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time'] - 1
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('{} tracks in {} with {} timesteps in total.'.format(
@@ -565,12 +573,29 @@ def analyze_turns(tracks, skip_steps=4):
 
 if __name__ == "__main__":
     """Demostrates motility analysis of simulated data."""
-    from remix import silly_tracks
+    import remix
 
-    tracks = silly_tracks()
-    # plot_tracks(tracks)
+
+    # Single Track
+    track = pd.DataFrame({
+        'Velocity':np.ones(7),
+        'Turning Angle': np.sort(np.random.rand(7))/100,
+        'Rolling Angle': np.random.rand(7)/100
+    })
+    track.loc[3, 'Turning Angle'] = 2.5
+
+    tracks = remix.silly_steps(track)
+    tracks['Track_ID'] = 0
+    tracks['Time'] = np.arange(8)
+    tracks = analyze(tracks)
+    summary = summarize(tracks, skip_steps=1)
+    plot_tracks(tracks, summary)
+
+
+    # Several tracks
+    tracks = remix.silly_tracks()
     # animate_tracks(tracks)
-    plot_dr(tracks)
+    # plot_dr(tracks)
 
     tracks = analyze(tracks)
     # plot(tracks)
@@ -579,5 +604,4 @@ if __name__ == "__main__":
 
     summary = summarize(tracks)
     # plot_summary(summary)
-    # plot_tracks(tracks, summary)
-    plot_tracks(tracks)
+    plot_tracks(tracks, summary)
