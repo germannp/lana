@@ -111,7 +111,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
             max_track_id = 0
         for _, track in tracks.groupby(criteria):
             timesteps = track['Time'].diff()
-            skips = (timesteps - timesteps.min())/timesteps.min()
+            skips = np.round((timesteps - timesteps.min())/timesteps.min())
             if skips.max() > 0:
                 index = track.index
                 if 'Track_ID' in track.columns:
@@ -161,9 +161,16 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
         return track
 
+
     criteria = [crit
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
+
+    criteria.append('Time')
+    if sum(tracks[criteria].duplicated()) != 0:
+        print('Error: Tracks not unique, aborting analysis.')
+        return
+    criteria.pop()
 
     tracks[criteria] = tracks[criteria].fillna('Default')
 
@@ -175,13 +182,6 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
     # Take care of missing time points
     elif uniform_timesteps:
         split_at_skip(tracks, criteria)
-
-
-    criteria.append('Time')
-    if sum(tracks[criteria].duplicated()) != 0:
-        print('Error: Tracks not unique, aborting analysis.')
-        return
-    criteria.pop()
 
     tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
