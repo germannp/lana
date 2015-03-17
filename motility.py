@@ -7,6 +7,7 @@ import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.cluster import AgglomerativeClustering
 
 
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
@@ -113,12 +114,14 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         for crit, track in tracks.groupby(criteria):
             duplicated_steps = track[track['Time'].duplicated()]
             if duplicated_steps.__len__() != 0:
-                track = track.sort()
-                track['index'] = track.index
-                index_after_maxdiff = [idx for idx in track.index
-                    if idx >= track['index'].diff().argmax()]
-                max_track_id += 1
-                tracks.loc[index_after_maxdiff, 'Track_ID'] = max_track_id
+                n_clusters = track['Time'].value_counts().max()
+                clusters = AgglomerativeClustering(n_clusters=n_clusters).fit(
+                    track[['X', 'Y', 'Z']])
+                index = track.index
+                if 'Track_ID' in track.columns:
+                    tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
+                tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
+                max_track_id += n_clusters + 1
                 print('Warning: Split non-unique track {} based on index.'
                     .format(crit))
 
@@ -640,4 +643,4 @@ if __name__ == "__main__":
     summary = summarize(tracks)
     print(summary)
     plot_summary(summary)
-    # plot_tracks(tracks, summary)
+    plot_tracks(tracks, summary)
