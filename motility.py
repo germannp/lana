@@ -123,8 +123,8 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
                     tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
                 tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
                 max_track_id += n_clusters + 1
-                print('Warning: Split non-unique track {} based on index.'
-                    .format(crit))
+                print('Warning: Split non-unique track {} by clustering X, Y \
+                    and Z.'.format(crit))
 
         if sum(tracks[criteria + ['Time']].duplicated()) != 0:
             raise Exception
