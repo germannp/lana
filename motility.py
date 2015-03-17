@@ -103,12 +103,36 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
+    def uniquize_tracks(tracks, criteria):
+        """Tries to guess which tracks belong together, if not unique"""
+        if 'Track_ID' in tracks.columns:
+            max_track_id = tracks['Track_ID'].max()
+        else:
+            max_track_id = 0
+
+        for crit, track in tracks.groupby(criteria):
+            duplicated_steps = track[track['Time'].duplicated()]
+            if duplicated_steps.__len__() != 0:
+                track = track.sort()
+                track['index'] = track.index
+                index_after_maxdiff = [idx for idx in track.index
+                    if idx >= track['index'].diff().argmax()]
+                max_track_id += 1
+                tracks.loc[index_after_maxdiff, 'Track_ID'] = max_track_id
+                print('Warning: Split non-unique track {} based on index.'
+                    .format(crit))
+
+        if sum(tracks[criteria + ['Time']].duplicated()) != 0:
+            raise Exception
+
+
     def split_at_skip(tracks, criteria):
         """Splits track if timestep is missing in the original DataFrame"""
         if 'Track_ID' in tracks.columns:
             max_track_id = tracks['Track_ID'].max()
         else:
             max_track_id = 0
+
         for _, track in tracks.groupby(criteria):
             timesteps = track['Time'].diff()
             skips = np.round((timesteps - timesteps.min())/timesteps.min())
@@ -166,11 +190,11 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
 
-    criteria.append('Time')
-    if sum(tracks[criteria].duplicated()) != 0:
+    try:
+        uniquize_tracks(tracks, criteria)
+    except Exception:
         print('Error: Tracks not unique, aborting analysis.')
         return
-    criteria.pop()
 
     tracks[criteria] = tracks[criteria].fillna('Default')
 
@@ -530,10 +554,8 @@ def plot_summary(summary):
         if column != 'Condition' and summary[column].var() == 0]
     to_drop.extend(['Track_ID', 'Turn Time'])
     sns.set(style='white')
-    g = sns.PairGrid(summary.drop(to_drop, axis=1), hue='Condition')
-    g.map_diag(sns.distplot, kde=True, kde_kws={"shade": True})
-    g.map_offdiag(plt.scatter)
-    g.add_legend()
+    sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
+        diag_kind='kde')
 
     plt.show()
 
