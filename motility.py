@@ -115,6 +115,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
             duplicated_steps = track[track['Time'].duplicated()]
             if duplicated_steps.__len__() != 0:
                 n_clusters = track['Time'].value_counts().max()
+                # TODO: Use conectivity
                 clusters = AgglomerativeClustering(n_clusters=n_clusters).fit(
                     track[['X', 'Y', 'Z']])
                 index = track.index
