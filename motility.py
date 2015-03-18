@@ -204,20 +204,21 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
 
-    try:
-        uniquize_tracks(tracks, criteria)
-    except Exception:
-        print('Error: Tracks not unique, aborting analysis.')
-        return
 
     tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
         tracks['Time'] = tracks.index
-    # Take care of missing time points
-    elif uniform_timesteps:
-        split_at_skip(tracks, criteria)
+    else:
+        try:
+            uniquize_tracks(tracks, criteria)
+        except Exception:
+            print('Error: Tracks not unique, aborting analysis.')
+            return
+        # Take care of missing time points
+        if uniform_timesteps:
+            split_at_skip(tracks, criteria)
 
     tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
