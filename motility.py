@@ -11,7 +11,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
-    """Equalizes axis for a mpl3d plot; after
+    """Equalize axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
     if target_ax == None:
         target_ax = source_ax
@@ -32,7 +32,7 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
 
 
 def plot_tracks(tracks, summary=None, condition='Condition'):
-    """Plots tracks"""
+    """Plot tracks"""
     if type(summary) == pd.core.frame.DataFrame:
         alpha = 0.33
         skip_steps = int(next(word
@@ -70,7 +70,7 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
 
 
 def animate_tracks(tracks, palette='deep'):
-    """Shows an animation of the tracks"""
+    """Show an animation of the tracks"""
     if 'Condition' not in tracks.columns:
         tracks['Condition'] = 'Default'
 
@@ -105,7 +105,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
 
     def uniquize_tracks(tracks, criteria):
-        """Tries to guess which tracks belong together, if not unique"""
+        """Try to guess which tracks belong together, if not unique"""
         if 'Track_ID' in tracks.columns:
             max_track_id = tracks['Track_ID'].max()
         else:
@@ -116,41 +116,46 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
             if duplicated_steps.__len__() != 0:
                 n_clusters = track['Time'].value_counts().max()
                 # TODO: Use conectivity
-                clusters = AgglomerativeClustering(n_clusters=n_clusters).fit(
-                    track[['X', 'Y', 'Z']])
+                X = track[['Orig. Index', 'X', 'Y', 'Z']]
+                # X = (X - X.mean())/X.std()
+                clusters = AgglomerativeClustering(n_clusters=n_clusters).fit(X)
                 index = track.index
                 if 'Track_ID' in track.columns:
-                    tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
+                    tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
                 tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
-                max_track_id += n_clusters + 1
-                print('Warning: Split non-unique track {} by clustering X, Y \
-                    and Z.'.format(crit))
+                max_track_id += n_clusters
+                # pd.set_option('display.max_rows', 1000)
+                # print(tracks[['Track_ID', 'Time', 'Orig. Index', 'X', 'Y', 'Z']])
+                print('Warning: Split non-unique track {} by clustering.'
+                    .format(crit))
 
         if sum(tracks[criteria + ['Time']].duplicated()) != 0:
             raise Exception
 
 
     def split_at_skip(tracks, criteria):
-        """Splits track if timestep is missing in the original DataFrame"""
+        """Split track if timestep is missing in the original DataFrame"""
         if 'Track_ID' in tracks.columns:
             max_track_id = tracks['Track_ID'].max()
         else:
             max_track_id = 0
 
-        for _, track in tracks.groupby(criteria):
+        for crit, track in tracks.groupby(criteria):
             timesteps = track['Time'].diff()
             skips = np.round((timesteps - timesteps.min())/timesteps.min())
             if skips.max() > 0:
                 index = track.index
                 if 'Track_ID' in track.columns:
-                    tracks.loc[index, 'Original Track_ID'] = track['Track_ID']
+                    tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
                 skip_sum = skips.fillna(0).cumsum()
                 tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
                 max_track_id += max(skip_sum) + 1
+                print('Warning: Split track {} with non-uniform timesteps.'
+                    .format(crit))
 
 
     def analyze_track(track):
-        """Calculates velocity and angles for a single track"""
+        """Calculate velocity and angles for a single track"""
         track['Track Time'] = track['Time'] - track['Time'].iloc[0]
         if track['Track Time'].diff().unique().__len__() > 2:
             print('Warning: Track with non-uniform timesteps.')
@@ -190,6 +195,11 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         return track
 
 
+    # split_at_skip() & uniquize need unique index, but the original can be used
+    # for clustering.
+    tracks['Orig. Index'] = tracks.index
+    tracks = tracks.reset_index(drop=True)
+
     criteria = [crit
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
@@ -201,8 +211,6 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         return
 
     tracks[criteria] = tracks[criteria].fillna('Default')
-
-    tracks = tracks.reset_index(drop=True) # split_at_skip() works on index!
 
     if 'Time' not in tracks.columns:
         print('Warning: no time given, using index!')
@@ -220,7 +228,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
 
 def plot(tracks, save=False, palette='deep', plot_minmax=False,
     condition='Condition'):
-    """Plots aspects of motility for different conditions"""
+    """Plot aspects of motility for different conditions"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
@@ -314,7 +322,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
 
 
 def plot_dr(tracks):
-    """Plots the differences in X, Y (and Z) to show biases"""
+    """Plot the differences in X, Y (and Z) to show biases"""
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
 
     differences = pd.DataFrame()
@@ -363,7 +371,7 @@ def plot_dr(tracks):
 
 def joint_plot(tracks, condition='Condition', save=False,
     palette='deep', skip_color=0):
-    """Plots the joint distribution of the velocities and turning angles."""
+    """Plot the joint distribution of the velocities and turning angles."""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
@@ -389,7 +397,7 @@ def joint_plot(tracks, condition='Condition', save=False,
 
 def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
     save=False, palette='deep', skip_color=0):
-    """Plots tracks in velocities-turning-angles-space"""
+    """Plot tracks in velocities-turning-angles-space"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
@@ -426,7 +434,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
 
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, null_model=True):
-    """Lag plots for velocities and turning angles"""
+    """Lag plot for velocities and turning angles"""
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('Error: data not found, tracks must be analyzed first.')
         return
@@ -611,7 +619,7 @@ def analyze_turns(tracks, skip_steps=4):
 
 
 if __name__ == "__main__":
-    """Demostrates motility analysis of simulated data."""
+    """Demostrate motility analysis of simulated data."""
     import remix
 
 
