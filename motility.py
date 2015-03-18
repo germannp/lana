@@ -100,34 +100,43 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def analyze(tracks, uniform_timesteps=True, min_length=4):
+def analyze(tracks, uniform_timesteps=True, min_length=5):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
     def uniquize_tracks(tracks, criteria):
-        """Try to guess which tracks belong together, if not unique"""
+        """Cluster tracks, if not unique"""
         if 'Track_ID' in tracks.columns:
             max_track_id = tracks['Track_ID'].max()
         else:
             max_track_id = 0
 
         for crit, track in tracks.groupby(criteria):
-            duplicated_steps = track[track['Time'].duplicated()]
-            if duplicated_steps.__len__() != 0:
+            if sum(track['Time'].duplicated()) != 0:
                 n_clusters = track['Time'].value_counts().max()
-                # TODO: Use conectivity
-                X = track[['Orig. Index', 'X', 'Y', 'Z']]
-                # X = (X - X.mean())/X.std()
-                clusters = AgglomerativeClustering(n_clusters=n_clusters).fit(X)
                 index = track.index
                 if 'Track_ID' in track.columns:
                     tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
-                tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
-                max_track_id += n_clusters
-                # pd.set_option('display.max_rows', 1000)
-                # print(tracks[['Track_ID', 'Time', 'Orig. Index', 'X', 'Y', 'Z']])
-                print('Warning: Split non-unique track {} by clustering.'
-                    .format(crit))
+
+                clusters = AgglomerativeClustering(n_clusters).fit(
+                    track[['X', 'Y', 'Z']])
+                track['Cluster'] = clusters.labels_
+
+                if sum(track[['Cluster', 'Time']].duplicated()) != 0:
+                    clusters = AgglomerativeClustering(n_clusters).fit(
+                        track[['Orig. Index']])
+                    track['Cluster'] = clusters.labels_
+
+                if sum(track[['Cluster', 'Time']].duplicated()) == 0:
+                    tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
+                    max_track_id += n_clusters
+                    pd.set_option('display.max_rows', 1000)
+                    print('  Warning: Split non-unique track {} by clustering.'
+                        .format(crit))
+                else:
+                    tracks.drop(index, inplace=True)
+                    print('  Warning: Delete non-unique track {}.'
+                        .format(crit))
 
         if sum(tracks[criteria + ['Time']].duplicated()) != 0:
             raise Exception
@@ -150,7 +159,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
                 skip_sum = skips.fillna(0).cumsum()
                 tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
                 max_track_id += max(skip_sum) + 1
-                print('Warning: Split track {} with non-uniform timesteps.'
+                print('  Warning: Split track {} with non-uniform timesteps.'
                     .format(crit))
 
 
@@ -158,7 +167,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         """Calculate velocity and angles for a single track"""
         track['Track Time'] = track['Time'] - track['Time'].iloc[0]
         if track['Track Time'].diff().unique().__len__() > 2:
-            print('Warning: Track with non-uniform timesteps.')
+            print('  Warning: Track with non-uniform timesteps.')
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
@@ -195,6 +204,8 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
         return track
 
 
+    print('\nAnalyzing tracks')
+
     # split_at_skip() & uniquize need unique index, but the original can be used
     # for clustering.
     tracks['Orig. Index'] = tracks.index
@@ -203,20 +214,13 @@ def analyze(tracks, uniform_timesteps=True, min_length=4):
     criteria = [crit
         for crit in ['Track_ID', 'Sample', 'Condition']
         if crit in tracks.columns]
-
-
     tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
-        print('Warning: no time given, using index!')
+        print('  Warning: no time given, using index!')
         tracks['Time'] = tracks.index
     else:
-        try:
-            uniquize_tracks(tracks, criteria)
-        except Exception:
-            print('Error: Tracks not unique, aborting analysis.')
-            return
-        # Take care of missing time points
+        uniquize_tracks(tracks, criteria)
         if uniform_timesteps:
             split_at_skip(tracks, criteria)
 
@@ -496,9 +500,10 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 
 
 def summarize(tracks, skip_steps=4):
-    """Summarize track statistics"""
+    """\nSummarize track statistics, e.g. mean velocity per track"""
+    print('Summarizing track statistics')
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
+        print('  Error: data not found, tracks must be analyzed first.')
         return
 
     summary = pd.DataFrame()
@@ -554,13 +559,13 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time'] - 1
 
     for cond, cond_summary in summary.groupby('Condition'):
-        print('{} tracks in {} with {} timesteps in total.'.format(
+        print('  {} tracks in {} with {} timesteps in total.'.format(
             cond_summary.__len__(), cond, cond_summary['Track Duration'].sum()))
 
     return summary
 
 
-def plot_summary(summary):
+def plot_summary(summary, save=False, condition='Condition'):
     """Plot distributions and joint distributions of the track summary"""
     to_drop = [column
         for column in summary.columns
@@ -570,7 +575,12 @@ def plot_summary(summary):
     sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
         diag_kind='kde')
 
-    plt.show()
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in summary[condition].unique()]
+        plt.savefig('Summary_' + '-'.join(conditions) + '.png')
+    else:
+        plt.show()
 
 
 def analyze_turns(tracks, skip_steps=4):
