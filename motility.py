@@ -212,7 +212,8 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
 
     print('\nAnalyzing tracks')
 
-    tracks[criteria] = tracks[_track_identifiers(tracks)].fillna('Default')
+    criteria = _track_identifiers(tracks)
+    tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
         print('  Warning: no time given, using index!')
@@ -220,7 +221,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
     else:
         _uniquize_tracks(tracks)
         if uniform_timesteps:
-            _split_at_skip(tracks, criteria)
+            _split_at_skip(tracks)
 
     tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
