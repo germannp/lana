@@ -1,7 +1,7 @@
 lana
 ====
 
-A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simulations based on [Pandas](http://pandas.pydata.org/), [numpy](http://www.numpy.org/), [matplotlib](http://matplotlib.org/) and [seaborn](http://web.stanford.edu/~mwaskom/software/seaborn/). It produces figures like the following example of a parameter sweep in a celluar Potts model:
+A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simulations based on [Pandas](http://pandas.pydata.org/), [numpy](http://www.numpy.org/), [matplotlib](http://matplotlib.org/), [seaborn](http://web.stanford.edu/~mwaskom/software/seaborn/) and [scikit-learn](http://scikit-learn.org/). It produces figures like the following example of a parameter sweep in a celluar Potts model:
 
 ![alt text](Examples/sweep.png "Plot of a parameter sweep")
 
