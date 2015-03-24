@@ -16,6 +16,69 @@ def _track_identifiers(tracks):
         if crit in tracks.dropna(axis=1).columns]
 
 
+def _uniquize_tracks(tracks):
+    """Cluster tracks, if not unique"""
+    tracks['Orig. Index'] = tracks.index
+    if not tracks.index.is_unique:
+        tracks.reset_index(drop=True, inplace=True)
+
+    if 'Track_ID' in tracks.columns:
+        max_track_id = tracks['Track_ID'].max()
+    else:
+        max_track_id = 0
+
+    for crit, track in tracks.groupby(_track_identifiers(tracks)):
+        if sum(track['Time'].duplicated()) != 0:
+            n_clusters = track['Time'].value_counts().max()
+            index = track.index
+            if 'Track_ID' in track.columns:
+                tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
+
+            clusters = AgglomerativeClustering(n_clusters).fit(
+                track[['X', 'Y', 'Z']])
+            track['Cluster'] = clusters.labels_
+
+            if sum(track[['Cluster', 'Time']].duplicated()) != 0:
+                clusters = AgglomerativeClustering(n_clusters).fit(
+                    track[['Orig. Index']])
+                track['Cluster'] = clusters.labels_
+
+            if sum(track[['Cluster', 'Time']].duplicated()) == 0:
+                tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
+                max_track_id += n_clusters
+                pd.set_option('display.max_rows', 1000)
+                print('  Warning: Split non-unique track {} by clustering.'
+                    .format(crit))
+            else:
+                tracks.drop(index, inplace=True)
+                print('  Warning: Delete non-unique track {}.'
+                    .format(crit))
+
+
+def _split_at_skip(tracks):
+    """Split track if timestep is missing in the original DataFrame"""
+    if not tracks.index.is_unique:
+        tracks.reset_index(drop=True, inplace=True)
+
+    if 'Track_ID' in tracks.columns:
+        max_track_id = tracks['Track_ID'].max()
+    else:
+        max_track_id = 0
+
+    for crit, track in tracks.groupby(_track_identifiers(tracks)):
+        timesteps = track['Time'].diff()
+        skips = np.round((timesteps - timesteps.min())/timesteps.min())
+        if skips.max() > 0:
+            index = track.index
+            if 'Track_ID' in track.columns:
+                tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
+            skip_sum = skips.fillna(0).cumsum()
+            tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
+            max_track_id += max(skip_sum) + 1
+            print('  Warning: Split track {} with non-uniform timesteps.'
+                .format(crit))
+
+
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalize axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
@@ -46,6 +109,8 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
             for word in column.split() if word.isdigit()))
     else:
         alpha = 1
+        _uniquize_tracks(tracks)
+        _split_at_skip(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -106,65 +171,6 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
-    def uniquize_tracks(tracks, criteria):
-        """Cluster tracks, if not unique"""
-        if 'Track_ID' in tracks.columns:
-            max_track_id = tracks['Track_ID'].max()
-        else:
-            max_track_id = 0
-
-        for crit, track in tracks.groupby(criteria):
-            if sum(track['Time'].duplicated()) != 0:
-                n_clusters = track['Time'].value_counts().max()
-                index = track.index
-                if 'Track_ID' in track.columns:
-                    tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
-
-                clusters = AgglomerativeClustering(n_clusters).fit(
-                    track[['X', 'Y', 'Z']])
-                track['Cluster'] = clusters.labels_
-
-                if sum(track[['Cluster', 'Time']].duplicated()) != 0:
-                    clusters = AgglomerativeClustering(n_clusters).fit(
-                        track[['Orig. Index']])
-                    track['Cluster'] = clusters.labels_
-
-                if sum(track[['Cluster', 'Time']].duplicated()) == 0:
-                    tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
-                    max_track_id += n_clusters
-                    pd.set_option('display.max_rows', 1000)
-                    print('  Warning: Split non-unique track {} by clustering.'
-                        .format(crit))
-                else:
-                    tracks.drop(index, inplace=True)
-                    print('  Warning: Delete non-unique track {}.'
-                        .format(crit))
-
-        if sum(tracks[criteria + ['Time']].duplicated()) != 0:
-            raise Exception
-
-
-    def split_at_skip(tracks, criteria):
-        """Split track if timestep is missing in the original DataFrame"""
-        if 'Track_ID' in tracks.columns:
-            max_track_id = tracks['Track_ID'].max()
-        else:
-            max_track_id = 0
-
-        for crit, track in tracks.groupby(criteria):
-            timesteps = track['Time'].diff()
-            skips = np.round((timesteps - timesteps.min())/timesteps.min())
-            if skips.max() > 0:
-                index = track.index
-                if 'Track_ID' in track.columns:
-                    tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
-                skip_sum = skips.fillna(0).cumsum()
-                tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
-                max_track_id += max(skip_sum) + 1
-                print('  Warning: Split track {} with non-uniform timesteps.'
-                    .format(crit))
-
-
     def analyze_track(track):
         """Calculate velocity and angles for a single track"""
         track['Track Time'] = np.round(track['Time'] - track['Time'].iloc[0], 4)
@@ -206,21 +212,15 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
 
     print('\nAnalyzing tracks')
 
-    # split_at_skip() & uniquize need unique index, but the original can be used
-    # for clustering.
-    tracks['Orig. Index'] = tracks.index
-    tracks = tracks.reset_index(drop=True)
-
-    criteria = _track_identifiers(tracks)
-    tracks[criteria] = tracks[criteria].fillna('Default')
+    tracks[criteria] = tracks[_track_identifiers(tracks)].fillna('Default')
 
     if 'Time' not in tracks.columns:
         print('  Warning: no time given, using index!')
         tracks['Time'] = tracks.index
     else:
-        uniquize_tracks(tracks, criteria)
+        _uniquize_tracks(tracks)
         if uniform_timesteps:
-            split_at_skip(tracks, criteria)
+            _split_at_skip(tracks, criteria)
 
     tracks = tracks.groupby(criteria).apply(
         lambda x: x if x.__len__() > min_length else None)
@@ -326,6 +326,9 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
 
 def plot_dr(tracks):
     """Plot the differences in X, Y (and Z) to show biases"""
+    _uniquize_tracks(tracks)
+    _split_at_skip(tracks)
+
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
 
     differences = pd.DataFrame()
