@@ -10,6 +10,12 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
 
+def _track_identifiers(tracks):
+    """List criteria that identify a track"""
+    return [crit for crit in ['Condition', 'Sample', 'Track_ID', 'Source']
+        if crit in tracks.dropna(axis=1).columns]
+
+
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalize axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
@@ -44,16 +50,12 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID', 'Source']
-        if crit in tracks.dropna(axis=1).columns
-        if crit != condition]
-
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
-        for _, track in cond_tracks.groupby(criteria):
+        for _, track in cond_tracks.groupby(_track_identifiers(cond_tracks)):
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
                 color=color, alpha=alpha)
             if type(summary) == pd.core.frame.DataFrame:
@@ -209,9 +211,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
     tracks['Orig. Index'] = tracks.index
     tracks = tracks.reset_index(drop=True)
 
-    criteria = [crit
-        for crit in ['Track_ID', 'Sample', 'Condition']
-        if crit in tracks.columns]
+    criteria = _track_identifiers(tracks)
     tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
@@ -329,10 +329,8 @@ def plot_dr(tracks):
     dimensions = [dim for dim in ['X', 'Y', 'Z'] if dim in tracks.columns]
 
     differences = pd.DataFrame()
-    criteria  = [crit
-        for crit in ['Track_ID', 'Condition', 'Sample']
-        if crit in tracks.columns]
-    for _, track in tracks.groupby(criteria):
+
+    for _, track in tracks.groupby(_track_identifiers(tracks)):
         differences = differences.append(track[dimensions].diff().dropna())
         if 'Track_ID' in differences.columns:
             differences = differences.fillna(track['Track_ID'].iloc[0])
@@ -506,11 +504,7 @@ def summarize(tracks, skip_steps=4):
 
     summary = pd.DataFrame()
 
-    criteria = [crit
-        for crit in ['Condition', 'Track_ID', 'Sample']
-        if crit in tracks.columns]
-
-    for i, (_, track) in enumerate(tracks.groupby(criteria)):
+    for i, (_, track) in enumerate(tracks.groupby(_track_identifiers(tracks))):
         if 'Track_ID' in track.columns:
             summary.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
         if 'Condition' in track.columns:
@@ -591,11 +585,7 @@ def analyze_turns(tracks, skip_steps=4):
 
     turns = pd.DataFrame()
 
-    criteria = [crit
-        for crit in ['Condition', 'Track_ID', 'Sample']
-        if crit in tracks.columns]
-
-    for i, (crits, track) in enumerate(tracks.groupby(criteria)):
+    for i, (crits, track) in enumerate(tracks.groupby(_track_identifiers(tracks))):
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
         else:
