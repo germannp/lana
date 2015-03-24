@@ -18,6 +18,9 @@ def _track_identifiers(tracks):
 
 def _uniquize_tracks(tracks):
     """Cluster tracks, if not unique"""
+    if 'Time' not in tracks.columns:
+        return
+
     tracks['Orig. Index'] = tracks.index
     if not tracks.index.is_unique:
         tracks.reset_index(drop=True, inplace=True)
@@ -57,6 +60,9 @@ def _uniquize_tracks(tracks):
 
 def _split_at_skip(tracks):
     """Split track if timestep is missing in the original DataFrame"""
+    if 'Time' not in tracks.columns:
+        return
+
     if not tracks.index.is_unique:
         tracks.reset_index(drop=True, inplace=True)
 
