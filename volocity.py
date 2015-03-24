@@ -2,12 +2,13 @@
 import pandas as pd
 
 
-def read_tracks_excel(path, condition=None, sample=None, min_track_length=5):
+def read_tracks_excel(path, condition=None, sample=None, time_step=20,
+    min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path)
 
     tracks['Track_ID'] = tracks['Track ID']
-    tracks['Time'] = tracks['Timepoint']
+    tracks['Time'] = (tracks['Timepoint'] - 1)/60*time_step
     tracks['X'] = tracks['Centroid X (µm)']
     tracks['Y'] = tracks['Centroid Y (µm)']
     tracks['Z'] = tracks['Centroid Z (µm)']
@@ -30,7 +31,8 @@ def read_tracks_excel(path, condition=None, sample=None, min_track_length=5):
     return tracks.sort('Time')
 
 
-def read_tracks_txt(path, condition=None, sample=None, min_track_length=5):
+def read_tracks_txt(path, condition=None, sample=None, time_step=20,
+    min_track_length=5):
     """Reads a Pandas DataFrame from Volocity files"""
     with open(path, 'r') as volocity_file:
         lines = volocity_file.readlines()
@@ -54,7 +56,7 @@ def read_tracks_txt(path, condition=None, sample=None, min_track_length=5):
         words = line.split('\t')
         try:
             tracks.loc[i, 'Track_ID'] = float(words[index_track_id])
-            tracks.loc[i, 'Time'] = float(words[index_time])
+            tracks.loc[i, 'Time'] = (float(words[index_time]) - 1)/60*time_step
             tracks.loc[i, 'X'] = float(words[index_X])
             tracks.loc[i, 'Y'] = float(words[index_X+1])
             tracks.loc[i, 'Z'] = float(words[index_X+2])
@@ -89,6 +91,7 @@ if __name__ == '__main__':
 
     tracks = read_tracks_excel('Examples/Volocity_example.xlsx')
     print(tracks[tracks.Track_ID == 4474])
+    # print(tracks)
     # tracks = motility.analyze(tracks)
     # motility.plot(tracks)
     # motility.joint_plot(tracks)

@@ -2,11 +2,13 @@
 import pandas as pd
 
 
-def read_tracks(path, condition=None, sample=None, min_track_length=5):
+def read_tracks(path, condition=None, sample=None, time_step=20,
+    min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
 
     tracks['Track_ID'] = tracks['TrackID']
+    tracks['Time'] = (tracks['Time'] - 1)/60*time_step
     tracks['X'] = tracks['Position X']
     tracks['Y'] = tracks['Position Y']
     tracks['Z'] = tracks['Position Z']
@@ -34,10 +36,12 @@ if __name__ == '__main__':
     import motility
 
     tracks = read_tracks('Examples/Imaris_example.xls', sample='Movie 1')
-    tracks = motility.analyze(tracks)
+    motility.plot_dr(tracks)
+
+    # tracks = motility.analyze(tracks)
     # motility.joint_plot(tracks)
     # motility.plot(tracks)
-    motility.lag_plot(tracks)
+    # motility.lag_plot(tracks)
     # print(tracks[tracks['Track_ID'] == 1000000093])
 
     # summary = motility.summarize(tracks)

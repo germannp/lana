@@ -165,9 +165,7 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
 
     def analyze_track(track):
         """Calculate velocity and angles for a single track"""
-        track['Track Time'] = track['Time'] - track['Time'].iloc[0]
-        if track['Track Time'].diff().unique().__len__() > 2:
-            print('  Warning: Track with non-uniform timesteps.')
+        track['Track Time'] = np.round(track['Time'] - track['Time'].iloc[0], 4)
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
@@ -244,7 +242,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
     if tracks[condition].unique().__len__() == 1:
         plot_minmax = True
 
-    sns.set(style="white", palette=sns.color_palette(
+    sns.set(style="ticks", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
     if 'Rolling Angle' in tracks.columns:
@@ -262,8 +260,8 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
 
     axes[1].set_title('Velocities')
     axes[1].set_xlim(0, np.percentile(tracks['Velocity'].dropna(), 99.5))
-    axes[1].set_xticks([0])
-    axes[1].set_xticklabels([r'$0$'])
+    axes[1].set_xticks([2])
+    axes[1].set_xticklabels([r'$2\mu$m$/$min'])
 
     axes[2].set_title('Turning Angles')
     axes[2].set_xlim([0,np.pi])
@@ -500,8 +498,8 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 
 
 def summarize(tracks, skip_steps=4):
-    """\nSummarize track statistics, e.g. mean velocity per track"""
-    print('Summarizing track statistics')
+    """Summarize track statistics, e.g. mean velocity per track"""
+    print('\nSummarizing track statistics')
     if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
         print('  Error: data not found, tracks must be analyzed first.')
         return
@@ -530,8 +528,9 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
 
+        # ratio of v < 2 um/min
         summary.loc[i, 'Arrest Coefficient'] = \
-            track[track['Velocity'] < 2].__len__()/summary.loc[i, 'Track Duration']
+            track[track['Velocity'] < 2].__len__()/track['Velocity'].dropna().__len__()
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
@@ -560,7 +559,8 @@ def summarize(tracks, skip_steps=4):
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
-            cond_summary.__len__(), cond, cond_summary['Track Duration'].sum()))
+            cond_summary.__len__(), cond,
+            tracks[tracks['Condition'] == cond].__len__()))
 
     return summary
 
@@ -634,7 +634,11 @@ if __name__ == "__main__":
     import remix
 
 
-    # # Single Track
+    """Uniquize & split single track"""
+    # TODO
+
+
+    """Find steepest turn in single track"""
     # track = pd.DataFrame({
     #     'Velocity':np.ones(7),
     #     'Turning Angle': np.sort(np.random.rand(7))/100,
@@ -650,7 +654,7 @@ if __name__ == "__main__":
     # plot_tracks(tracks, summary)
 
 
-    # Several tracks
+    """Analyze several tracks"""
     tracks = remix.silly_tracks()
     # animate_tracks(tracks)
     # plot_dr(tracks)
@@ -661,6 +665,5 @@ if __name__ == "__main__":
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    print(summary)
-    plot_summary(summary)
+    # plot_summary(summary)
     plot_tracks(tracks, summary)
