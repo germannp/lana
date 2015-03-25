@@ -174,7 +174,7 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def analyze(tracks, uniform_timesteps=True, min_length=5):
+def analyze(tracks, uniform_timesteps=True, min_length=6):
     """Return DataFrame with velocity, turning angle & rolling angle"""
 
 
@@ -225,14 +225,16 @@ def analyze(tracks, uniform_timesteps=True, min_length=5):
     if 'Time' not in tracks.columns:
         print('  Warning: no time given, using index!')
         tracks['Time'] = tracks.index
+        if not tracks.index.is_unique: # For inplace analysis!
+            tracks.reset_index(drop=True, inplace=True)
     else:
         _uniquize_tracks(tracks)
         if uniform_timesteps:
             _split_at_skip(tracks)
 
-    tracks = tracks.groupby(criteria).apply(
-        lambda x: x if x.__len__() > min_length else None)
-    tracks = tracks.reset_index(drop=True) # Clean up nested index from removal
+    for _, track in tracks.groupby(_track_identifiers(tracks)):
+        if track.__len__() < min_length:
+            tracks.drop(track.index, inplace=True)
 
     return tracks.groupby(criteria).apply(analyze_track)
 
@@ -660,7 +662,9 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     # plot_dr(tracks)
 
+    print(tracks)
     tracks = analyze(tracks)
+    print(tracks)
     # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
