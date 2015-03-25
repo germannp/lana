@@ -269,14 +269,14 @@ if __name__ == '__main__':
     ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
     rebuilt = silly_steps(ctrl)
     motility.plot_tracks(ctrl.append(rebuilt))
-    motility.analyze(rebuilt)
+    motility._analyze(rebuilt)
     print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
     """Remix Ctrl"""
     # remix = remix(ctrl, n_tracks=1, n_steps=5)
-    # motility.analyze(remix)
+    # motility._analyze(remix)
     # print(remix[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
@@ -292,7 +292,6 @@ if __name__ == '__main__':
     # tracks = tracks.append(remix_dr)
     # tracks = tracks.append(remix)
     # tracks = tracks.append(remix_lags).reset_index()
-    # motility.analyze(tracks)
     # motility.plot(tracks)
     # motility.lag_plot(tracks, null_model=False)
 
@@ -315,7 +314,6 @@ if __name__ == '__main__':
     # long_remix['Condition'] = 'Long Tracks Remixed'
     #
     # tracks = tracks.append(short_remix).append(long_remix)
-    # motility.analyze(tracks.reset_index())
     # motility.plot(tracks)
 
 

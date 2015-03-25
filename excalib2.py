@@ -157,15 +157,12 @@ def sweep(simulation, parameters, all_combinations=True, dry_run=False,
 
         run_tracks['Condition'] = ', '.join(labels)
         if save_runs:
-            motility.analyze(run_tracks)
             motility.plot(run_tracks, save=True, palette=palette)
 
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
-    if not save_runs:
-        motility.analyze(tracks)
     motility.plot(tracks, save=save, palette=palette)
 
     return tracks
@@ -186,14 +183,11 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
                 run_tracks = command.read_tracks(ndim)
         run_tracks['Condition'] = cmd
         if save_runs:
-            motility.analyze(run_tracks)
             motility.plot(run_tracks, save=True)
         tracks = tracks.append(run_tracks)
         end = timeit.default_timer()
         print('Finished in {}'.format(datetime.timedelta(seconds=end-start)))
 
-    if not save_runs:
-        motility.analyze(tracks)
     motility.plot(tracks, save=save)
 
     return tracks
@@ -202,7 +196,6 @@ def versus(commands, dry_run=False, save=False, save_runs=False, ndim=2):
 if __name__ == "__main__":
     """Illustrates loading and analyzing file"""
     # tracks = read_tracks('Examples/positions.txt')
-    # motility.analyze(tracks)
     # motility.plot(tracks)
 
     """Illustrates dry run parameter sweep"""

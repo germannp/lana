@@ -86,6 +86,66 @@ def _split_at_skip(tracks):
                 .format(criterium))
 
 
+def _analyze(tracks, uniform_timesteps=True, min_length=6):
+    """Calculate velocity, turning angle & rolling angle"""
+    if 'Displacement' in tracks.columns and tracks['Displacement'].isnull().sum() == 0:
+        return
+    else:
+        print('\nAnalyzing tracks')
+
+    if 'Time' not in tracks.columns:
+        print('  Warning: no time given, using index!')
+        tracks['Time'] = tracks.index
+        if not tracks.index.is_unique: # For inplace analysis!
+            tracks.reset_index(drop=True, inplace=True)
+    else:
+        _uniquize_tracks(tracks)
+        if uniform_timesteps:
+            _split_at_skip(tracks)
+
+    for _, track in tracks.groupby(_track_identifiers(tracks)):
+        if track.__len__() < min_length:
+            tracks.drop(track.index, inplace=True)
+        else:
+            tracks.loc[track.index, 'Track Time'] = \
+                np.round(track['Time'] - track['Time'].iloc[0], 4)
+
+            if 'Z' in track.columns:
+                positions = track[['X', 'Y', 'Z']]
+            else:
+                positions = track[['X', 'Y']]
+
+            tracks.loc[track.index, 'Displacement'] = \
+                np.linalg.norm(positions - positions.iloc[0], axis=1)
+
+            dr = positions.diff()
+            dr_norms = np.linalg.norm(dr, axis=1)
+
+            tracks.loc[track.index, 'Velocity'] = dr_norms/track['Time'].diff()
+
+            dot_products = np.sum(dr.shift(-1)*dr, axis=1)
+            norm_products = dr_norms[1:]*dr_norms[:-1]
+
+            tracks.loc[track.index, 'Turning Angle'] = \
+                np.arccos(dot_products[:-1]/norm_products)
+
+            if 'Z' in track.columns:
+                tracks.loc[track.index, 'Rolling Angle'] = np.nan
+
+                n_vectors = np.cross(dr, dr.shift())
+                n_norms = np.linalg.norm(n_vectors, axis=1)
+                dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
+                norm_products = n_norms[1:]*n_norms[:-1]
+                angles = np.arccos(dot_products/norm_products)
+                cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+                cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
+                    axis=1)
+                cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+                signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
+
+                tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
+
+
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalize axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
@@ -174,69 +234,10 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def analyze(tracks, uniform_timesteps=True, min_length=6):
-    """Calculate velocity, turning angle & rolling angle"""
-    print('\nAnalyzing tracks')
-
-    if 'Time' not in tracks.columns:
-        print('  Warning: no time given, using index!')
-        tracks['Time'] = tracks.index
-        if not tracks.index.is_unique: # For inplace analysis!
-            tracks.reset_index(drop=True, inplace=True)
-    else:
-        _uniquize_tracks(tracks)
-        if uniform_timesteps:
-            _split_at_skip(tracks)
-
-    for _, track in tracks.groupby(_track_identifiers(tracks)):
-        if track.__len__() < min_length:
-            tracks.drop(track.index, inplace=True)
-        else:
-            tracks.loc[track.index, 'Track Time'] = \
-                np.round(track['Time'] - track['Time'].iloc[0], 4)
-
-            if 'Z' in track.columns:
-                positions = track[['X', 'Y', 'Z']]
-            else:
-                positions = track[['X', 'Y']]
-
-            tracks.loc[track.index, 'Displacement'] = \
-                np.linalg.norm(positions - positions.iloc[0], axis=1)
-
-            dr = positions.diff()
-            dr_norms = np.linalg.norm(dr, axis=1)
-
-            tracks.loc[track.index, 'Velocity'] = dr_norms/track['Time'].diff()
-
-            dot_products = np.sum(dr.shift(-1)*dr, axis=1)
-            norm_products = dr_norms[1:]*dr_norms[:-1]
-
-            tracks.loc[track.index, 'Turning Angle'] = \
-                np.arccos(dot_products[:-1]/norm_products)
-
-            if 'Z' in track.columns:
-                tracks.loc[track.index, 'Rolling Angle'] = np.nan
-
-                n_vectors = np.cross(dr, dr.shift())
-                n_norms = np.linalg.norm(n_vectors, axis=1)
-                dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
-                norm_products = n_norms[1:]*n_norms[:-1]
-                angles = np.arccos(dot_products/norm_products)
-                cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-                cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
-                    axis=1)
-                cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-                signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
-
-                tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
-
-
 def plot(tracks, save=False, palette='deep', plot_minmax=False,
     condition='Condition'):
     """Plot aspects of motility for different conditions"""
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
-        return
+    _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -378,9 +379,7 @@ def plot_dr(tracks):
 def joint_plot(tracks, condition='Condition', save=False,
     palette='deep', skip_color=0):
     """Plot the joint distribution of the velocities and turning angles."""
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
-        return
+    _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -404,9 +403,7 @@ def joint_plot(tracks, condition='Condition', save=False,
 def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
     save=False, palette='deep', skip_color=0):
     """Plot tracks in velocities-turning-angles-space"""
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
-        return
+    _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -441,9 +438,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, null_model=True):
     """Lag plot for velocities and turning angles"""
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
-        return
+    _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -502,10 +497,9 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 
 def summarize(tracks, skip_steps=4):
     """Summarize track statistics, e.g. mean velocity per track"""
+    _analyze(tracks)
+
     print('\nSummarizing track statistics')
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('  Error: data not found, tracks must be analyzed first.')
-        return
 
     summary = pd.DataFrame()
 
@@ -584,9 +578,7 @@ def plot_summary(summary, save=False, condition='Condition'):
 
 def analyze_turns(tracks, skip_steps=4):
     """Analyze turns between t and t+skip_steps in cell tracks"""
-    if not set(['Velocity', 'Turning Angle']).issubset(tracks.columns):
-        print('Error: data not found, tracks must be analyzed first.')
-        return
+    _analyze(tracks)
 
     turns = pd.DataFrame()
 
@@ -644,7 +636,6 @@ if __name__ == "__main__":
     # tracks = remix.silly_steps(track)
     # tracks['Track_ID'] = 0
     # tracks['Time'] = np.arange(8)
-    # tracks = analyze(tracks)
     # summary = summarize(tracks, skip_steps=1)
     # plot_tracks(tracks, summary)
 
@@ -654,7 +645,6 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     # plot_dr(tracks)
 
-    analyze(tracks)
     # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)

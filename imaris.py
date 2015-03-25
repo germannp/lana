@@ -38,7 +38,6 @@ if __name__ == '__main__':
     tracks = read_tracks('Examples/Imaris_example.xls', sample='Movie 1')
     motility.plot_dr(tracks)
 
-    # motility.analyze(tracks)
     # motility.joint_plot(tracks)
     # motility.plot(tracks)
     # motility.lag_plot(tracks)
