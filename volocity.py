@@ -84,7 +84,7 @@ if __name__ == '__main__':
     import motility
 
     # tracks = read_tracks_txt('Examples/Volocity_example.txt', sample='Movie 1')
-    # tracks = motility.analyze(tracks)
+    # motility.analyze(tracks)
     # motility.plot(tracks)
     # motility.joint_plot(tracks)
     # motility.lag_plot(tracks)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     tracks = read_tracks_excel('Examples/Volocity_example.xlsx')
     print(tracks[tracks.Track_ID == 4474])
     # print(tracks)
-    # tracks = motility.analyze(tracks)
+    # motility.analyze(tracks)
     # motility.plot(tracks)
     # motility.joint_plot(tracks)
     # motility.lag_plot(tracks)

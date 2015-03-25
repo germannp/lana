@@ -175,52 +175,8 @@ def animate_tracks(tracks, palette='deep'):
 
 
 def analyze(tracks, uniform_timesteps=True, min_length=6):
-    """Return DataFrame with velocity, turning angle & rolling angle"""
-
-
-    def analyze_track(track):
-        """Calculate velocity and angles for a single track"""
-        track['Track Time'] = np.round(track['Time'] - track['Time'].iloc[0], 4)
-
-        if 'Z' in track.columns:
-            positions = track[['X', 'Y', 'Z']]
-        else:
-            positions = track[['X', 'Y']]
-
-        track['Displacement'] = np.linalg.norm(positions - positions.iloc[0], axis=1)
-
-        dr = positions.diff()
-        dr_norms = np.linalg.norm(dr, axis=1)
-
-        track['Velocity'] = dr_norms/track['Time'].diff()
-
-        dot_products = np.sum(dr.shift(-1)*dr, axis=1)
-        norm_products = dr_norms[1:]*dr_norms[:-1]
-
-        track['Turning Angle'] = np.arccos(dot_products[:-1]/norm_products)
-
-        if 'Z' in track.columns:
-            track['Rolling Angle'] = np.nan
-
-            n_vectors = np.cross(dr, dr.shift())
-            n_norms = np.linalg.norm(n_vectors, axis=1)
-            dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
-            norm_products = n_norms[1:]*n_norms[:-1]
-            angles = np.arccos(dot_products/norm_products)
-            cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-            cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1], axis=1)
-            cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-            signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
-
-            track['Rolling Angle'].iloc[2:-1] = signs*angles[2:]
-
-        return track
-
-
+    """Calculate velocity, turning angle & rolling angle"""
     print('\nAnalyzing tracks')
-
-    criteria = _track_identifiers(tracks)
-    tracks[criteria] = tracks[criteria].fillna('Default')
 
     if 'Time' not in tracks.columns:
         print('  Warning: no time given, using index!')
@@ -235,8 +191,44 @@ def analyze(tracks, uniform_timesteps=True, min_length=6):
     for _, track in tracks.groupby(_track_identifiers(tracks)):
         if track.__len__() < min_length:
             tracks.drop(track.index, inplace=True)
+        else:
+            tracks.loc[track.index, 'Track Time'] = \
+                np.round(track['Time'] - track['Time'].iloc[0], 4)
 
-    return tracks.groupby(criteria).apply(analyze_track)
+            if 'Z' in track.columns:
+                positions = track[['X', 'Y', 'Z']]
+            else:
+                positions = track[['X', 'Y']]
+
+            tracks.loc[track.index, 'Displacement'] = \
+                np.linalg.norm(positions - positions.iloc[0], axis=1)
+
+            dr = positions.diff()
+            dr_norms = np.linalg.norm(dr, axis=1)
+
+            tracks.loc[track.index, 'Velocity'] = dr_norms/track['Time'].diff()
+
+            dot_products = np.sum(dr.shift(-1)*dr, axis=1)
+            norm_products = dr_norms[1:]*dr_norms[:-1]
+
+            tracks.loc[track.index, 'Turning Angle'] = \
+                np.arccos(dot_products[:-1]/norm_products)
+
+            if 'Z' in track.columns:
+                tracks.loc[track.index, 'Rolling Angle'] = np.nan
+
+                n_vectors = np.cross(dr, dr.shift())
+                n_norms = np.linalg.norm(n_vectors, axis=1)
+                dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
+                norm_products = n_norms[1:]*n_norms[:-1]
+                angles = np.arccos(dot_products/norm_products)
+                cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+                cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
+                    axis=1)
+                cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+                signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
+
+                tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
 
 
 def plot(tracks, save=False, palette='deep', plot_minmax=False,
@@ -662,9 +654,7 @@ if __name__ == "__main__":
     # animate_tracks(tracks)
     # plot_dr(tracks)
 
-    print(tracks)
-    tracks = analyze(tracks)
-    print(tracks)
+    analyze(tracks)
     # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
