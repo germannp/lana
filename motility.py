@@ -12,8 +12,9 @@ from sklearn.cluster import AgglomerativeClustering
 
 def _track_identifiers(tracks):
     """List criteria that identify a track"""
-    return [crit for crit in ['Condition', 'Sample', 'Track_ID', 'Source']
-        if crit in tracks.dropna(axis=1).columns]
+    return [identifier
+        for identifier in ['Condition', 'Sample', 'Track_ID', 'Source']
+        if identifier in tracks.dropna(axis=1).columns]
 
 
 def _uniquize_tracks(tracks):
@@ -30,7 +31,7 @@ def _uniquize_tracks(tracks):
     else:
         max_track_id = 0
 
-    for crit, track in tracks.groupby(_track_identifiers(tracks)):
+    for identifiers, track in tracks.groupby(_track_identifiers(tracks)):
         if sum(track['Time'].duplicated()) != 0:
             n_clusters = track['Time'].value_counts().max()
             index = track.index
@@ -51,11 +52,11 @@ def _uniquize_tracks(tracks):
                 max_track_id += n_clusters
                 pd.set_option('display.max_rows', 1000)
                 print('  Warning: Split non-unique track {} by clustering.'
-                    .format(crit))
+                    .format(identifiers))
             else:
                 tracks.drop(index, inplace=True)
                 print('  Warning: Delete non-unique track {}.'
-                    .format(crit))
+                    .format(identifiers))
 
 
 def _split_at_skip(tracks):
@@ -71,7 +72,7 @@ def _split_at_skip(tracks):
     else:
         max_track_id = 0
 
-    for crit, track in tracks.groupby(_track_identifiers(tracks)):
+    for criterium, track in tracks.groupby(_track_identifiers(tracks)):
         timesteps = track['Time'].diff()
         skips = np.round((timesteps - timesteps.min())/timesteps.min())
         if skips.max() > 0:
@@ -82,7 +83,7 @@ def _split_at_skip(tracks):
             tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
             max_track_id += max(skip_sum) + 1
             print('  Warning: Split track {} with non-uniform timesteps.'
-                .format(crit))
+                .format(criterium))
 
 
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
