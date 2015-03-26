@@ -9,6 +9,8 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
+from utils import equalize_axis3d
+
 
 def _track_identifiers(tracks):
     """List criteria that identify a track"""
@@ -146,27 +148,6 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
 
 
-def equalize_axis3d(source_ax, zoom=1, target_ax=None):
-    """Equalize axis for a mpl3d plot; after
-    http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""
-    if target_ax == None:
-        target_ax = source_ax
-    elif zoom != 1:
-        print('Zoom ignored when target axis is provided.')
-        zoom = 1
-    source_extents = np.array([getattr(source_ax, 'get_{}lim'.format(dim))()
-        for dim in 'xyz'])
-    target_extents = np.array([getattr(target_ax, 'get_{}lim'.format(dim))()
-        for dim in 'xyz'])
-    spread = target_extents[:,1] - target_extents[:,0]
-    max_spread = max(abs(spread))
-    r = max_spread/2
-    centers = np.mean(source_extents, axis=1)
-    for center, dim in zip(centers, 'xyz'):
-        getattr(source_ax, 'set_{}lim'.format(dim))(center-r/zoom, center+r/zoom)
-    source_ax.set_aspect('equal')
-
-
 def plot_tracks(tracks, summary=None, condition='Condition'):
     """Plot tracks"""
     if type(summary) == pd.core.frame.DataFrame:
@@ -185,6 +166,7 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
+    # TODO: Plot max. number of tracks, steepest turns if summary is provided.
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(_track_identifiers(cond_tracks)):
@@ -245,7 +227,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
     if tracks[condition].unique().__len__() == 1:
         plot_minmax = True
 
-    sns.set(style="ticks", palette=sns.color_palette(
+    sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
     if 'Rolling Angle' in tracks.columns:
@@ -263,8 +245,8 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
 
     axes[1].set_title('Velocities')
     axes[1].set_xlim(0, np.percentile(tracks['Velocity'].dropna(), 99.5))
-    axes[1].set_xticks([2])
-    axes[1].set_xticklabels([r'$2\mu$m$/$min'])
+    axes[1].set_xticks([0])
+    axes[1].set_xticklabels(['0'])
 
     axes[2].set_title('Turning Angles')
     axes[2].set_xlim([0,np.pi])
@@ -295,11 +277,11 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
                 minima['Displacement'], maxima['Displacement'],
                 alpha=.2, color=color)
 
-        # Plot velocities
+        # Plot velocities TODO: estimate variation
         sns.kdeplot(cond_tracks['Velocity'].dropna(),
             shade=True, ax=axes[1], gridsize=500, label=cond)
 
-        # Plot turning angles
+        # Plot turning angles TODO: estimate variation
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
         if 'Z' in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
@@ -310,7 +292,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
             axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
         sns.kdeplot(turning_angles, shade=True, ax=axes[2])
 
-        # Plot Rolling Angles
+        # Plot Rolling Angles TODO: estimate variation
         if 'Rolling Angle' in tracks.columns:
             rolling_angles = cond_tracks['Rolling Angle'].dropna().as_matrix()
             rolling_angles = np.concatenate(( # Mirror at boundaries.
@@ -327,7 +309,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
         plt.show()
 
 
-def plot_dr(tracks):
+def plot_dr(tracks, save=False, condition='Condition'):
     """Plot the differences in X, Y (and Z) to show biases"""
     _uniquize_tracks(tracks)
     _split_at_skip(tracks)
@@ -373,7 +355,12 @@ def plot_dr(tracks):
             axes[2].scatter(track[dim], track[dim].shift(), facecolors=color)
 
     plt.tight_layout()
-    plt.show()
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in tracks[condition].unique()]
+        plt.savefig('dr_' + '-'.join(conditions) + '.png')
+    else:
+        plt.show()
 
 
 def joint_plot(tracks, condition='Condition', save=False,
@@ -601,6 +588,7 @@ def analyze_turns(tracks, skip_steps=4):
 
         angles = np.arccos(dot_products/norm_products[1:])
 
+        # TODO: Calculate distance instead of displacement
         displacements = [np.linalg.norm(
             positions.values[i] - positions.values[i+skip_steps+1])
             for i in range(positions.shape[0] - 1 - skip_steps)]
@@ -622,7 +610,7 @@ if __name__ == "__main__":
 
 
     """Uniquize & split single track"""
-    # TODO
+    # TODO: Test _uniquize & _split_at_skip
 
 
     """Find steepest turn in single track"""
