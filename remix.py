@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def silly_steps(track_data=None, n_steps=25):
+def silly_steps(track_data=None, n_steps=50):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
     if type(track_data) != pd.core.frame.DataFrame:
         # velocities = np.cumsum(np.ones(n_steps))
@@ -60,8 +60,8 @@ def silly_steps(track_data=None, n_steps=25):
         'Z': -r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
 
 
-def silly_tracks(ntracks=25):
-    """Generates a DataFrame with random tracks"""
+def silly_tracks(ntracks=100):
+    """Generate a DataFrame with random tracks"""
     tracks = pd.DataFrame()
     for track_id in range(ntracks):
         track = silly_steps()

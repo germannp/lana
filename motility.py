@@ -62,7 +62,7 @@ def _uniquize_tracks(tracks):
 
 
 def _split_at_skip(tracks):
-    """Split track if timestep is missing in the original DataFrame"""
+    """Split tracks if timestep is missing in the original DataFrame"""
     if 'Time' not in tracks.columns:
         return
 
@@ -148,8 +148,13 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
 
 
-def plot_tracks(tracks, summary=None, condition='Condition'):
+def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
     """Plot tracks"""
+    # TODO: Plot steepest turns if summary is provided.
+    if tracks['Track_ID'].unique().__len__() > n_tracks:
+        choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
+        tracks = tracks[tracks['Track_ID'].isin(choice)]
+
     if type(summary) == pd.core.frame.DataFrame:
         alpha = 0.33
         skip_steps = int(next(word
@@ -166,7 +171,6 @@ def plot_tracks(tracks, summary=None, condition='Condition'):
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
-    # TODO: Plot max. number of tracks, steepest turns if summary is provided.
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(_track_identifiers(cond_tracks)):
