@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def silly_steps(track_data=None, n_steps=50):
+def silly_steps(track_data=None, n_steps=60):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
     if type(track_data) != pd.core.frame.DataFrame:
         # velocities = np.cumsum(np.ones(n_steps))
