@@ -11,10 +11,11 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def by_distance(Tcell_tracks, n_Tcells=10, n_DCs=1, n_iter=10, ln_volume=0.125,
+def by_distance(Tcell_tracks, n_Tcells=10, n_DCs=2, n_iter=10, ln_volume=0.125,
     contact_radius=10):
     """Identify contacts by distance"""
     contacts = pd.DataFrame()
+    max_index = 0
     for n in range(n_iter):
         DCs = pd.DataFrame({'X': [10, -10], 'Y': [10, -10], 'Z': [10, -10]})
         if n_Tcells < Tcell_tracks['Track_ID'].unique().__len__():
@@ -29,18 +30,33 @@ def by_distance(Tcell_tracks, n_Tcells=10, n_DCs=1, n_iter=10, ln_volume=0.125,
                     DCs[['X','Y','Z']].loc[dc] - position[['X','Y','Z']])
                 if distance < contact_radius:
                     free_Tcells.remove(tcell)
-            contacts.loc[time, 'Run '+str(n)] = n_Tcells - free_Tcells.__len__()
+            contacts.loc[max_index, 'Time'] = time
+            contacts.loc[max_index, 'Run'] = n
+            contacts.loc[max_index, 'Contacts'] = n_Tcells-free_Tcells.__len__()
+            max_index += 1
 
+    contacts['Parameters'] = '{} T cells, {} DCs'.format(n_Tcells, n_DCs)
+
+    return contacts
+
+
+def plot_over_time(contacts):
+    """Plot contacts over time"""
     sns.set(style="white")
     plt.xlabel('Time [h]')
     plt.ylabel('# of Contacts')
-    plt.plot(contacts.index/60, contacts.median(axis=1))
-    plt.fill_between(contacts.index/60, contacts.min(axis=1), contacts.max(axis=1), alpha=0.2)
-    plt.show()
 
+    for label, _contacts in contacts.groupby('Parameters'):
+        plt.plot(contacts.groupby('Time').median()['Contacts'], label=label)
+        plt.fill_between(contacts['Time'].unique(),
+            contacts.groupby('Time').min()['Contacts'],
+            contacts.groupby('Time').max()['Contacts'], alpha=0.2)
+
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
     from remix import silly_tracks
 
-    by_distance(silly_tracks())
+    plot_over_time(by_distance(silly_tracks()))
