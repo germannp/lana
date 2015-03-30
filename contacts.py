@@ -6,15 +6,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.spatial as spatial
-import mpl_toolkits.mplot3d.axes3d as p3
-import matplotlib.animation as animation
-from matplotlib.collections import LineCollection
-from mpl_toolkits.mplot3d import Axes3D
-
-from utils import equalize_axis3d
 
 
-def by_distance(Tcell_tracks, n_Tcells=10, n_DCs=10, n_iter=10,
+def by_distance(tracks, n_Tcells=10, n_DCs=10, n_iter=10,
     ln_volume=1000, contact_radius=10):
     """Identify contacts by distance"""
     contacts = pd.DataFrame()
@@ -29,24 +23,27 @@ def by_distance(Tcell_tracks, n_Tcells=10, n_DCs=10, n_iter=10,
             'Z': r*np.cos(phi)})
         DC_tree = spatial.cKDTree(DCs)
 
-        if n_Tcells < Tcell_tracks['Track_ID'].unique().__len__():
-            T_cells = Tcell_tracks[Tcell_tracks['Track_ID'].isin(
-                np.random.choice(Tcell_tracks['Track_ID'].unique(), n_Tcells,
+        if n_Tcells < tracks['Track_ID'].unique().__len__():
+            Tcell_tracks = tracks[tracks['Track_ID'].isin(
+                np.random.choice(tracks['Track_ID'].unique(), n_Tcells,
                 replace=False))]
+        else:
+            n_Tcells = ['Track_ID'].unique().__len__()
+            Tcell_tracks = tracks
 
-        free_Tcells = list(T_cells['Track_ID'].unique())
-        for time, T_cell_positions in T_cells.sort('Time').groupby('Time'):
+        free_Tcells = list(Tcell_tracks['Track_ID'].unique())
+        for time, positions in Tcell_tracks.sort('Time').groupby('Time'):
             if free_Tcells != []:
-                T_cell_tree = spatial.cKDTree(
-                    T_cell_positions[T_cell_positions['Track_ID'].isin(free_Tcells)]
+                Tcell_tree = spatial.cKDTree(
+                    positions[positions['Track_ID'].isin(free_Tcells)]
                     [['X', 'Y', 'Z']])
                 current_contacts = DC_tree.query_ball_tree(
-                    T_cell_tree, contact_radius)
-                T_cells_in_contact = set([T_cell
+                    Tcell_tree, contact_radius)
+                Tcells_in_contact = set([Tcell
                 for CD_list in current_contacts
-                for T_cell in CD_list])
-                for T_cell in sorted(T_cells_in_contact, reverse=True):
-                    del free_Tcells[T_cell]
+                for Tcell in CD_list])
+                for Tcell in sorted(Tcells_in_contact, reverse=True):
+                    del free_Tcells[Tcell]
             contacts.loc[max_index, 'Time'] = time
             contacts.loc[max_index, 'Run'] = n
             contacts.loc[max_index, 'Contacts'] = n_Tcells-free_Tcells.__len__()
@@ -69,12 +66,11 @@ def plot_over_time(contacts):
             contacts.groupby('Time').min()['Contacts'],
             contacts.groupby('Time').max()['Contacts'], alpha=0.2)
 
-    plt.legend()
+    plt.legend(loc='upper left')
     plt.show()
 
 
 if __name__ == '__main__':
     from remix import silly_tracks
 
-    # by_distance(silly_tracks())
     plot_over_time(by_distance(silly_tracks()))
