@@ -58,8 +58,10 @@ def silly_steps(track_data=None, n_steps=60):
             dot_prod = np.sum(n_vec*r[j,:])
             r[j,:] = r[j,:]*cost + cross_prod*sint + n_vec*dot_prod*(1 - cost)
 
-    return pd.DataFrame({'Time': np.arange(n_steps+1), 'X': -r[:,0], 'Y': -r[:,1],
-        'Z': -r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
+    r = r[0, :] - r
+
+    return pd.DataFrame({'Time': np.arange(n_steps+1), 'X': r[:,0], 'Y': r[:,1],
+        'Z': r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
 
 
 def silly_tracks(ntracks=100):
@@ -269,7 +271,7 @@ if __name__ == '__main__':
 
 
     """Rebuild a single track"""
-    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[0]
     # rebuilt = silly_steps(ctrl)
     # motility.plot_tracks(ctrl.append(rebuilt))
     # motility._analyze(rebuilt)
@@ -282,7 +284,6 @@ if __name__ == '__main__':
     # motility._analyze(remix)
     # print(remix[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-
 
     """Sample dr"""
     # sample_dr(tracks)
@@ -318,7 +319,6 @@ if __name__ == '__main__':
 
     tracks = tracks.append(short_remix).append(long_remix)
     motility.plot(tracks)
-
 
     """Create long tracks"""
     # import datetime
