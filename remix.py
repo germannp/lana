@@ -2,6 +2,8 @@
 import numpy as np
 import pandas as pd
 
+from utils import track_identifiers
+
 
 def silly_steps(track_data=None, n_steps=60):
     """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
@@ -174,14 +176,15 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
 
 def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     """Return new tracks preserving mean sqrd. velocity & turning angle lags"""
+
+
     def mean_lags(tracks):
-        """Calculate mean lag in velocity of track(s)"""
-        criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
-            if crit in tracks.columns]
+        """Calculate mean lag in velocity and turning angle of track(s)"""
         means = []
-        for _, track in tracks.groupby(criteria):
+        for _, track in tracks.groupby(track_identifiers(tracks)):
             means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
         return np.mean(means, axis=0)
+
 
     print('Generating  {} steps from {} steps.\n'.format(
         n_tracks*n_steps, tracks.dropna().__len__()))
@@ -266,12 +269,12 @@ if __name__ == '__main__':
 
 
     """Rebuild a single track"""
-    ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
-    rebuilt = silly_steps(ctrl)
-    motility.plot_tracks(ctrl.append(rebuilt))
-    motility._analyze(rebuilt)
-    print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[-1]
+    # rebuilt = silly_steps(ctrl)
+    # motility.plot_tracks(ctrl.append(rebuilt))
+    # motility._analyze(rebuilt)
+    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
 
     """Remix Ctrl"""
@@ -282,7 +285,7 @@ if __name__ == '__main__':
 
 
     """Sample dr"""
-    sample_dr(tracks)
+    # sample_dr(tracks)
 
 
     """Compare Algorithms"""
@@ -297,26 +300,33 @@ if __name__ == '__main__':
 
 
     """Remix from short vs from long tracks"""
-    # summary = motility.summarize(tracks)
-    #
-    # # Is not prefect, at least if there are non-unique Track_IDs ...
-    # short_track_ids = [summary.ix[index]['Track_ID']
-    #     for index in summary.sort('Track Duration').index
-    #     if summary['Track Duration'].order().cumsum().ix[index]
-    #         < summary['Track Duration'].sum()/2]
-    #
-    # short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
-    #     n_tracks=25, n_steps=60)
-    # long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
-    #     n_tracks=25, n_steps=60)
-    #
-    # short_remix['Condition'] = 'Short Tracks Remixed'
-    # long_remix['Condition'] = 'Long Tracks Remixed'
-    #
-    # tracks = tracks.append(short_remix).append(long_remix)
-    # motility.plot(tracks)
+    summary = motility.summarize(tracks)
+
+    # Is not prefect, at least if there are non-unique Track_IDs ...
+    short_track_ids = [summary.ix[index]['Track_ID']
+        for index in summary.sort('Track Duration').index
+        if summary['Track Duration'].order().cumsum().ix[index]
+            < summary['Track Duration'].sum()/2]
+
+    short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
+        n_tracks=25, n_steps=60)
+    long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
+        n_tracks=25, n_steps=60)
+
+    short_remix['Condition'] = 'Short Tracks Remixed'
+    long_remix['Condition'] = 'Long Tracks Remixed'
+
+    tracks = tracks.append(short_remix).append(long_remix)
+    motility.plot(tracks)
 
 
     """Create long tracks"""
-    # remix = remix_preserving_lags(tracks, n_tracks=5, n_steps=8*60*3)
-    # remix.to_csv('long_remix.csv')
+    # import datetime
+    #
+    # long_remix = pd.DataFrame()
+    # for i in range(10):
+    #     remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=16*60*3)
+    #     remix['Track_ID'] = remix['Track_ID'] + 100*i
+    #     long_remix = long_remix.append(remix)
+    #     long_remix.to_csv('16h_remix.csv')
+    #     print(i, datetime.datetime.now())

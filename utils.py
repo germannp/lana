@@ -2,6 +2,13 @@
 import numpy as np
 
 
+def track_identifiers(tracks):
+    """List criteria that identify a track"""
+    return [identifier
+        for identifier in ['Condition', 'Sample', 'Track_ID', 'Source']
+        if identifier in tracks.dropna(axis=1).columns]
+
+
 def equalize_axis3d(source_ax, zoom=1, target_ax=None):
     """Equalize axis for a mpl3d plot; after
     http://stackoverflow.com/questions/8130823/set-matplotlib-3d-plot-aspect-ratio"""

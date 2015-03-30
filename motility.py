@@ -10,13 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
 from utils import equalize_axis3d
-
-
-def _track_identifiers(tracks):
-    """List criteria that identify a track"""
-    return [identifier
-        for identifier in ['Condition', 'Sample', 'Track_ID', 'Source']
-        if identifier in tracks.dropna(axis=1).columns]
+from utils import track_identifiers
 
 
 def _uniquize_tracks(tracks):
@@ -33,7 +27,7 @@ def _uniquize_tracks(tracks):
     else:
         max_track_id = 0
 
-    for identifiers, track in tracks.groupby(_track_identifiers(tracks)):
+    for identifiers, track in tracks.groupby(track_identifiers(tracks)):
         if sum(track['Time'].duplicated()) != 0:
             n_clusters = track['Time'].value_counts().max()
             index = track.index
@@ -74,7 +68,7 @@ def _split_at_skip(tracks):
     else:
         max_track_id = 0
 
-    for criterium, track in tracks.groupby(_track_identifiers(tracks)):
+    for criterium, track in tracks.groupby(track_identifiers(tracks)):
         timesteps = track['Time'].diff()
         skips = np.round((timesteps - timesteps.min())/timesteps.min())
         if skips.max() > 0:
@@ -105,7 +99,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
         if uniform_timesteps:
             _split_at_skip(tracks)
 
-    for _, track in tracks.groupby(_track_identifiers(tracks)):
+    for _, track in tracks.groupby(track_identifiers(tracks)):
         if track.__len__() < min_length:
             tracks.drop(track.index, inplace=True)
         else:
@@ -173,7 +167,7 @@ def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
     ax = fig.add_subplot(1,1,1, projection='3d')
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette(n_colors=i+1)[-1]
-        for _, track in cond_tracks.groupby(_track_identifiers(cond_tracks)):
+        for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
                 color=color, alpha=alpha)
             if type(summary) == pd.core.frame.DataFrame:
@@ -322,7 +316,7 @@ def plot_dr(tracks, save=False, condition='Condition'):
 
     differences = pd.DataFrame()
 
-    for _, track in tracks.groupby(_track_identifiers(tracks)):
+    for _, track in tracks.groupby(track_identifiers(tracks)):
         differences = differences.append(track[dimensions].diff().dropna())
         if 'Track_ID' in differences.columns:
             differences = differences.fillna(track['Track_ID'].iloc[0])
@@ -494,7 +488,7 @@ def summarize(tracks, skip_steps=4):
 
     summary = pd.DataFrame()
 
-    for i, (_, track) in enumerate(tracks.groupby(_track_identifiers(tracks))):
+    for i, (_, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
         if 'Track_ID' in track.columns:
             summary.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
         if 'Condition' in track.columns:
@@ -536,10 +530,11 @@ def summarize(tracks, skip_steps=4):
         norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
         u_turns = np.arccos(dot_products/norm_products[1:])
 
-        summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
-            max(u_turns)
+        if summary['Track Duration'].min() > skip_steps + 2:
+            summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
+                max(u_turns)
 
-        summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time'] - 1
+            summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time']-1
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
@@ -573,7 +568,7 @@ def analyze_turns(tracks, skip_steps=4):
 
     turns = pd.DataFrame()
 
-    for i, (crits, track) in enumerate(tracks.groupby(_track_identifiers(tracks))):
+    for i, (crits, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
         else:
