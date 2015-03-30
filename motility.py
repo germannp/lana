@@ -144,7 +144,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
 
 
 def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition',
-    ln_volume=1000000):
+    ln_volume=None):
     """Plot tracks"""
     # TODO: Plot steepest turns if summary is provided.
     if tracks['Track_ID'].unique().__len__() > n_tracks:

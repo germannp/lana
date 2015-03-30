@@ -64,11 +64,11 @@ def silly_steps(track_data=None, n_steps=60):
         'Z': r[:,2], 'Source': 'Silly 3D walk', 'Condition': condition})
 
 
-def silly_tracks(ntracks=100):
+def silly_tracks(n_tracks=100, n_steps=60):
     """Generate a DataFrame with random tracks"""
     tracks = pd.DataFrame()
-    for track_id in range(ntracks):
-        track = silly_steps()
+    for track_id in range(n_tracks):
+        track = silly_steps(n_steps=n_steps)
         track['Track_ID'] = track_id
         tracks = tracks.append(track)
 

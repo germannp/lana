@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import scipy.spatial as spatial
 
 
-def by_distance(tracks, n_Tcells=10, n_DCs=10, n_iter=10,
-    ln_volume=1000, contact_radius=10):
+def by_distance(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
+    ln_volume=0.125e9, contact_radius=10):
     """Identify contacts by distance"""
     contacts = pd.DataFrame()
     max_index = 0
@@ -71,6 +71,9 @@ def plot_over_time(contacts):
 
 
 if __name__ == '__main__':
+    import motility
     from remix import silly_tracks
 
-    plot_over_time(by_distance(silly_tracks()))
+    tracks = silly_tracks(25, 100)
+    motility.plot_tracks(tracks, ln_volume=5e6)
+    plot_over_time(by_distance(tracks, ln_volume=5e6))
