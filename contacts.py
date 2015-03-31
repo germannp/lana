@@ -11,6 +11,10 @@ import scipy.spatial as spatial
 def by_distance(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
     ln_volume=0.125e9, contact_radius=10):
     """Identify contacts by distance"""
+    if n_Tcells > tracks['Track_ID'].unique().__len__():
+        print('Error: max. n_Tcells is larger than # of passed tracks.')
+        return
+
     contacts = pd.DataFrame()
     max_index = 0
     for n in range(n_iter):
@@ -23,13 +27,9 @@ def by_distance(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
             'Z': r*np.cos(phi)})
         DC_tree = spatial.cKDTree(DCs)
 
-        if n_Tcells < tracks['Track_ID'].unique().__len__():
-            Tcell_tracks = tracks[tracks['Track_ID'].isin(
-                np.random.choice(tracks['Track_ID'].unique(), n_Tcells,
-                replace=False))]
-        else:
-            n_Tcells = ['Track_ID'].unique().__len__()
-            Tcell_tracks = tracks
+        Tcell_tracks = tracks[tracks['Track_ID'].isin(
+            np.random.choice(tracks['Track_ID'].unique(), n_Tcells,
+            replace=False))]
 
         free_Tcells = list(Tcell_tracks['Track_ID'].unique())
         for time, positions in Tcell_tracks.sort('Time').groupby('Time'):
@@ -40,8 +40,8 @@ def by_distance(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
                 current_contacts = DC_tree.query_ball_tree(
                     Tcell_tree, contact_radius)
                 Tcells_in_contact = set([Tcell
-                for CD_list in current_contacts
-                for Tcell in CD_list])
+                    for CD_list in current_contacts
+                    for Tcell in CD_list])
                 for Tcell in sorted(Tcells_in_contact, reverse=True):
                     del free_Tcells[Tcell]
             contacts.loc[max_index, 'Time'] = time
@@ -75,5 +75,5 @@ if __name__ == '__main__':
     from remix import silly_tracks
 
     tracks = silly_tracks(25, 100)
-    motility.plot_tracks(tracks, ln_volume=5e6)
+    # motility.plot_tracks(tracks, ln_volume=5e6)
     plot_over_time(by_distance(tracks, ln_volume=5e6))
