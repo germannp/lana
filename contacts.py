@@ -36,7 +36,8 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     contacts = pd.DataFrame()
     max_index = 0
     for n in range(n_iter):
-        r = (3*ln_volume/(4*np.pi))**(1/3)*np.random.rand(max(n_DCs))**(1/3)
+        ln_r = (3*ln_volume/(4*np.pi))**(1/3)
+        r = ln_r*np.random.rand(max(n_DCs))**(1/3)
         theta = np.random.rand(max(n_DCs))*2*np.pi
         phi = np.arccos(2*np.random.rand(max(n_DCs)) - 1)
         DCs = pd.DataFrame({
@@ -60,10 +61,11 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
             left_Tcells = set()
             for Tcells in free_Tcells.values():
                 left_Tcells = left_Tcells | Tcells
-            if left_Tcells != set():
-                Tcell_tree = spatial.cKDTree(
-                    positions[positions['Track_ID'].isin(left_Tcells)]
-                    [['X', 'Y', 'Z']])
+            positions = positions[positions['Track_ID'].isin(left_Tcells)]
+            positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
+                axis=1) < (ln_r + contact_radius)]
+            if positions.__len__() != 0:
+                Tcell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
                 current_contacts = DC_tree.query_ball_tree(
                     Tcell_tree, contact_radius)
                 for cell_numbers in free_Tcells:
@@ -129,7 +131,7 @@ def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
 
-    choice = np.random.choice(tracks['Track_ID'].unique(), 12)
+    choice = np.random.choice(tracks['Track_ID'].unique(), 6*3)
     tracks = tracks[tracks['Track_ID'].isin(choice)]
     for _, track in tracks.groupby(track_identifiers(tracks)):
         ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
@@ -141,11 +143,11 @@ def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
         'X': r*np.sin(theta)*np.sin(phi),
         'Y': r*np.cos(theta)*np.sin(phi),
         'Z': r*np.cos(phi)})
-    ax.scatter(DCs['X'], DCs['Y'], DCs['Z'])
+    ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], color='y')
 
     r = (3*ln_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
-        circle = Circle((0, 0), r, fill=False, ls='dashdot')
+        circle = Circle((0, 0), r, fill=False)
         ax.add_patch(circle)
         art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
 
@@ -160,6 +162,6 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 120)
 
-    plot_situation(tracks, n_DCs=100, ln_volume=5e6)
+    # plot_situation(tracks, n_DCs=100, ln_volume=5e6)
     contacts = find(tracks, ln_volume=5e6)
     plot(contacts)
