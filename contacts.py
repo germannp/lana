@@ -6,6 +6,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import scipy.spatial as spatial
+import mpl_toolkits.mplot3d.axes3d as p3
+import mpl_toolkits.mplot3d.art3d as art3d
+from matplotlib.patches import Circle, PathPatch
+
+from utils import equalize_axis3d
+from utils import track_identifiers
 
 
 def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
@@ -21,7 +27,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     if type(n_DCs) == int:
         n_DCs = [n_DCs]
     else:
-        print('  Warning: Using subsets of T cells introduces bias.')
+        print('  Warning: Using subsets of DCs introduces bias.')
 
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
         print('  Error: max. n_Tcells is larger than # of given tracks.')
@@ -117,11 +123,43 @@ def plot(contacts):
     plt.show()
 
 
+def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
+    """Plot some tracks, DCs and volume"""
+    sns.set_style('white')
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_subplot(1,1,1, projection='3d')
+
+    choice = np.random.choice(tracks['Track_ID'].unique(), 12)
+    tracks = tracks[tracks['Track_ID'].isin(choice)]
+    for _, track in tracks.groupby(track_identifiers(tracks)):
+        ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
+
+    r = (3*ln_volume/(4*np.pi))**(1/3)*np.random.rand(n_DCs)**(1/3)
+    theta = np.random.rand(n_DCs)*2*np.pi
+    phi = np.arccos(2*np.random.rand(n_DCs) - 1)
+    DCs = pd.DataFrame({
+        'X': r*np.sin(theta)*np.sin(phi),
+        'Y': r*np.cos(theta)*np.sin(phi),
+        'Z': r*np.cos(phi)})
+    ax.scatter(DCs['X'], DCs['Y'], DCs['Z'])
+
+    r = (3*ln_volume/(4*np.pi))**(1/3)
+    for i in ['x', 'y', 'z']:
+        circle = Circle((0, 0), r, fill=False, ls='dashdot')
+        ax.add_patch(circle)
+        art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
+
+    equalize_axis3d(ax)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
     tracks = silly_tracks(25, 120)
-    # motility.plot_tracks(tracks, ln_volume=5e6)
+
+    plot_situation(tracks, n_DCs=100, ln_volume=5e6)
     contacts = find(tracks, ln_volume=5e6)
     plot(contacts)

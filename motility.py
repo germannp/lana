@@ -4,9 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
-import mpl_toolkits.mplot3d.art3d as art3d
 import matplotlib.animation as animation
-from matplotlib.patches import Circle, PathPatch
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
@@ -143,8 +141,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
 
 
-def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition',
-    ln_volume=None):
+def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
     """Plot tracks"""
     # TODO: Plot steepest turns if summary is provided.
     if tracks['Track_ID'].unique().__len__() > n_tracks:
@@ -179,13 +176,6 @@ def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition',
                 turn = track[track['Time'].isin(turn_times)]
                 ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
                     color=color)
-
-    if ln_volume != None:
-        r = (3*ln_volume/(4*np.pi))**(1/3)
-        for i in ['x', 'y', 'z']:
-            circle = Circle((0, 0), r, fill=False, ls='dashdot')
-            ax.add_patch(circle)
-            art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
 
     equalize_axis3d(ax)
     plt.tight_layout()
