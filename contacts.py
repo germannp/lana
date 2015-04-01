@@ -8,14 +8,25 @@ import matplotlib.pyplot as plt
 import scipy.spatial as spatial
 
 
-def by_distance(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
+def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     ln_volume=0.125e9, contact_radius=10):
-    """Simulate contacts by distance"""
+    """Simulate contacts within radius"""
+    print('Simulating contacts {} times'.format(n_iter))
+
+    if type(n_Tcells) == int:
+        n_Tcells = [n_Tcells]
+    else:
+        print('  Warning: Using subsets of T cells introduces bias.')
+
+    if type(n_DCs) == int:
+        n_DCs = [n_DCs]
+    else:
+        print('  Warning: Using subsets of T cells introduces bias.')
+
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
-        print('Error: max. n_Tcells is larger than # of given tracks.')
+        print('  Error: max. n_Tcells is larger than # of given tracks.')
         return
 
-    print('Simulating contacts {} times'.format(n_iter))
     contacts = pd.DataFrame()
     max_index = 0
     for n in range(n_iter):
@@ -69,19 +80,40 @@ def by_distance(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     return contacts
 
 
-def plot_over_time(contacts):
-    """Plot contacts over time"""
+def plot(contacts):
+    """Plot accumulation and final number of contacts"""
     sns.set(style="white")
-    plt.xlabel('Time [h]')
-    plt.ylabel('# of Contacts')
+    over_time_ax = plt.subplot2grid((1,3), (0,0), colspan=2)
+    final_ax = plt.subplot2grid((1,3), (0,2), sharey=over_time_ax)
+
+    over_time_ax.set_title('Accumulation over Time')
+    over_time_ax.set_xlabel('Time [h]')
+    over_time_ax.set_ylabel('# of Contacts')
+    over_time_ax.set_ylim([0, contacts['Contacts'].max()])
+
+    final_ax.set_title('Final Contacts')
+    final_ax.set_xlabel('Density')
 
     for i, (label, _contacts) in enumerate(contacts.groupby('Cell Numbers')):
         color = sns.color_palette(n_colors=i+1)[-1]
         stats = _contacts.groupby('Time')['Contacts'].describe().unstack()
-        plt.plot(stats.index/60, stats['50%'], label=label, color=color)
-        plt.fill_between(stats.index/60, stats['25%'], stats['75%'], alpha=0.2, color=color)
+        over_time_ax.plot(stats.index/60, stats['50%'], label=label, color=color)
+        over_time_ax.fill_between(stats.index/60, stats['25%'], stats['75%'],
+            alpha=0.2, color=color)
 
-    plt.legend(loc='lower right')
+        final_contacts = _contacts[_contacts['Time'] == _contacts['Time'].max()]
+        sns.kdeplot(final_contacts['Contacts'], color=color, vertical=True,
+            shade=True, legend=False, ax=final_ax)
+
+    handles, labels = over_time_ax.get_legend_handles_labels()
+    final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
+    final_medians = final_contacts.groupby('Cell Numbers')['Contacts'].median()
+    final_medians = final_medians.reset_index(drop=True)
+    order = final_medians.order(ascending=False).index.values
+    over_time_ax.legend([handles[i] for i in order], [labels[i] for i in order],
+        loc='lower right')
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -91,5 +123,5 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 120)
     # motility.plot_tracks(tracks, ln_volume=5e6)
-    contacts = by_distance(tracks, ln_volume=5e6)
-    plot_over_time(contacts)
+    contacts = find(tracks, ln_volume=5e6)
+    plot(contacts)
