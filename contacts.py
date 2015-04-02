@@ -33,7 +33,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
         print('  Error: max. n_Tcells is larger than # of given tracks.')
         return
 
-    n_rows = len(n_Tcells)*len(n_DCs)*n_iter*tracks['Time'].max()
+    n_rows = len(n_Tcells)*len(n_DCs)*n_iter*len(tracks['Time'].unique())
     contacts = pd.DataFrame(index=np.arange(n_rows),
         columns=('Time', 'Run', 'Contact Radius', 'Cell Numbers', 'Contacts'))
     contacts[['Time', 'Contact Radius', 'Run', 'Contacts']] = \
