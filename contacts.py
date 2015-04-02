@@ -88,7 +88,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     return contacts
 
 
-def plot(contacts):
+def plot(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of contacts"""
     sns.set(style="white")
     over_time_ax = plt.subplot2grid((1,3), (0,0), colspan=2)
@@ -102,7 +102,7 @@ def plot(contacts):
     final_ax.set_title('Final Contacts')
     final_ax.set_xlabel('Density')
 
-    for i, (label, _contacts) in enumerate(contacts.groupby('Cell Numbers')):
+    for i, (label, _contacts) in enumerate(contacts.groupby(parameters)):
         color = sns.color_palette(n_colors=i+1)[-1]
         stats = _contacts.groupby('Time')['Contacts'].describe().unstack()
         over_time_ax.plot(stats.index/60, stats['50%'], label=label, color=color)
@@ -115,7 +115,7 @@ def plot(contacts):
 
     handles, labels = over_time_ax.get_legend_handles_labels()
     final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
-    final_medians = final_contacts.groupby('Cell Numbers')['Contacts'].median()
+    final_medians = final_contacts.groupby(parameters)['Contacts'].median()
     final_medians = final_medians.reset_index(drop=True)
     order = final_medians.order(ascending=False).index.values
     over_time_ax.legend([handles[i] for i in order], [labels[i] for i in order],
@@ -147,7 +147,7 @@ def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
 
     r = (3*ln_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
-        circle = Circle((0, 0), r, fill=False)
+        circle = Circle((0, 0), r, fill=False, linewidth=2)
         ax.add_patch(circle)
         art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
 
