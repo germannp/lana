@@ -129,7 +129,7 @@ def plot(contacts, parameters='Cell Numbers'):
     plt.show()
 
 
-def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
+def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9, zoom=1):
     """Plot some tracks, DCs and volume"""
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
@@ -155,7 +155,7 @@ def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9):
         ax.add_patch(circle)
         art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
 
-    equalize_axis3d(ax)
+    equalize_axis3d(ax, zoom)
     plt.tight_layout()
     plt.show()
 
