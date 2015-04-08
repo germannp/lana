@@ -9,6 +9,7 @@ import scipy.spatial as spatial
 import mpl_toolkits.mplot3d.axes3d as p3
 import mpl_toolkits.mplot3d.art3d as art3d
 from matplotlib.patches import Circle, PathPatch
+from matplotlib.ticker import MaxNLocator
 
 from utils import equalize_axis3d
 from utils import track_identifiers
@@ -101,10 +102,11 @@ def plot(contacts, parameters='Cell Numbers'):
     over_time_ax.set_title('Accumulation over Time')
     over_time_ax.set_xlabel('Time [h]')
     over_time_ax.set_ylabel('# of Contacts')
-    over_time_ax.set_ylim([0, contacts['Contacts'].max()])
+    over_time_ax.set_ylim([0, contacts['Contacts'].max() + 1])
 
     final_ax.set_title('Final Contacts')
-    final_ax.set_xlabel('Density')
+    final_ax.set_xlabel('Runs (in {})'.format(int(contacts['Run'].max() + 1)))
+    final_ax.get_xaxis().set_major_locator(MaxNLocator(integer=True))
 
     for i, (label, _contacts) in enumerate(contacts.groupby(parameters)):
         color = sns.color_palette(n_colors=i+1)[-1]
@@ -114,8 +116,9 @@ def plot(contacts, parameters='Cell Numbers'):
             alpha=0.2, color=color)
 
         final_contacts = _contacts[_contacts['Time'] == _contacts['Time'].max()]
-        sns.kdeplot(final_contacts['Contacts'], color=color, vertical=True,
-            shade=True, legend=False, ax=final_ax)
+        sns.distplot(final_contacts['Contacts'], kde=False, vertical=True,
+            bins=np.arange(0, contacts['Contacts'].max() + 2) - 0.5,
+            color=color, ax=final_ax)
 
     handles, labels = over_time_ax.get_legend_handles_labels()
     final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
