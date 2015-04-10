@@ -178,12 +178,8 @@ if __name__ == '__main__':
     from remix import silly_tracks
 
     tracks = silly_tracks(25, 120)
-
-    # plot_situation(tracks, n_DCs=100, ln_volume=5e6)
-    # contacts = find(tracks, ln_volume=5e6)
-
     contacts = find(tracks, ln_volume=5e6)
     plot(contacts)
 
     # contacts = pd.read_csv('16h_contacts.csv')
-    cummulative_plot(contacts)
+    # plot(contacts)
