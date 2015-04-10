@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import scipy.spatial as spatial
 import mpl_toolkits.mplot3d.axes3d as p3
 import mpl_toolkits.mplot3d.art3d as art3d
+import matplotlib.gridspec as gridspec
 from matplotlib.patches import Circle, PathPatch
 from matplotlib.ticker import MaxNLocator
 
@@ -95,38 +96,47 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
 
 def plot(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of contacts"""
-    sns.set(style="white")
-    over_time_ax = plt.subplot2grid((1,3), (0,0), colspan=2)
-    final_ax = plt.subplot2grid((1,3), (0,2), sharey=over_time_ax)
+    sns.set(style='white')
 
-    over_time_ax.set_title('Accumulation over Time')
-    over_time_ax.set_xlabel('Time [h]')
-    over_time_ax.set_ylabel('# of Contacts')
-    over_time_ax.set_ylim([0, contacts['Contacts'].max() + 1])
+    n_parameter_sets = len(contacts[parameters].unique())
+    gs = gridspec.GridSpec(n_parameter_sets,2)
+    final_ax = plt.subplot(gs[:,0])
+    ax0 = plt.subplot(gs[1])
 
-    final_ax.set_title('Final Contacts')
-    final_ax.set_xlabel('Runs (in {})'.format(int(contacts['Run'].max() + 1)))
-    final_ax.get_xaxis().set_major_locator(MaxNLocator(integer=True))
+    final_ax.set_title('Final State')
+    final_ax.set_ylabel('Percentage of Final Contacts')
+    ax0.set_title('Dynamics')
 
     for i, (label, _contacts) in enumerate(contacts.groupby(parameters)):
+        n = _contacts['Run'].max() + 1
+        label = '  ' + label + ' (n = {:.0f})'.format(n)
+        final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+
+        if i == 0:
+            ax = ax0
+        else:
+            ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
+
+        if i < n_parameter_sets - 1:
+            plt.setp(ax.get_xticklabels(), visible=False)
+        else:
+            ax.set_ylim([0,100])
+            ax.set_xlabel('Time [h]')
+
+        total_contacts = _contacts.groupby(['Time', 'Contacts']).count()['Run'].unstack().fillna(0)
+        total_contacts = total_contacts[total_contacts.columns[::-1]].cumsum(axis=1)
         color = sns.color_palette(n_colors=i+1)[-1]
-        stats = _contacts.groupby('Time')['Contacts'].describe().unstack()
-        over_time_ax.plot(stats.index/60, stats['50%'], label=label, color=color)
-        over_time_ax.fill_between(stats.index/60, stats['25%'], stats['75%'],
-            alpha=0.2, color=color)
 
-        final_contacts = _contacts[_contacts['Time'] == _contacts['Time'].max()]
-        sns.distplot(final_contacts['Contacts'], kde=False, vertical=True,
-            bins=np.arange(0, contacts['Contacts'].max() + 2) - 0.5,
-            color=color, ax=final_ax)
+        for n_contacts in sorted(set(_contacts['Contacts'].unique()) - set([0])):
+            ax.fill_between(total_contacts.index/60, 0,
+                total_contacts[n_contacts]/n*100,
+                color=color, alpha=1/contacts['Contacts'].max())
+            final_ax.bar(i*2, total_contacts[n_contacts].iloc[-1]/n*100,
+                color=color, alpha=1/contacts['Contacts'].max())
 
-    handles, labels = over_time_ax.get_legend_handles_labels()
-    final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
-    final_medians = final_contacts.groupby(parameters)['Contacts'].median()
-    final_medians = final_medians.reset_index(drop=True)
-    order = final_medians.order(ascending=False).index.values
-    over_time_ax.legend([handles[i] for i in order], [labels[i] for i in order],
-        loc='lower right')
+    final_ax.set_xlim(left=-0.8)
+    final_ax.set_xticks([])
+    final_ax.set_ylim([0,100])
 
     plt.tight_layout()
     plt.show()
@@ -170,5 +180,10 @@ if __name__ == '__main__':
     tracks = silly_tracks(25, 120)
 
     # plot_situation(tracks, n_DCs=100, ln_volume=5e6)
+    # contacts = find(tracks, ln_volume=5e6)
+
     contacts = find(tracks, ln_volume=5e6)
     plot(contacts)
+
+    # contacts = pd.read_csv('16h_contacts.csv')
+    cummulative_plot(contacts)
