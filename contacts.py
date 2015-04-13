@@ -131,8 +131,21 @@ def plot(contacts, parameters='Cell Numbers'):
             ax.fill_between(total_contacts.index/60, 0,
                 total_contacts[n_contacts]/n*100,
                 color=color, alpha=1/contacts['Contacts'].max())
-            final_ax.bar(i*2, total_contacts[n_contacts].iloc[-1]/n*100,
-                color=color, alpha=1/contacts['Contacts'].max())
+
+            percentage = total_contacts[n_contacts].iloc[-1]/n*100
+            try:
+                next_percentage = total_contacts[n_contacts + 1].iloc[-1]/n*100
+            except:
+                if n_contacts == _contacts['Contacts'].max():
+                    next_percentage = 0
+                else:
+                    next_percentage = percentage
+            final_ax.bar(i*2, percentage, color=color,
+                alpha=1/contacts['Contacts'].max())
+            percentage_diff = percentage - next_percentage
+            if percentage_diff > 3:
+                final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
+                    int(n_contacts), ha='center', va='center')
 
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
