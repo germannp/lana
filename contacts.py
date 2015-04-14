@@ -107,7 +107,13 @@ def plot(contacts, parameters='Cell Numbers'):
     final_ax.set_ylabel('Percentage of Final Contacts')
     ax0.set_title('Dynamics')
 
-    for i, (label, _contacts) in enumerate(contacts.groupby(parameters)):
+    final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
+    final_sum = final_contacts.groupby(parameters)['Contacts'].sum()
+    order = list(final_sum.order().index.values)
+
+    for label, _contacts in contacts.groupby(parameters):
+        i = order.index(label)
+
         n = _contacts['Run'].max() + 1
         label = '  ' + label + ' (n = {:.0f})'.format(n)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
@@ -120,7 +126,6 @@ def plot(contacts, parameters='Cell Numbers'):
         if i < n_parameter_sets - 1:
             plt.setp(ax.get_xticklabels(), visible=False)
         else:
-            ax.set_ylim([0,100])
             ax.set_xlabel('Time [h]')
 
         total_contacts = _contacts.groupby(['Time', 'Contacts']).count()['Run'].unstack().fillna(0)
@@ -150,6 +155,7 @@ def plot(contacts, parameters='Cell Numbers'):
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
     final_ax.set_ylim([0,100])
+    ax.set_ylim([0,100])
 
     plt.tight_layout()
     plt.show()
@@ -190,9 +196,9 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    tracks = silly_tracks(25, 120)
-    contacts = find(tracks, ln_volume=5e6)
-    plot(contacts)
-
-    # contacts = pd.read_csv('16h_contacts.csv')
+    # tracks = silly_tracks(25, 120)
+    # contacts = find(tracks, ln_volume=5e6)
     # plot(contacts)
+
+    contacts = pd.read_csv('16h_contacts_lowT.csv')
+    plot(contacts)
