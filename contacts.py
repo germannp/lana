@@ -72,7 +72,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
                             runs_contacts.loc[max_index, 'Contact Radius'] = cr
                             runs_contacts.loc[max_index, 'Cell Numbers'] = \
                                 '{} T cells, {} DCs'.format(nT, nDC)
-                            runs_contacts.loc[max_index, 'Track ID'] = \
+                            runs_contacts.loc[max_index, 'Track_ID'] = \
                                 free_Tcells[T_cell_idx]
                             runs_contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
                             runs_contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
@@ -92,7 +92,32 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     return contacts
 
 
-def plot(contacts, parameters='Cell Numbers'):
+def plot_dynamics(contacts, tracks):
+    """Plot distances between DC and T cell track during contacts"""
+    distances = pd.Series()
+    for _, contact in contacts.dropna().iterrows():
+        track = tracks[tracks['Track_ID'] == contact['Track_ID']]
+        track = track[['Time', 'X', 'Y', 'Z']]
+        track = track[track['Time'] < contact['Time'] + 20]
+        track = track[track['Time'] > contact['Time'] - 10]
+        distances = distances.append(pd.Series(
+            np.linalg.norm(
+                track[['X', 'Y', 'Z']].astype(float)
+                - contact[['X', 'Y', 'Z']].astype(float), axis=1),
+                track['Time'] - contact['Time']))
+
+    distats = distances.groupby(distances.index).describe().unstack()
+
+    sns.set(style='white')
+    plt.xlabel('Time [min]')
+    plt.ylabel(r'Distance [$\mu$m]')
+    plt.plot(distats.index, distats['50%'])
+    plt.fill_between(distats.index, distats['25%'], distats['75%'], alpha=0.2)
+    plt.fill_between(distats.index, distats['min'], distats['max'], alpha=0.2)
+    plt.show()
+
+
+def plot_number(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of contacts"""
     sns.set(style='white')
 
@@ -105,13 +130,13 @@ def plot(contacts, parameters='Cell Numbers'):
     final_ax.set_ylabel('Percentage of Final Contacts')
     ax0.set_title('Dynamics')
 
-    final_sum = contacts.groupby('Cell Numbers').count()['Time']
+    final_sum = contacts.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
 
     for label, _contacts in contacts.groupby(parameters):
         i = order.index(label)
         n_runs = _contacts['Run'].max() + 1
-        label = '  ' + label + ' (n = {:.0f})'.format(n_runs)
+        label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
         if i == 0:
@@ -198,6 +223,10 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    tracks = silly_tracks(25, 120)
-    contacts = find(tracks, ln_volume=5e6)
-    plot(contacts)
+    # tracks = silly_tracks(25, 120)
+    # contacts = find(tracks, ln_volume=5e6)
+    # plot_number(contacts)
+
+    contacts = pd.read_csv('contacts.csv')
+    tracks = pd.read_csv('tracks.csv')
+    plot_dynamics(contacts, tracks)
