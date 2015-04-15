@@ -23,73 +23,71 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
 
     if type(n_Tcells) == int:
         n_Tcells = [n_Tcells]
-    else:
-        print('  Warning: Using subsets of T cells introduces bias.')
 
     if type(n_DCs) == int:
         n_DCs = [n_DCs]
-    else:
-        print('  Warning: Using subsets of DCs introduces bias.')
+
+    if type(contact_radius) != list:
+        contact_radius = [contact_radius]
 
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
         print('  Error: max. n_Tcells is larger than # of given tracks.')
         return
 
-    n_rows = len(n_Tcells)*len(n_DCs)*n_iter*len(tracks['Time'].unique())
-    contacts = pd.DataFrame(index=np.arange(n_rows),
-        columns=('Time', 'Run', 'Contact Radius', 'Cell Numbers', 'Contacts'))
-    contacts[['Time', 'Contact Radius', 'Run', 'Contacts']] = \
-        contacts[['Time', 'Contact Radius', 'Run', 'Contacts']].astype(float)
+    contacts = pd.DataFrame()
     max_index = 0
-    for n in range(n_iter):
-        ln_r = (3*ln_volume/(4*np.pi))**(1/3)
-        r = ln_r*np.random.rand(max(n_DCs))**(1/3)
-        theta = np.random.rand(max(n_DCs))*2*np.pi
-        phi = np.arccos(2*np.random.rand(max(n_DCs)) - 1)
-        DCs = pd.DataFrame({
-            'X': r*np.sin(theta)*np.sin(phi),
-            'Y': r*np.cos(theta)*np.sin(phi),
-            'Z': r*np.cos(phi)})
-        DC_subsets = dict(zip(n_DCs, [np.random.choice(DCs.index, n,
-            replace=False) for n in n_DCs]))
-        DC_tree = spatial.cKDTree(DCs)
+    for n_run in range(n_iter):
+        runs_contacts = pd.DataFrame()
+        for cr, nT, nDC in itertools.product(contact_radius, n_Tcells, n_DCs):
+            ln_r = (3*ln_volume/(4*np.pi))**(1/3)
+            r = ln_r*np.random.rand(nDC)**(1/3)
+            theta = np.random.rand(nDC)*2*np.pi
+            phi = np.arccos(2*np.random.rand(nDC) - 1)
+            DCs = pd.DataFrame({
+                'X': r*np.sin(theta)*np.sin(phi),
+                'Y': r*np.cos(theta)*np.sin(phi),
+                'Z': r*np.cos(phi)})
+            DC_tree = spatial.cKDTree(DCs)
 
-        T_tracks = tracks[tracks['Track_ID'].isin(
-            np.random.choice(tracks['Track_ID'].unique(), max(n_Tcells),
-            replace=False))]
+            T_tracks = tracks[tracks['Track_ID'].isin(
+                np.random.choice(tracks['Track_ID'].unique(), nT,
+                replace=False))]
 
-        free_Tcells = dict()
-        for combo in itertools.product(n_Tcells, n_DCs):
-            free_Tcells[combo] = set(np.random.choice(T_tracks['Track_ID'].unique(),
-                combo[0], replace=False).flat)
+            free_Tcells = np.random.choice(T_tracks['Track_ID'].unique(),
+                nT, replace=False)
 
-        for time, positions in T_tracks.sort('Time').groupby('Time'):
-            left_Tcells = set()
-            for Tcells in free_Tcells.values():
-                left_Tcells = left_Tcells | Tcells
-            positions = positions[positions['Track_ID'].isin(left_Tcells)]
-            positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
-                axis=1) < (ln_r + contact_radius)]
-            if positions.__len__() != 0:
-                Tcell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
-                current_contacts = DC_tree.query_ball_tree(
-                    Tcell_tree, contact_radius)
-                for cell_numbers in free_Tcells:
-                    for DC in DC_subsets[cell_numbers[1]]:
-                        free_Tcells[cell_numbers] = free_Tcells[cell_numbers] \
-                            - set(current_contacts[DC])
+            for time, positions in T_tracks.sort('Time').groupby('Time'):
+                positions = positions[positions['Track_ID'].isin(free_Tcells)]
+                positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
+                    axis=1) < (ln_r + cr)]
+                if positions.__len__() != 0:
+                    Tcell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
+                    new_contacts = DC_tree.query_ball_tree(
+                        Tcell_tree, cr)
+                    newly_bound_T_cells = []
+                    for DC, DC_contacts in enumerate(new_contacts):
+                        for T_cell_idx in DC_contacts:
+                            runs_contacts.loc[max_index, 'Time'] = time
+                            runs_contacts.loc[max_index, 'Run'] = n_run
+                            runs_contacts.loc[max_index, 'Contact Radius'] = cr
+                            runs_contacts.loc[max_index, 'Cell Numbers'] = \
+                                '{} T cells, {} DCs'.format(nT, nDC)
+                            runs_contacts.loc[max_index, 'Track ID'] = \
+                                free_Tcells[T_cell_idx]
+                            runs_contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
+                            runs_contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
+                            runs_contacts.loc[max_index, 'Z'] = DCs.loc[DC, 'Z']
+                            max_index += 1
+                            newly_bound_T_cells.append(T_cell_idx)
+                    if len(newly_bound_T_cells) != len(list(set(newly_bound_T_cells))):
+                        print('  Warning: T cell binding severall DCs!')
+                    free_Tcells = np.delete(free_Tcells, newly_bound_T_cells)
 
-            for cell_numbers in free_Tcells:
-                contacts.loc[max_index, 'Time'] = time
-                contacts.loc[max_index, 'Run'] = n
-                contacts.loc[max_index, 'Contact Radius'] = contact_radius
-                contacts.loc[max_index, 'Cell Numbers'] = \
-                    '{} T cells, {} DCs'.format(*cell_numbers)
-                contacts.loc[max_index, 'Contacts'] = \
-                    cell_numbers[0] - len(free_Tcells[cell_numbers])
-                max_index += 1
+        contacts = contacts.append(runs_contacts)
 
-        print('  Run {} done.'.format(n + 1))
+        print('  Run {} done.'.format(n_run+1))
+
+    contacts.loc[max_index, 'Time'] = tracks['Time'].max()
 
     return contacts
 
@@ -98,7 +96,7 @@ def plot(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of contacts"""
     sns.set(style='white')
 
-    n_parameter_sets = len(contacts[parameters].unique())
+    n_parameter_sets = len(contacts[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
     final_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
@@ -107,15 +105,13 @@ def plot(contacts, parameters='Cell Numbers'):
     final_ax.set_ylabel('Percentage of Final Contacts')
     ax0.set_title('Dynamics')
 
-    final_contacts = contacts[contacts['Time'] == contacts['Time'].max()]
-    final_sum = final_contacts.groupby(parameters)['Contacts'].sum()
+    final_sum = contacts.groupby('Cell Numbers').count()['Time']
     order = list(final_sum.order().index.values)
 
     for label, _contacts in contacts.groupby(parameters):
         i = order.index(label)
-
-        n = _contacts['Run'].max() + 1
-        label = '  ' + label + ' (n = {:.0f})'.format(n)
+        n_runs = _contacts['Run'].max() + 1
+        label = '  ' + label + ' (n = {:.0f})'.format(n_runs)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
         if i == 0:
@@ -128,25 +124,31 @@ def plot(contacts, parameters='Cell Numbers'):
         else:
             ax.set_xlabel('Time [h]')
 
-        total_contacts = _contacts.groupby(['Time', 'Contacts']).count()['Run'].unstack().fillna(0)
-        total_contacts = total_contacts[total_contacts.columns[::-1]].cumsum(axis=1)
         color = sns.color_palette(n_colors=i+1)[-1]
 
-        for n_contacts in sorted(set(_contacts['Contacts'].unique()) - set([0])):
-            ax.fill_between(total_contacts.index/60, 0,
-                total_contacts[n_contacts]/n*100,
-                color=color, alpha=1/contacts['Contacts'].max())
+        accumulation = _contacts.groupby(['Time', 'Run']).size().unstack().fillna(0).cumsum()
+        runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
+        runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
+        runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
+        runs_with_geq_n_contacts.loc[contacts['Time'].max(), :] = \
+            runs_with_geq_n_contacts.iloc[-1]
 
-            percentage = total_contacts[n_contacts].iloc[-1]/n*100
-            try:
-                next_percentage = total_contacts[n_contacts + 1].iloc[-1]/n*100
-            except:
-                if n_contacts == _contacts['Contacts'].max():
-                    next_percentage = 0
-                else:
-                    next_percentage = percentage
+        for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
+            ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
+                runs_with_geq_n_contacts[n_contacts].values/n_runs*100,
+                color=color, alpha=1/runs_with_n_contacts.columns.max())
+
+            percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1]/n_runs*100
             final_ax.bar(i*2, percentage, color=color,
-                alpha=1/contacts['Contacts'].max())
+                alpha=1/runs_with_n_contacts.columns.max())
+
+            if n_contacts == runs_with_geq_n_contacts.columns.max():
+                next_percentage = 0
+            else:
+                next_n = next(n for n in runs_with_geq_n_contacts.columns[::-1]
+                    if n > n_contacts)
+                next_percentage = runs_with_geq_n_contacts[next_n].iloc[-1]/n_runs*100
+
             percentage_diff = percentage - next_percentage
             if percentage_diff > 3:
                 final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
@@ -196,9 +198,6 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    # tracks = silly_tracks(25, 120)
-    # contacts = find(tracks, ln_volume=5e6)
-    # plot(contacts)
-
-    contacts = pd.read_csv('16h_contacts_lowT.csv')
+    tracks = silly_tracks(25, 120)
+    contacts = find(tracks, ln_volume=5e6)
     plot(contacts)
