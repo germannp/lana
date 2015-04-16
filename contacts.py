@@ -53,8 +53,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
                 np.random.choice(tracks['Track_ID'].unique(), nT,
                 replace=False))]
 
-            free_Tcells = np.random.choice(T_tracks['Track_ID'].unique(),
-                nT, replace=False)
+            free_Tcells = set(T_tracks['Track_ID'].unique())
 
             for time, positions in T_tracks.sort('Time').groupby('Time'):
                 positions = positions[positions['Track_ID'].isin(free_Tcells)]
@@ -64,24 +63,24 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
                     Tcell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
                     new_contacts = DC_tree.query_ball_tree(
                         Tcell_tree, cr)
-                    newly_bound_T_cells = []
                     for DC, DC_contacts in enumerate(new_contacts):
-                        for T_cell_idx in DC_contacts:
+                        for Tcell in DC_contacts:
                             runs_contacts.loc[max_index, 'Time'] = time
                             runs_contacts.loc[max_index, 'Run'] = n_run
                             runs_contacts.loc[max_index, 'Contact Radius'] = cr
                             runs_contacts.loc[max_index, 'Cell Numbers'] = \
                                 '{} T cells, {} DCs'.format(nT, nDC)
                             runs_contacts.loc[max_index, 'Track_ID'] = \
-                                free_Tcells[T_cell_idx]
+                                positions.iloc[Tcell]['Track_ID']
                             runs_contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
                             runs_contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
                             runs_contacts.loc[max_index, 'Z'] = DCs.loc[DC, 'Z']
                             max_index += 1
-                            newly_bound_T_cells.append(T_cell_idx)
-                    if len(newly_bound_T_cells) != len(list(set(newly_bound_T_cells))):
-                        print('  Warning: T cell binding severall DCs!')
-                    free_Tcells = np.delete(free_Tcells, newly_bound_T_cells)
+                            try:
+                                free_Tcells.remove(
+                                    positions.iloc[Tcell]['Track_ID'])
+                            except KeyError:
+                                print('  Warning: T cell binding two DCs.')
 
         contacts = contacts.append(runs_contacts)
 
@@ -98,8 +97,8 @@ def plot_dynamics(contacts, tracks):
     for _, contact in contacts.dropna().iterrows():
         track = tracks[tracks['Track_ID'] == contact['Track_ID']]
         track = track[['Time', 'X', 'Y', 'Z']]
-        track = track[track['Time'] < contact['Time'] + 20]
-        track = track[track['Time'] > contact['Time'] - 10]
+        track = track[track['Time'] <= contact['Time'] + 20]
+        track = track[track['Time'] >= contact['Time'] - 10]
         distances = distances.append(pd.Series(
             np.linalg.norm(
                 track[['X', 'Y', 'Z']].astype(float)
@@ -117,7 +116,7 @@ def plot_dynamics(contacts, tracks):
     plt.show()
 
 
-def plot_number(contacts, parameters='Cell Numbers'):
+def plot_numbers(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of contacts"""
     sns.set(style='white')
 
@@ -223,10 +222,7 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    # tracks = silly_tracks(25, 120)
-    # contacts = find(tracks, ln_volume=5e6)
-    # plot_number(contacts)
-
-    contacts = pd.read_csv('contacts.csv')
-    tracks = pd.read_csv('tracks.csv')
+    tracks = silly_tracks(25, 120)
+    contacts = find(tracks, ln_volume=5e6)
+    plot_numbers(contacts)
     plot_dynamics(contacts, tracks)
