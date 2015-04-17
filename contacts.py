@@ -84,7 +84,6 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
 
         n_problematic_duplicates = runs_contacts['Track_ID'].duplicated().sum()\
             - runs_contacts[['Track_ID', 'Time']].duplicated().sum()
-
         if n_problematic_duplicates != 0:
             print('  Warning: {} T cells were in contacts at different times'.
                 format(n_problematic_duplicates))
@@ -100,27 +99,46 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
 
 def plot_details(contacts, tracks):
     """Plot distances between DC and T cell track during contacts"""
-    distances = pd.Series()
-    for _, contact in contacts.dropna().iterrows():
-        track = tracks[tracks['Track_ID'] == contact['Track_ID']]
-        track = track[['Time', 'X', 'Y', 'Z']]
-        track = track[track['Time'] <= contact['Time'] + 20]
-        track = track[track['Time'] >= contact['Time'] - 10]
-        distances = distances.append(pd.Series(
-            np.linalg.norm(
-                track[['X', 'Y', 'Z']].astype(float)
-                - contact[['X', 'Y', 'Z']].astype(float), axis=1),
-                track['Time'] - contact['Time']))
-
-    distances.index = distances.index.round(5) # Handle non-integer 'Times'
-    distats = distances.groupby(distances.index).describe().unstack()
-
     sns.set(style='white')
-    plt.xlabel('Time [min]')
-    plt.ylabel(r'Distance [$\mu$m]')
-    plt.plot(distats.index, distats['50%'])
-    plt.fill_between(distats.index, distats['25%'], distats['75%'], alpha=0.2)
-    plt.fill_between(distats.index, distats['min'], distats['max'], alpha=0.2)
+    distance_ax = plt.subplot(1,2,1)
+    duration_ax = plt.subplot(1,2,2)
+
+    for i, (radius, _contacts) in enumerate(contacts.groupby('Contact Radius')):
+        color = sns.color_palette(n_colors=i+1)[-1]
+        distances = pd.Series()
+        durations = []
+        for _, contact in _contacts.dropna().iterrows():
+            track = tracks[tracks['Track_ID'] == contact['Track_ID']]
+            track = track[['Time', 'X', 'Y', 'Z']]
+            track = track[track['Time'] <= contact['Time'] + 20]
+            track = track[track['Time'] >= contact['Time'] - 10]
+            distance = pd.Series(
+                np.linalg.norm(
+                    track[['X', 'Y', 'Z']].astype(float)
+                    - contact[['X', 'Y', 'Z']].astype(float), axis=1),
+                    track['Time'] - contact['Time'])
+            time_step = track['Time'].diff().mean()
+            distances = distances.append(distance)
+            durations.append(distance[distance <= radius].size*time_step)
+
+        distances.index = distances.index.round(5) # Handle non-integer 'Times'
+        distats = distances.groupby(distances.index).describe().unstack()
+        distance_ax.plot(distats.index, distats['50%'], color=color)
+        distance_ax.fill_between(distats.index, distats['25%'], distats['75%'],
+            color=color, alpha=0.2)
+        distance_ax.fill_between(distats.index, distats['min'], distats['max'],
+            color=color, alpha=0.2)
+
+        sns.distplot(durations, bins=np.arange(20 + 1), kde=False, ax=duration_ax,
+            color=color)
+
+    distance_ax.set_xlabel('Time [min]')
+    distance_ax.set_ylabel(r'Distance [$\mu$m]')
+
+    duration_ax.set_xlabel('Time within Contact Radius [min]')
+    duration_ax.set_ylabel('Density of Contacts')
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -230,11 +248,11 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    tracks = silly_tracks(25, 120)
-    tracks['Time'] = tracks['Time']/3
-    tracks.to_csv('tracks.csv')
-    contacts = find(tracks, ln_volume=5e6)
-    contacts.to_csv('contacts.csv')
+    # tracks = silly_tracks(25, 120)
+    # tracks['Time'] = tracks['Time']/3
+    # tracks.to_csv('tracks.csv')
+    # contacts = find(tracks, ln_volume=5e6)
+    # contacts.to_csv('contacts.csv')
     tracks = pd.read_csv('tracks.csv')
     contacts = pd.read_csv('contacts.csv')
     # plot_numbers(contacts)
