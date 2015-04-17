@@ -82,6 +82,13 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
                             except KeyError:
                                 print('  Warning: T cell binding two DCs.')
 
+        n_problematic_duplicates = runs_contacts['Track_ID'].duplicated().sum()\
+            - runs_contacts[['Track_ID', 'Time']].duplicated().sum()
+
+        if n_problematic_duplicates != 0:
+            print('  Warning: {} T cells were in contacts at different times'.
+                format(n_problematic_duplicates))
+
         contacts = contacts.append(runs_contacts)
 
         print('  Run {} done.'.format(n_run+1))
@@ -223,11 +230,11 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    # tracks = silly_tracks(25, 120)
-    # tracks['Time'] = tracks['Time']/3
-    # tracks.to_csv('tracks.csv')
-    # contacts = find(tracks, ln_volume=5e6)
-    # contacts.to_csv('contacts.csv')
+    tracks = silly_tracks(25, 120)
+    tracks['Time'] = tracks['Time']/3
+    tracks.to_csv('tracks.csv')
+    contacts = find(tracks, ln_volume=5e6)
+    contacts.to_csv('contacts.csv')
     tracks = pd.read_csv('tracks.csv')
     contacts = pd.read_csv('contacts.csv')
     # plot_numbers(contacts)
