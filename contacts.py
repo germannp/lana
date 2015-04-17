@@ -91,7 +91,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     return contacts
 
 
-def plot_dynamics(contacts, tracks):
+def plot_details(contacts, tracks):
     """Plot distances between DC and T cell track during contacts"""
     distances = pd.Series()
     for _, contact in contacts.dropna().iterrows():
@@ -105,6 +105,7 @@ def plot_dynamics(contacts, tracks):
                 - contact[['X', 'Y', 'Z']].astype(float), axis=1),
                 track['Time'] - contact['Time']))
 
+    distances.index = distances.index.round(5) # Handle non-integer 'Times'
     distats = distances.groupby(distances.index).describe().unstack()
 
     sns.set(style='white')
@@ -222,7 +223,12 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    tracks = silly_tracks(25, 120)
-    contacts = find(tracks, ln_volume=5e6)
-    plot_numbers(contacts)
-    plot_dynamics(contacts, tracks)
+    # tracks = silly_tracks(25, 120)
+    # tracks['Time'] = tracks['Time']/3
+    # tracks.to_csv('tracks.csv')
+    # contacts = find(tracks, ln_volume=5e6)
+    # contacts.to_csv('contacts.csv')
+    tracks = pd.read_csv('tracks.csv')
+    contacts = pd.read_csv('contacts.csv')
+    # plot_numbers(contacts)
+    plot_details(contacts, tracks)
