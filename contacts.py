@@ -82,17 +82,22 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
                             except KeyError:
                                 print('  Warning: T cell binding two DCs.')
 
-        n_problematic_duplicates = runs_contacts['Track_ID'].duplicated().sum()\
-            - runs_contacts[['Track_ID', 'Time']].duplicated().sum()
-        if n_problematic_duplicates != 0:
-            print('  Warning: {} T cells were in contacts at different times'.
-                format(n_problematic_duplicates))
+        if len(runs_contacts) != 0:
+            n_twice_bound = \
+                runs_contacts[['Track_ID', 'Cell Numbers']].duplicated().sum()
+            n_twice_bound_at_same_time = \
+                runs_contacts[['Track_ID', 'Cell Numbers', 'Time']]\
+                .duplicated().sum()
+            assert n_twice_bound == n_twice_bound_at_same_time,\
+                'T cells were in contacts at different times.'
 
         contacts = contacts.append(runs_contacts)
 
         print('  Run {} done.'.format(n_run+1))
 
+    # Save duration and number of runs for analysis
     contacts.loc[max_index, 'Time'] = tracks['Time'].max()
+    contacts.loc[max_index, 'Run'] = n_iter - 1
 
     return contacts
 
@@ -160,7 +165,7 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
 
     for label, _contacts in contacts.groupby(parameters):
         i = order.index(label)
-        n_runs = _contacts['Run'].max() + 1
+        n_runs = contacts['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -248,12 +253,8 @@ if __name__ == '__main__':
     import motility
     from remix import silly_tracks
 
-    # tracks = silly_tracks(25, 120)
-    # tracks['Time'] = tracks['Time']/3
-    # tracks.to_csv('tracks.csv')
-    # contacts = find(tracks, ln_volume=5e6)
-    # contacts.to_csv('contacts.csv')
-    tracks = pd.read_csv('tracks.csv')
-    contacts = pd.read_csv('contacts.csv')
-    # plot_numbers(contacts)
+    tracks = silly_tracks(25, 180)
+    tracks['Time'] = tracks['Time']/3
+    contacts = find(tracks)
+    plot_numbers(contacts)
     plot_details(contacts, tracks)
