@@ -16,8 +16,8 @@ from utils import equalize_axis3d
 from utils import track_identifiers
 
 
-def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
-    ln_volume=0.125e9, contact_radius=10):
+def find(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
+    ln_volume=0.125e9/100, contact_radius=10):
     """Simulate contacts within radius"""
     print('\nSimulating contacts {} times'.format(n_iter))
 
@@ -108,6 +108,12 @@ def plot_details(contacts, tracks):
     distance_ax = plt.subplot(1,2,1)
     duration_ax = plt.subplot(1,2,2)
 
+    distance_ax.set_xlabel('Time [min]')
+    distance_ax.set_ylabel(r'Distance [$\mu$m]')
+
+    duration_ax.set_xlabel('Time within Contact Radius [min]')
+    duration_ax.set_ylabel('Density of Contacts')
+
     for i, (radius, _contacts) in enumerate(contacts.groupby('Contact Radius')):
         color = sns.color_palette(n_colors=i+1)[-1]
         distances = pd.Series()
@@ -136,12 +142,6 @@ def plot_details(contacts, tracks):
 
         sns.distplot(durations, bins=np.arange(20 + 1), kde=False, ax=duration_ax,
             color=color)
-
-    distance_ax.set_xlabel('Time [min]')
-    distance_ax.set_ylabel(r'Distance [$\mu$m]')
-
-    duration_ax.set_xlabel('Time within Contact Radius [min]')
-    duration_ax.set_ylabel('Density of Contacts')
 
     plt.tight_layout()
     plt.show()
@@ -219,16 +219,20 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
     plt.show()
 
 
-def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9, zoom=1):
+def plot_situation(tracks, n_DCs=50, ln_volume=0.125e9/100, zoom=1):
     """Plot some tracks, DCs and volume"""
     sns.set_style('white')
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(1,1,1, projection='3d')
 
-    choice = np.random.choice(tracks['Track_ID'].unique(), 6*3)
-    tracks = tracks[tracks['Track_ID'].isin(choice)]
-    for _, track in tracks.groupby(track_identifiers(tracks)):
-        ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
+    gs = gridspec.GridSpec(1,3)
+    space_ax = plt.subplot(gs[:,:-1], projection='3d')
+    time_ax = plt.subplot(gs[:,-1])
+
+    n_tracks = 6*3
+    space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_DCs))
+    choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
+    chosen_tracks = tracks[tracks['Track_ID'].isin(choice)]
+    for _, track in chosen_tracks.groupby(track_identifiers(tracks)):
+        space_ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
 
     r = (3*ln_volume/(4*np.pi))**(1/3)*np.random.rand(n_DCs)**(1/3)
     theta = np.random.rand(n_DCs)*2*np.pi
@@ -237,15 +241,25 @@ def plot_situation(tracks, n_DCs=100, ln_volume=0.125e9, zoom=1):
         'X': r*np.sin(theta)*np.sin(phi),
         'Y': r*np.cos(theta)*np.sin(phi),
         'Z': r*np.cos(phi)})
-    ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], color='y')
+    space_ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], color='y')
 
     r = (3*ln_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
         circle = Circle((0, 0), r, fill=False, linewidth=2)
-        ax.add_patch(circle)
+        space_ax.add_patch(circle)
         art3d.pathpatch_2d_to_3d(circle, z=0, zdir=i)
 
-    equalize_axis3d(ax, zoom)
+    time_ax.set_xlabel('Time within Lymph Node [h]')
+    time_ax.set_ylabel('Number of T Cells')
+
+    residence_time = lambda track: track['Time'].diff().mean()/60*len(
+        track[np.linalg.norm(track[['X', 'Y', 'Z']], axis=1) < r])
+    residence_times = [residence_time(track)
+        for _, track in tracks.groupby('Track_ID')]
+
+    sns.distplot(residence_times, kde=False, ax=time_ax)
+
+    equalize_axis3d(space_ax, zoom)
     plt.tight_layout()
     plt.show()
 
@@ -256,8 +270,8 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    # plot_situation(tracks)
+    plot_situation(tracks)
 
     contacts = find(tracks)
     plot_numbers(contacts)
-    # plot_details(contacts, tracks)
+    plot_details(contacts, tracks)
