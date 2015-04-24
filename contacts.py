@@ -19,7 +19,7 @@ from utils import track_identifiers
 def find(tracks, n_Tcells=[10,20], n_DCs=[50,100], n_iter=10,
     ln_volume=0.125e9, contact_radius=10):
     """Simulate contacts within radius"""
-    print('Simulating contacts {} times'.format(n_iter))
+    print('\nSimulating contacts {} times'.format(n_iter))
 
     if type(n_Tcells) == int:
         n_Tcells = [n_Tcells]
@@ -181,7 +181,8 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
 
         color = sns.color_palette(n_colors=i+1)[-1]
 
-        accumulation = _contacts.groupby(['Time', 'Run']).size().unstack().fillna(0).cumsum()
+        accumulation = _contacts[['Run', 'Time']].pivot_table(
+            columns='Run', index='Time', aggfunc=len, fill_value=0).cumsum()
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
@@ -255,6 +256,8 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
+    # plot_situation(tracks)
+
     contacts = find(tracks)
     plot_numbers(contacts)
-    plot_details(contacts, tracks)
+    # plot_details(contacts, tracks)
