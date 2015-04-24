@@ -5,25 +5,16 @@ import pandas as pd
 from utils import track_identifiers
 
 
-def silly_steps(track_data=None, n_steps=60):
-    """Generate a walk from track data (i.e. velocities, turning & rolling angles)"""
-    if type(track_data) != pd.core.frame.DataFrame:
-        # velocities = np.cumsum(np.ones(n_steps))
-        # turning_angles = np.zeros(n_steps-1)
-        # rolling_angles = np.zeros(n_steps-2)
-        velocities = np.random.lognormal(0, 0.5, n_steps)*3
-        turning_angles = np.random.lognormal(0, 0.5, n_steps-1)
-        rolling_angles = (np.random.rand(n_steps-2) - 0.5)*2*np.pi
-        condition = 'Random'
+def silly_steps(track_data):
+    """Generate a walk from track data"""
+    velocities = track_data['Velocity'].dropna().values
+    turning_angles = track_data['Turning Angle'].dropna().values
+    rolling_angles = track_data['Rolling Angle'].dropna().values
+    if 'Condtion' in track_data.columns:
+        condition = track_data['Condition'].iloc[0] + ' Rebuilt'
     else:
-        velocities = track_data['Velocity'].dropna().values
-        turning_angles = track_data['Turning Angle'].dropna().values
-        rolling_angles = track_data['Rolling Angle'].dropna().values
-        if 'Condtion' in track_data.columns:
-            condition = track_data['Condition'].iloc[0] + ' Rebuilt'
-        else:
-            condition = 'Rebuilt'
-        n_steps = velocities.__len__()
+        condition = 'Silly Steps'
+    n_steps = velocities.__len__()
 
     # Walk in x-y plane w/ given velocity and turning angles
     dr = np.zeros((n_steps+1, 3))
@@ -66,9 +57,21 @@ def silly_steps(track_data=None, n_steps=60):
 
 def silly_tracks(n_tracks=100, n_steps=60):
     """Generate a DataFrame with random tracks"""
+    print('\nGenerating {} random tracks'.format(n_tracks))
+
     tracks = pd.DataFrame()
     for track_id in range(n_tracks):
-        track = silly_steps(n_steps=n_steps)
+        # track_data = pd.DataFrame({
+        #     'Velocity': np.cumsum(np.ones(n_steps)),
+        #     'Turning Angle': np.zeros(n_steps),
+        #     'Rolling Angle': np.zeros(n_steps),
+        #     'Condition': 'Trivial'})
+        track_data = pd.DataFrame({
+            'Velocity': np.random.lognormal(0, 0.5, n_steps)*3,
+            'Turning Angle': np.random.lognormal(0, 0.5, n_steps),
+            'Rolling Angle': (np.random.rand(n_steps) - 0.5)*2*np.pi,
+            'Condition': 'Random'})
+        track = silly_steps(track_data)
         track['Track_ID'] = track_id
         tracks = tracks.append(track)
 
@@ -301,24 +304,24 @@ if __name__ == '__main__':
 
 
     """Remix from short vs from long tracks"""
-    summary = motility.summarize(tracks)
-
-    # Is not prefect, at least if there are non-unique Track_IDs ...
-    short_track_ids = [summary.ix[index]['Track_ID']
-        for index in summary.sort('Track Duration').index
-        if summary['Track Duration'].order().cumsum().ix[index]
-            < summary['Track Duration'].sum()/2]
-
-    short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
-        n_tracks=25, n_steps=60)
-    long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
-        n_tracks=25, n_steps=60)
-
-    short_remix['Condition'] = 'Short Tracks Remixed'
-    long_remix['Condition'] = 'Long Tracks Remixed'
-
-    tracks = tracks.append(short_remix).append(long_remix)
-    motility.plot(tracks)
+    # summary = motility.summarize(tracks)
+    #
+    # # Is not prefect, at least if there are non-unique Track_IDs ...
+    # short_track_ids = [summary.ix[index]['Track_ID']
+    #     for index in summary.sort('Track Duration').index
+    #     if summary['Track Duration'].order().cumsum().ix[index]
+    #         < summary['Track Duration'].sum()/2]
+    #
+    # short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
+    #     n_tracks=25, n_steps=60)
+    # long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
+    #     n_tracks=25, n_steps=60)
+    #
+    # short_remix['Condition'] = 'Short Tracks Remixed'
+    # long_remix['Condition'] = 'Long Tracks Remixed'
+    #
+    # tracks = tracks.append(short_remix).append(long_remix)
+    # motility.plot(tracks)
 
     """Create long tracks"""
     # import datetime
