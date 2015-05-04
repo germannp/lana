@@ -191,7 +191,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
         return np.mean(means, axis=0)
 
 
-    print('Generating  {} steps from {} steps.\n'.format(
+    print('\nGenerating  {} steps from {} steps, preserving lag.'.format(
         n_tracks*n_steps, tracks.dropna().__len__()))
 
     # Generate initial remix
@@ -206,9 +206,6 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
 
     remix = remix.reset_index(drop=True)
 
-    print('Starting at {} total lags, aiming for {}.'.format(
-        remix_lags, ctrl_lags))
-    iterations = 0
     delta_lags = np.zeros(2)
     diff_lags = remix_lags - ctrl_lags
     while (diff_lags[0] > 0) or (diff_lags[1] > 0):
@@ -239,13 +236,6 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
             index[cand[0]], index[cand[1]] = \
                 index[cand[1]], index[cand[0]]
             remix = remix.iloc[index].reset_index(drop=True)
-        iterations += 1
-        if iterations % 1000 == 0:
-            print('  iteration {}, total lag {}.'.format(iterations, remix_lags))
-
-    # print(remix_lags)
-    print('Final lags of {} after {} iterations.'.format(
-        mean_lags(remix)*(n_tracks*n_steps-1), iterations))
 
     # Generate new tracks
     new_tracks = pd.DataFrame()
@@ -257,9 +247,13 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
         new_tracks = new_tracks.append(new_track)
 
     if 'Condition' in tracks.columns:
-        new_tracks['Condition'] = tracks['Condition'].iloc[0] + ' Remixed preserving lags'
+        new_tracks['Condition'] = tracks['Condition'].iloc[0] \
+            + ' Remixed preserving lags'
     else:
         new_tracks['Condition'] = 'Remixed preserving lags'
+
+    assert (mean_lags(remix) <= mean_lags(tracks)).all(), \
+        '  Error: Remix did not preserve lag!'
 
     return new_tracks.reset_index()
 
@@ -288,14 +282,14 @@ if __name__ == '__main__':
     # print(remix[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
 
-    """Sample dr"""
+    # """Sample dr"""
     # sample_dr(tracks)
 
 
     """Compare Algorithms"""
     # remix_dr = remix_dr(tracks)
     # remix = remix(tracks)
-    # remix_lags = remix_preserving_lags(tracks)
+    remix_lags = remix_preserving_lags(tracks)
     # tracks = tracks.append(remix_dr)
     # tracks = tracks.append(remix)
     # tracks = tracks.append(remix_lags).reset_index()
