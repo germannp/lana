@@ -1,5 +1,6 @@
 """Remix measured cell tracks"""
 import multiprocessing as mp
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -181,85 +182,84 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
     return new_tracks.reset_index()
 
 
+def _mean_lags(tracks):
+    """Calculate mean lag in velocity and turning angle of track(s)"""
+    means = []
+    for _, track in tracks.groupby(track_identifiers(tracks)):
+        means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
+    return np.mean(means, axis=0)
+
+
+def _remix_track(n_steps, n_tracks, data, track_id):
+    """Shuffle single track until lag is preserved"""
+    remix = data.ix[np.random.choice(
+        data.index.values, n_steps)] \
+        [['Velocity', 'Turning Angle', 'Rolling Angle']]
+    remix['Track_ID'] = track_id # needed for _mean_lags
+    remix.reset_index(drop=True, inplace=True)
+
+    ctrl_tracks = []
+    while len(data[data['Track_ID'].isin(ctrl_tracks)]) < n_steps:
+        ctrl_tracks.append(np.random.choice(data['Track_ID'].unique()))
+    ctrl_lags = _mean_lags(data[data['Track_ID'].isin(ctrl_tracks)])*(n_steps - 1)
+    remix_lags = _mean_lags(remix)*(n_steps - 1)
+    delta_lags = np.zeros(2)
+    diff_lags = remix_lags - ctrl_lags
+
+    while (diff_lags[0] > 0) or (diff_lags[1] > 0):
+        index = remix.index.values
+        cand = np.random.choice(index[1:-1], 2, replace=False)
+        delta_lags[0] = \
+            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2*(cand[0] != cand[1]+1) \
+            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2*(cand[0] != cand[1]+1) \
+            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2 \
+            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2 \
+            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2 \
+            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2
+        delta_lags[1] = \
+            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2 \
+            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2 \
+            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2 \
+            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2
+        if (np.sign(delta_lags[0]) != np.sign(diff_lags[0])) \
+            and (np.sign(delta_lags[1]) != np.sign(diff_lags[1])):
+            remix_lags += delta_lags
+            diff_lags += delta_lags
+            index[cand[0]], index[cand[1]] = \
+                index[cand[1]], index[cand[0]]
+            remix = remix.iloc[index].reset_index(drop=True)
+
+    assert (_mean_lags(remix) <= _mean_lags(data[data['Track_ID'].isin(
+        ctrl_tracks)])).all(), \
+        'Remix did not preserve lag!'
+
+    new_track = silly_steps(remix)
+    new_track['Track_ID'] = track_id
+
+    if track_id in [int(i*n_tracks/4) for i in range(4)]:
+        print('  Track {} of {} done'.format(track_id + 1, n_tracks))
+
+    return new_track
+
+
 def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     """Return new tracks preserving mean sqrd. velocity & turning angle lags"""
-
-
-    def mean_lags(tracks):
-        """Calculate mean lag in velocity and turning angle of track(s)"""
-        means = []
-        for _, track in tracks.groupby(track_identifiers(tracks)):
-            means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
-        return np.mean(means, axis=0)
-
-
-    def remix_track(n):
-        """Shuffle single track until lag is preserved"""
-        data = tracks.dropna()
-        remix = data.ix[np.random.choice(
-            data.index.values, n_steps)] \
-            [['Velocity', 'Turning Angle', 'Rolling Angle']]
-        remix['Track_ID'] = n # needed for mean_lags
-        remix.reset_index(drop=True, inplace=True)
-
-        ctrl_tracks = []
-        while len(data[data['Track_ID'].isin(ctrl_tracks)]) < n_steps:
-            ctrl_tracks.append(np.random.choice(data['Track_ID'].unique()))
-        ctrl_lags = mean_lags(data[data['Track_ID'].isin(ctrl_tracks)])*(n_steps - 1)
-        remix_lags = mean_lags(remix)*(n_steps - 1)
-        delta_lags = np.zeros(2)
-        diff_lags = remix_lags - ctrl_lags
-
-        while (diff_lags[0] > 0) or (diff_lags[1] > 0):
-            index = remix.index.values
-            cand = np.random.choice(index[1:-1], 2, replace=False)
-            delta_lags[0] = \
-                - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2*(cand[0] != cand[1]+1) \
-                - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2*(cand[0] != cand[1]-1) \
-                - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2*(cand[0] != cand[1]-1) \
-                - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2*(cand[0] != cand[1]+1) \
-                + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2 \
-                + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2 \
-                + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2 \
-                + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2
-            delta_lags[1] = \
-                - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
-                - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
-                - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
-                - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
-                + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2 \
-                + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2 \
-                + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2 \
-                + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2
-            if (np.sign(delta_lags[0]) != np.sign(diff_lags[0])) \
-                and (np.sign(delta_lags[1]) != np.sign(diff_lags[1])):
-                remix_lags += delta_lags
-                diff_lags += delta_lags
-                index[cand[0]], index[cand[1]] = \
-                    index[cand[1]], index[cand[0]]
-                remix = remix.iloc[index].reset_index(drop=True)
-
-        assert (mean_lags(remix) <= mean_lags(data[data['Track_ID'].isin(
-            ctrl_tracks)])).all(), \
-            'Remix did not preserve lag!'
-
-        new_track = silly_steps(remix)
-        new_track['Track_ID'] = n
-
-        if n in [int(i*n_tracks/4) for i in range(4)]:
-            print('  Track {} of {} done'.format(n + 1, n_tracks))
-
-        return new_track
-
-    print(type(remix_track))
-
     print('\nGenerating {} steps from {} steps, preserving lag.'.format(
         n_tracks*n_steps, tracks.dropna().__len__()))
 
-    # with mp.Pool(processes=6) as pool:
-    #     new_tracks = [track for track in pool.imap_unordered(remix_track, range(n_tracks))]
 
-    new_tracks = [track for track in map(remix_track, range(n_tracks))]
+    _remix_track_partial = partial(_remix_track, n_steps, n_tracks,
+        tracks.dropna())
+
+    with mp.Pool(processes=6) as pool:
+        new_tracks = [track for track in pool.imap_unordered(_remix_track_partial,
+            range(n_tracks))]
 
     new_tracks = pd.concat(new_tracks, ignore_index=True)
 
