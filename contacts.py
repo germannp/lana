@@ -31,7 +31,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
         contact_radius = [contact_radius]
 
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
-        print('  Error: max. n_Tcells is larger than # of given tracks.')
+        print('Max. n_Tcells is larger than # of given tracks.')
         return
 
     contacts = pd.DataFrame()
@@ -89,7 +89,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
                 runs_contacts[['Track_ID', 'Cell Numbers', 'Time']]\
                 .duplicated().sum()
             assert n_twice_bound == n_twice_bound_at_same_time,\
-                'T cells were in contacts at different times.'
+                '  Error: T cells were in contacts at different times.'
 
         contacts = contacts.append(runs_contacts)
 
@@ -132,7 +132,7 @@ def plot_details(contacts, tracks):
             distances = distances.append(distance)
             durations.append(distance[distance <= radius].size*time_step)
 
-        distances.index = distances.index.round(5) # Handle non-integer 'Times'
+        distances.index = np.round(distances.index, 5) # Handle non-integer 'Times'
         distats = distances.groupby(distances.index).describe().unstack()
         distance_ax.plot(distats.index, distats['50%'], color=color)
         distance_ax.fill_between(distats.index, distats['25%'], distats['75%'],
