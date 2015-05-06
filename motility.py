@@ -1,4 +1,4 @@
-"""Analyze and plot cell motility from tracks within lymph nodes"""
+"""Analyze and plot cell motility from tracks"""
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -35,12 +35,12 @@ def _uniquize_tracks(tracks):
 
             clusters = AgglomerativeClustering(n_clusters).fit(
                 track[['X', 'Y', 'Z']])
-            track['Cluster'] = clusters.labels_
+            track.loc[:, 'Cluster'] = clusters.labels_
 
             if sum(track[['Cluster', 'Time']].duplicated()) != 0:
                 clusters = AgglomerativeClustering(n_clusters).fit(
                     track[['Orig. Index']])
-                track['Cluster'] = clusters.labels_
+                track.loc[:, 'Cluster'] = clusters.labels_
 
             if sum(track[['Cluster', 'Time']].duplicated()) == 0:
                 tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
@@ -487,6 +487,8 @@ def summarize(tracks, skip_steps=4):
 
     summary = pd.DataFrame()
 
+    min_steps = tracks.groupby(track_identifiers(tracks)).apply(len).min()
+
     for i, (_, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
         if 'Track_ID' in track.columns:
             summary.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
@@ -525,11 +527,17 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Corr. Confinement Ratio'] = track['Displacement'].iloc[-1] \
             /dr_norms[1:].sum()*np.sqrt(track['Track Time'].max())
 
-        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
-        norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
-        u_turns = np.arccos(dot_products/norm_products[1:])
+        summary.loc[i, 'Mean Sq. Velocity Lag'] = np.mean(
+            track['Velocity'].diff()**2)
 
-        if summary['Track Duration'].min() > skip_steps + 2:
+        summary.loc[i, 'Mean Sq. Turn. Angle Lag'] = np.mean(
+            track['Turning Angle'].diff()**2)
+
+        if min_steps > skip_steps + 1:
+            dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
+            norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
+            u_turns = np.arccos(dot_products/norm_products[1:])
+
             summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
                 max(u_turns)
 
@@ -548,7 +556,8 @@ def plot_summary(summary, save=False, condition='Condition'):
     to_drop = [column
         for column in summary.columns
         if column != 'Condition' and summary[column].var() == 0]
-    to_drop.extend(['Track_ID', 'Turn Time'])
+    to_drop.extend([column for column in ['Track_ID', 'Turn Time']
+        if column in summary.columns])
     sns.set(style='white')
     sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
         diag_kind='kde')
@@ -636,5 +645,5 @@ if __name__ == "__main__":
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    # plot_summary(summary)
-    plot_tracks(tracks, summary)
+    plot_summary(summary)
+    # plot_tracks(tracks, summary)
