@@ -143,8 +143,14 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
 
 def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
     """Plot tracks"""
-    # TODO: Plot steepest turns if summary is provided.
-    if tracks['Track_ID'].unique().__len__() > n_tracks:
+    if tracks['Track_ID'].unique().__len__() < n_tracks:
+        pass
+    elif type(summary) == pd.core.frame.DataFrame:
+        max_turn_column = next(column for column in summary.columns
+            if column.startswith('Max. Turn'))
+        choice = summary.sort(max_turn_column, ascending=False)['Track_ID'][:n_tracks]
+        tracks = tracks[tracks['Track_ID'].isin(choice)]
+    else:
         choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
         tracks = tracks[tracks['Track_ID'].isin(choice)]
 
@@ -551,13 +557,16 @@ def summarize(tracks, skip_steps=4):
     return summary
 
 
-def plot_summary(summary, save=False, condition='Condition'):
+def plot_summary(summary, save=False, condition='Condition', plot_lags=False,
+    plot_turn=False):
     """Plot distributions and joint distributions of the track summary"""
     to_drop = [column
         for column in summary.columns
         if column != 'Condition' and summary[column].var() == 0]
     to_drop.extend([column for column in ['Track_ID', 'Turn Time']
         if column in summary.columns])
+    if not plot_lags:
+        to_drop.extend(['Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag'])
     sns.set(style='white')
     sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
         diag_kind='kde')
@@ -602,7 +611,7 @@ def analyze_turns(tracks, skip_steps=4):
 
         turns = turns.append(pd.DataFrame({
             'Condition': track['Condition'].iloc[0],
-            'Track ID': crits[1],
+            'Track_ID': crits[1],
             'Angle t+{}'.format(skip_steps): angles,
             'Mean Velocity Over Turn': mean_velocities,
             'Displacement Over Turn': displacements,
@@ -645,5 +654,5 @@ if __name__ == "__main__":
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    plot_summary(summary)
-    # plot_tracks(tracks, summary)
+    # plot_summary(summary)
+    plot_tracks(tracks, summary)
