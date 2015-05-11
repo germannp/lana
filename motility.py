@@ -143,17 +143,6 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
 
 def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
     """Plot tracks"""
-    if tracks['Track_ID'].unique().__len__() < n_tracks:
-        pass
-    elif type(summary) == pd.core.frame.DataFrame:
-        max_turn_column = next(column for column in summary.columns
-            if column.startswith('Max. Turn'))
-        choice = summary.sort(max_turn_column, ascending=False)['Track_ID'][:n_tracks]
-        tracks = tracks[tracks['Track_ID'].isin(choice)]
-    else:
-        choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
-        tracks = tracks[tracks['Track_ID'].isin(choice)]
-
     if type(summary) == pd.core.frame.DataFrame:
         alpha = 0.33
         skip_steps = int(next(word
@@ -166,19 +155,36 @@ def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
+    n_conditions = len(tracks[condition].unique())
 
     sns.set_style('white')
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(1,1,1, projection='3d')
-    for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+        if summary is not None:
+            cond_summary = summary[summary[condition] == cond]
+            max_turn_column = next(column for column in summary.columns
+                if column.startswith('Max. Turn'))
+            choice = cond_summary.sort(max_turn_column, ascending=False)\
+                ['Track_ID'][:int(n_tracks/n_conditions)]
+            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+        elif cond_tracks['Track_ID'].unique().__len__() < n_tracks/n_conditions:
+            pass
+        else:
+            choice = np.random.choice(cond_tracks['Track_ID'].unique(),
+                n_tracks, replace=False)
+            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
                 color=color, alpha=alpha)
-            if type(summary) == pd.core.frame.DataFrame:
+            if summary is not None:
                 track_id = track['Track_ID'].iloc[0]
-                turn_time = summary[summary['Track_ID'] == track_id]['Turn Time']
-                turn_times = np.arange(turn_time, turn_time + skip_steps + 1)
+                turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
+                turn_loc = track.index.get_loc(
+                    track[np.isclose(track['Time'], turn_time.values[0])].index.values[0])
+                turn_times = track['Time'][turn_loc - 1:turn_loc + skip_steps]
                 turn = track[track['Time'].isin(turn_times)]
                 ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
                     color=color)
@@ -515,7 +521,7 @@ def summarize(tracks, skip_steps=4):
 
         # ratio of v < 2 um/min
         summary.loc[i, 'Arrest Coefficient'] = \
-            track[track['Velocity'] < 2].__len__()/track['Velocity'].dropna().__len__()
+            len(track[track['Velocity'] < 2].__len__()/track['Velocity'].dropna())
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
@@ -547,7 +553,7 @@ def summarize(tracks, skip_steps=4):
             summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
                 max(u_turns)
 
-            summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time']-1
+            summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time']
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
@@ -633,8 +639,7 @@ if __name__ == "__main__":
     # track = pd.DataFrame({
     #     'Velocity':np.ones(7),
     #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Rolling Angle': np.random.rand(7)/100
-    # })
+    #     'Rolling Angle': np.random.rand(7)/100})
     # track.loc[3, 'Turning Angle'] = 2.5
     #
     # tracks = remix.silly_steps(track)
@@ -646,7 +651,6 @@ if __name__ == "__main__":
 
     """Analyze several tracks"""
     tracks = remix.silly_tracks()
-    # animate_tracks(tracks)
     # plot_dr(tracks)
 
     # plot(tracks)
