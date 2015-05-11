@@ -605,22 +605,32 @@ def analyze_turns(tracks, skip_steps=4):
         mean_velocities = [velocities[i:i+skip_steps].mean()
             for i in range(velocities.__len__() - 1 - skip_steps)]
 
+        slowest_steps = [velocities[i:i+skip_steps].min()
+            for i in range(velocities.__len__() - 1 - skip_steps)]
+
         dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
         norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
 
         angles = np.arccos(dot_products/norm_products[1:])
 
-        # TODO: Calculate distance instead of displacement
         displacements = [np.linalg.norm(
             positions.values[i] - positions.values[i+skip_steps+1])
             for i in range(positions.shape[0] - 1 - skip_steps)]
+
+        cross_products = np.cross(dr.shift(-skip_steps), dr)
+        normals = cross_products.T/np.linalg.norm(cross_products, axis=1)
+
+        distances = abs(np.sum(
+            (positions.shift(-skip_steps) - positions)*normals.T, axis=1)).dropna()
 
         turns = turns.append(pd.DataFrame({
             'Condition': track['Condition'].iloc[0],
             'Track_ID': crits[1],
             'Angle t+{}'.format(skip_steps): angles,
             'Mean Velocity Over Turn': mean_velocities,
+            'Slowest Step': slowest_steps,
             'Displacement Over Turn': displacements,
+            'Skew Lines Distance': distances,
             'Mean Track Velocity': track['Velocity'].mean()}))
 
     return turns
@@ -636,27 +646,31 @@ if __name__ == "__main__":
 
 
     """Find steepest turn in single track"""
-    # track = pd.DataFrame({
-    #     'Velocity':np.ones(7),
-    #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Rolling Angle': np.random.rand(7)/100})
-    # track.loc[3, 'Turning Angle'] = 2.5
-    #
-    # tracks = remix.silly_steps(track)
-    # tracks['Track_ID'] = 0
-    # tracks['Time'] = np.arange(8)
-    # summary = summarize(tracks, skip_steps=1)
-    # plot_tracks(tracks, summary)
+    track = pd.DataFrame({
+        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+        'Turning Angle': np.sort(np.random.rand(7))/100,
+        'Rolling Angle': np.random.rand(7)/100})
+    track.loc[2, 'Turning Angle'] = np.pi/2
+    track.loc[3, 'Turning Angle'] = np.pi/2
+
+    tracks = remix.silly_steps(track)
+    tracks['Track_ID'] = 0
+    tracks['Time'] = np.arange(8)
+    summary = summarize(tracks, skip_steps=2)
+    plot_tracks(tracks, summary)
+
+    turns = analyze_turns(tracks, skip_steps=2)
+    print('\n', turns)
 
 
     """Analyze several tracks"""
-    tracks = remix.silly_tracks()
-    # plot_dr(tracks)
-
-    # plot(tracks)
-    # joint_plot(tracks, skip_color=1)
-    # lag_plot(tracks, skip_color=1)
-
-    summary = summarize(tracks)
-    # plot_summary(summary)
-    plot_tracks(tracks, summary)
+    # tracks = remix.silly_tracks()
+    # # plot_dr(tracks)
+    #
+    # # plot(tracks)
+    # # joint_plot(tracks, skip_color=1)
+    # # lag_plot(tracks, skip_color=1)
+    #
+    # summary = summarize(tracks)
+    # # plot_summary(summary)
+    # plot_tracks(tracks, summary)
