@@ -89,7 +89,7 @@ def find(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
                 runs_contacts[['Track_ID', 'Cell Numbers', 'Time']]\
                 .duplicated().sum()
             assert n_twice_bound == n_twice_bound_at_same_time,\
-                '  Error: T cells were in contacts at different times.'
+                'T cells were in contacts at different times.'
 
         contacts = contacts.append(runs_contacts)
 

@@ -253,7 +253,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
         new_tracks['Condition'] = 'Remixed preserving lags'
 
     assert (mean_lags(remix) <= mean_lags(tracks)).all(), \
-        '  Error: Remix did not preserve lag!'
+        'Remix did not preserve lag!'
 
     return new_tracks.reset_index()
 
@@ -287,13 +287,13 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    # remix_dr = remix_dr(tracks)
-    # remix = remix(tracks)
+    remix_dr = remix_dr(tracks)
+    remix = remix(tracks)
     remix_lags = remix_preserving_lags(tracks)
-    # tracks = tracks.append(remix_dr)
-    # tracks = tracks.append(remix)
-    # tracks = tracks.append(remix_lags).reset_index()
-    # motility.plot(tracks)
+    tracks = tracks.append(remix_dr)
+    tracks = tracks.append(remix)
+    tracks = tracks.append(remix_lags).reset_index()
+    motility.plot(tracks)
     # motility.lag_plot(tracks, null_model=False)
 
 
