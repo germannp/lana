@@ -499,8 +499,6 @@ def summarize(tracks, skip_steps=4):
 
     summary = pd.DataFrame()
 
-    min_steps = tracks.groupby(track_identifiers(tracks)).apply(len).min()
-
     for i, (_, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
         if 'Track_ID' in track.columns:
             summary.loc[i, 'Track_ID'] = track.iloc[0]['Track_ID']
@@ -521,7 +519,7 @@ def summarize(tracks, skip_steps=4):
 
         # ratio of v < 2 um/min
         summary.loc[i, 'Arrest Coefficient'] = \
-            len(track[track['Velocity'] < 2].__len__()/track['Velocity'].dropna())
+            len(track[track['Velocity'] < 2])/len(track['Velocity'].dropna())
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
@@ -545,15 +543,23 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Mean Sq. Turn. Angle Lag'] = np.mean(
             track['Turning Angle'].diff()**2)
 
-        if min_steps > skip_steps + 1:
+        if len(track) > skip_steps + 1:
             dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
             norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
-            u_turns = np.arccos(dot_products/norm_products[1:])
+            turns = np.arccos(dot_products/norm_products[1:])
 
             summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
-                max(u_turns)
+                max(turns)
 
-            summary.loc[i, 'Turn Time'] = track.loc[u_turns.idxmax(), 'Time']
+            summary.loc[i, 'Turn Time'] = track.loc[turns.idxmax(), 'Time']
+
+            cross_product = np.cross(dr.shift(-skip_steps).loc[turns.idxmax()],
+                dr.loc[turns.idxmax()])
+            normal_vec = cross_product/np.linalg.norm(cross_product)
+
+            summary.loc[i, 'Skew Line Distance'] = abs(np.sum(
+                (positions.shift(-skip_steps).loc[turns.idxmax()] - \
+                positions.loc[turns.idxmax()])*normal_vec))
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
@@ -563,16 +569,18 @@ def summarize(tracks, skip_steps=4):
     return summary
 
 
-def plot_summary(summary, save=False, condition='Condition', plot_lags=False,
-    plot_turn=False):
+def plot_summary(summary, save=False, condition='Condition'):
     """Plot distributions and joint distributions of the track summary"""
+    turn_column = next(column for column in summary.columns
+        if column.startswith('Max. Turn Over'))
     to_drop = [column
         for column in summary.columns
         if column != 'Condition' and summary[column].var() == 0]
-    to_drop.extend([column for column in ['Track_ID', 'Turn Time']
+    to_drop.extend([column for column
+        in ['Track_ID', 'Turn Time', 'Skew Line Distance', turn_column,
+            'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag']
         if column in summary.columns])
-    if not plot_lags:
-        to_drop.extend(['Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag'])
+
     sns.set(style='white')
     sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
         diag_kind='kde')
@@ -658,10 +666,6 @@ if __name__ == "__main__":
     tracks['Time'] = np.arange(8)
     summary = summarize(tracks, skip_steps=2)
     plot_tracks(tracks, summary)
-
-    turns = analyze_turns(tracks, skip_steps=2)
-    print('\n', turns)
-
 
     """Analyze several tracks"""
     # tracks = remix.silly_tracks()
