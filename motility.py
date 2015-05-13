@@ -557,7 +557,7 @@ def summarize(tracks, skip_steps=4):
                 dr.loc[turns.idxmax()])
             normal_vec = cross_product/np.linalg.norm(cross_product)
 
-            summary.loc[i, 'Skew Line Distance'] = abs(np.sum(
+            summary.loc[i, 'Skew Lines Distance'] = abs(np.sum(
                 (positions.shift(-skip_steps).loc[turns.idxmax()] - \
                 positions.loc[turns.idxmax()])*normal_vec))
 
@@ -571,24 +571,54 @@ def summarize(tracks, skip_steps=4):
 
 def plot_summary(summary, save=False, condition='Condition'):
     """Plot distributions and joint distributions of the track summary"""
-    turn_column = next(column for column in summary.columns
-        if column.startswith('Max. Turn Over'))
     to_drop = [column
         for column in summary.columns
-        if column != 'Condition' and summary[column].var() == 0]
+        if (column != condition and summary[column].var() == 0
+        or 'Turn ' in column)]
     to_drop.extend([column for column
-        in ['Track_ID', 'Turn Time', 'Skew Line Distance', turn_column,
+        in ['Track_ID', 'Skew Lines Distance',
             'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag']
         if column in summary.columns])
 
     sns.set(style='white')
-    sns.pairplot(summary.drop(to_drop, axis=1), hue='Condition',
+    sns.pairplot(summary.drop(to_drop, axis=1), hue=condition,
         diag_kind='kde')
 
     if save:
         conditions = [cond.replace('= ', '')
             for cond in summary[condition].unique()]
         plt.savefig('Summary_' + '-'.join(conditions) + '.png')
+    else:
+        plt.show()
+
+
+def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
+    """Plot and print steepest turns over more than critical_rad"""
+    turn_column = next(col for col in summary.columns
+        if col.startswith('Max. Turn Over'))
+    columns_of_interest = ['Skew Lines Distance', 'Mean Velocity', condition,
+        turn_column]
+
+    uturns = summary[summary[turn_column] > critical_rad]
+
+    skip_steps = int(next(word
+        for word in turn_column.split() if word.isdigit()))
+    print('\nPlotting turns with more than {} rad over {} steps'.format(
+        critical_rad, skip_steps))
+    for cond, cond_uturns in uturns.groupby(condition):
+        n_tracks = len(summary[summary[condition] == cond])
+        n_turns = len(cond_uturns)
+        print('  {} tracks in {} with {} U-Turns ({:2.2f} %).'.format(
+            n_tracks, cond, n_turns, n_turns/n_tracks*100))
+
+    sns.set(style='white')
+    sns.pairplot(uturns[columns_of_interest],
+        hue=condition, diag_kind='kde')
+
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in summary[condition].unique()]
+        plt.savefig('U-Turns_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
 
@@ -654,27 +684,28 @@ if __name__ == "__main__":
 
 
     """Find steepest turn in single track"""
-    track = pd.DataFrame({
-        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-        'Turning Angle': np.sort(np.random.rand(7))/100,
-        'Rolling Angle': np.random.rand(7)/100})
-    track.loc[2, 'Turning Angle'] = np.pi/2
-    track.loc[3, 'Turning Angle'] = np.pi/2
-
-    tracks = remix.silly_steps(track)
-    tracks['Track_ID'] = 0
-    tracks['Time'] = np.arange(8)
-    summary = summarize(tracks, skip_steps=2)
-    plot_tracks(tracks, summary)
+    # track = pd.DataFrame({
+    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+    #     'Turning Angle': np.sort(np.random.rand(7))/100,
+    #     'Rolling Angle': np.random.rand(7)/100})
+    # track.loc[2, 'Turning Angle'] = np.pi/2
+    # track.loc[3, 'Turning Angle'] = np.pi/2
+    #
+    # tracks = remix.silly_steps(track)
+    # tracks['Track_ID'] = 0
+    # tracks['Time'] = np.arange(8)
+    # summary = summarize(tracks, skip_steps=2)
+    # plot_tracks(tracks, summary)
 
     """Analyze several tracks"""
-    # tracks = remix.silly_tracks()
-    # # plot_dr(tracks)
-    #
-    # # plot(tracks)
-    # # joint_plot(tracks, skip_color=1)
-    # # lag_plot(tracks, skip_color=1)
-    #
-    # summary = summarize(tracks)
-    # # plot_summary(summary)
+    tracks = remix.silly_tracks()
+    # plot_dr(tracks)
+
+    # plot(tracks)
+    # joint_plot(tracks, skip_color=1)
+    # lag_plot(tracks, skip_color=1)
+
+    summary = summarize(tracks)
+    # plot_summary(summary)
+    plot_uturns(summary)
     # plot_tracks(tracks, summary)
