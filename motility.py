@@ -596,8 +596,8 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
     """Plot and print steepest turns over more than critical_rad"""
     turn_column = next(col for col in summary.columns
         if col.startswith('Max. Turn Over'))
-    columns_of_interest = ['Skew Lines Distance', 'Mean Velocity', condition,
-        turn_column]
+    columns_of_interest = ['Skew Lines Distance', 'Mean Velocity',
+        'Arrest Coefficient', condition, turn_column]
 
     uturns = summary[summary[turn_column] > critical_rad]
 
@@ -621,57 +621,6 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
         plt.savefig('U-Turns_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
-
-
-def analyze_turns(tracks, skip_steps=4):
-    """Analyze turns between t and t+skip_steps in cell tracks"""
-    _analyze(tracks)
-
-    turns = pd.DataFrame()
-
-    for i, (crits, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
-        if 'Z' in track.columns:
-            positions = track[['X', 'Y', 'Z']]
-        else:
-            positions = track[['X', 'Y']]
-
-        dr = positions.diff()
-        dr_norms = np.linalg.norm(dr, axis=1)
-
-        velocities = dr_norms/track['Time'].diff()
-
-        mean_velocities = [velocities[i:i+skip_steps].mean()
-            for i in range(velocities.__len__() - 1 - skip_steps)]
-
-        slowest_steps = [velocities[i:i+skip_steps].min()
-            for i in range(velocities.__len__() - 1 - skip_steps)]
-
-        dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
-        norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
-
-        angles = np.arccos(dot_products/norm_products[1:])
-
-        displacements = [np.linalg.norm(
-            positions.values[i] - positions.values[i+skip_steps+1])
-            for i in range(positions.shape[0] - 1 - skip_steps)]
-
-        cross_products = np.cross(dr.shift(-skip_steps), dr)
-        normals = cross_products.T/np.linalg.norm(cross_products, axis=1)
-
-        distances = abs(np.sum(
-            (positions.shift(-skip_steps) - positions)*normals.T, axis=1)).dropna()
-
-        turns = turns.append(pd.DataFrame({
-            'Condition': track['Condition'].iloc[0],
-            'Track_ID': crits[1],
-            'Angle t+{}'.format(skip_steps): angles,
-            'Mean Velocity Over Turn': mean_velocities,
-            'Slowest Step': slowest_steps,
-            'Displacement Over Turn': displacements,
-            'Skew Lines Distance': distances,
-            'Mean Track Velocity': track['Velocity'].mean()}))
-
-    return turns
 
 
 if __name__ == "__main__":
