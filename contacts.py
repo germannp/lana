@@ -16,94 +16,99 @@ from utils import equalize_axis3d
 from utils import track_identifiers
 
 
-def find(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
-    ln_volume=0.125e9/100, contact_radius=10):
-    """Simulate contacts within radius"""
-    print('\nSimulating contacts {} times'.format(n_iter))
+def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
+    """Find contacts among T-cell tracks and DC positions"""
+    free_T_cells = set(tracks['Track_ID'].unique())
+    DC_tree = spatial.cKDTree(DCs)
+    contacts = pd.DataFrame()
+    max_index = 0
+    for time, positions in tracks.sort('Time').groupby('Time'):
+        positions = positions[positions['Track_ID'].isin(free_T_cells)]
+        positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
+            axis=1) < (tcz_radius + contact_radius)]
+        if positions.__len__() != 0:
+            T_cell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
+            new_contacts = DC_tree.query_ball_tree(
+                T_cell_tree, contact_radius)
+            for DC, DC_contacts in enumerate(new_contacts):
+                for T_cell in DC_contacts:
+                    contacts.loc[max_index, 'Time'] = time
+                    contacts.loc[max_index, 'Track_ID'] = \
+                        positions.iloc[T_cell]['Track_ID']
+                    contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
+                    contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
+                    contacts.loc[max_index, 'Z'] = DCs.loc[DC, 'Z']
+                    max_index += 1
+                    try:
+                        free_T_cells.remove(
+                            positions.iloc[T_cell]['Track_ID'])
+                    except KeyError:
+                        print('  Warning: T cell binding two DCs.')
+
+    if len(contacts) != 0:
+        n_twice_bound = \
+            contacts['Track_ID'].duplicated().sum()
+        n_twice_bound_at_same_time = \
+            contacts[['Track_ID', 'Time']]\
+            .duplicated().sum()
+        assert n_twice_bound == n_twice_bound_at_same_time,\
+            'T cells were in contacts at different times.'
+
+    return contacts
+
+
+def find_pairs(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
+    tcz_volume=0.125e9/100, contact_radius=10):
+    """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
+    print('\nSimulating pair-wise contacts {} times'.format(n_iter))
 
     if type(n_Tcells) == int:
         n_Tcells = [n_Tcells]
-
     if type(n_DCs) == int:
         n_DCs = [n_DCs]
-
     if type(contact_radius) != list:
         contact_radius = [contact_radius]
-
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
         print('Max. n_Tcells is larger than # of given tracks.')
         return
 
-    contacts = pd.DataFrame()
-    max_index = 0
+    pairs = pd.DataFrame()
     for n_run in range(n_iter):
         runs_contacts = pd.DataFrame()
         for cr, nT, nDC in itertools.product(contact_radius, n_Tcells, n_DCs):
-            ln_r = (3*ln_volume/(4*np.pi))**(1/3)
-            r = ln_r*np.random.rand(nDC)**(1/3)
+            T_tracks = tracks[tracks['Track_ID'].isin(
+                np.random.choice(tracks['Track_ID'].unique(), nT,
+                replace=False))]
+
+            tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
+            r = tcz_radius*np.random.rand(nDC)**(1/3)
             theta = np.random.rand(nDC)*2*np.pi
             phi = np.arccos(2*np.random.rand(nDC) - 1)
             DCs = pd.DataFrame({
                 'X': r*np.sin(theta)*np.sin(phi),
                 'Y': r*np.cos(theta)*np.sin(phi),
                 'Z': r*np.cos(phi)})
-            DC_tree = spatial.cKDTree(DCs)
 
-            T_tracks = tracks[tracks['Track_ID'].isin(
-                np.random.choice(tracks['Track_ID'].unique(), nT,
-                replace=False))]
-
-            free_Tcells = set(T_tracks['Track_ID'].unique())
-
-            for time, positions in T_tracks.sort('Time').groupby('Time'):
-                positions = positions[positions['Track_ID'].isin(free_Tcells)]
-                positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
-                    axis=1) < (ln_r + cr)]
-                if positions.__len__() != 0:
-                    Tcell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
-                    new_contacts = DC_tree.query_ball_tree(
-                        Tcell_tree, cr)
-                    for DC, DC_contacts in enumerate(new_contacts):
-                        for Tcell in DC_contacts:
-                            runs_contacts.loc[max_index, 'Time'] = time
-                            runs_contacts.loc[max_index, 'Run'] = n_run
-                            runs_contacts.loc[max_index, 'Contact Radius'] = cr
-                            runs_contacts.loc[max_index, 'Cell Numbers'] = \
-                                '{} T cells, {} DCs'.format(nT, nDC)
-                            runs_contacts.loc[max_index, 'Track_ID'] = \
-                                positions.iloc[Tcell]['Track_ID']
-                            runs_contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
-                            runs_contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
-                            runs_contacts.loc[max_index, 'Z'] = DCs.loc[DC, 'Z']
-                            max_index += 1
-                            try:
-                                free_Tcells.remove(
-                                    positions.iloc[Tcell]['Track_ID'])
-                            except KeyError:
-                                print('  Warning: T cell binding two DCs.')
-
-        if len(runs_contacts) != 0:
-            n_twice_bound = \
-                runs_contacts[['Track_ID', 'Cell Numbers']].duplicated().sum()
-            n_twice_bound_at_same_time = \
-                runs_contacts[['Track_ID', 'Cell Numbers', 'Time']]\
-                .duplicated().sum()
-            assert n_twice_bound == n_twice_bound_at_same_time,\
-                'T cells were in contacts at different times.'
-
-        contacts = contacts.append(runs_contacts)
+            run_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_pairs['Run'] = n_run
+            run_pairs['Cell Numbers'] = \
+                '{} T cells, {} DCs'.format(nT, nDC)
+            run_pairs['Contact Radius'] = cr
+            pairs = pairs.append(run_pairs)
 
         print('  Run {} done.'.format(n_run+1))
 
     # Save duration and number of runs for analysis
-    contacts.loc[max_index, 'Time'] = tracks['Time'].max()
-    contacts.loc[max_index, 'Run'] = n_iter - 1
+    pairs.reset_index(drop=True, inplace=True)
+    max_index = pairs.index.max()
+    pairs.loc[max_index + 1, 'Time'] = tracks['Time'].max()
+    pairs.loc[max_index + 1, 'Run'] = n_iter - 1
 
-    return contacts
+    return pairs
 
 
 def plot_details(contacts, tracks):
-    """Plot distances between DC and T cell track during contacts"""
+    """Plot distances over time and time within contact radius"""
     sns.set(style='white')
     distance_ax = plt.subplot(1,2,1)
     duration_ax = plt.subplot(1,2,2)
@@ -219,8 +224,8 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
     plt.show()
 
 
-def plot_situation(tracks, n_DCs=50, ln_volume=0.125e9/100, zoom=1):
-    """Plot some tracks, DCs and volume"""
+def plot_situation(tracks, n_DCs=50, tcz_volume=0.125e9/100, zoom=1):
+    """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('white')
 
     gs = gridspec.GridSpec(1,3)
@@ -234,7 +239,7 @@ def plot_situation(tracks, n_DCs=50, ln_volume=0.125e9/100, zoom=1):
     for _, track in chosen_tracks.groupby(track_identifiers(tracks)):
         space_ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
 
-    r = (3*ln_volume/(4*np.pi))**(1/3)*np.random.rand(n_DCs)**(1/3)
+    r = (3*tcz_volume/(4*np.pi))**(1/3)*np.random.rand(n_DCs)**(1/3)
     theta = np.random.rand(n_DCs)*2*np.pi
     phi = np.arccos(2*np.random.rand(n_DCs) - 1)
     DCs = pd.DataFrame({
@@ -243,7 +248,7 @@ def plot_situation(tracks, n_DCs=50, ln_volume=0.125e9/100, zoom=1):
         'Z': r*np.cos(phi)})
     space_ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], color='y')
 
-    r = (3*ln_volume/(4*np.pi))**(1/3)
+    r = (3*tcz_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
         circle = Circle((0, 0), r, fill=False, linewidth=2)
         space_ax.add_patch(circle)
@@ -272,6 +277,6 @@ if __name__ == '__main__':
     tracks['Time'] = tracks['Time']/3
     plot_situation(tracks)
 
-    contacts = find(tracks)
-    plot_numbers(contacts)
-    plot_details(contacts, tracks)
+    pairs = find_pairs(tracks)
+    plot_numbers(pairs)
+    plot_details(pairs, tracks)
