@@ -132,6 +132,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
     CD4_pairs = pd.DataFrame()
     CD8_pairs = pd.DataFrame()
     triples = pd.DataFrame()
+    max_index = 0
     for n_run in range(n_iter):
         for cr, n4, n8, nDC, delay in itertools.product(contact_radius, n_CD4,
             n_CD8, n_DCs, CD8_delay):
@@ -167,7 +168,6 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
             run_CD8_pairs['CD8 Delay'] = delay
             CD8_pairs = CD8_pairs.append(run_CD8_pairs)
 
-            run_triples = pd.DataFrame()
             for _, pair in run_CD8_pairs.iterrows():
                 try:
                     pair_triples = run_CD4_pairs[
@@ -177,25 +177,24 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
                 except KeyError:
                     pair_triples = []
                 if len(pair_triples) > 0:
-                    pair_triples['CD4 Track_ID'] = pair_triples['Track_ID']
-                    pair_triples['CD8 Track_ID'] = pair['Track_ID']
-                    pair_triples['Time Between Contacts'] = pair['Time']\
-                        - pair_triples['Time']
-                    pair_triples['Run'] = n_run
-                    pair_triples['Cell Numbers'] = \
+                    closest_CD4_pair = pair_triples.loc[
+                        (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
+                    triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
+                    triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
+                    triples.loc[max_index, 'Time'] = pair['Time']
+                    triples.loc[max_index, 'Time Between Contacts'] = pair['Time']\
+                        - closest_CD4_pair['Time']
+                    triples.loc[max_index, 'Run'] = n_run
+                    triples.loc[max_index, 'Cell Numbers'] = \
                         '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
-                    pair_triples['Contact Radius'] = cr
-                    pair_triples['CD8 Delay'] = \
-                        '{} minutes between CD4 and CD8 injection'.format(delay)
-                    pair_triples['Priming'] = 'Not Required'
-                    pair_triples.drop('Track_ID', axis=1, inplace=True)
-                    for idx, triple in pair_triples.iterrows():
-                        if triple['Time'] < pair['Time']:
-                            pair_triples.loc[idx, 'Time'] = pair['Time']
-                    run_triples = run_triples.append(pair_triples)
-            triples = triples.append(run_triples)
+                    triples.loc[max_index, 'Contact Radius'] = cr
+                    triples.loc[max_index, 'CD8 Delay'] = \
+                        '{} min. between injections, priming not required'.format(delay)
+                    max_index += 1
 
-            assert len(run_triples) <= len(run_CD4_pairs)*len(run_CD8_pairs), \
+            n_triples_of_run = len(triples[triples['Run'] == n_run])
+            n_DC8_pairs_of_run = len(CD8_pairs[CD8_pairs['Run'] == n_run])
+            assert n_triples_of_run <= n_DC8_pairs_of_run, \
                 'More triples found than possible.'
             # TODO: Assert distance between CD4 and CD8 < 2*contact_radius
 
@@ -345,7 +344,7 @@ def plot_triples(triples, parameters='CD8 Delay'):
 
     final_ax.set_title('Final State')
     final_ax.set_ylabel('Percentage of Final Contacts')
-    timing_ax.set_title('Time Between CD4-DC and CD8-DC Contact')
+    timing_ax.set_title('Time Between Contacts')
 
     final_sum = triples.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
