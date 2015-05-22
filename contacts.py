@@ -213,6 +213,12 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
         'Triples': triples})
 
 
+def find_triples_req_priming(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
+    CD8_delay=[0, 15], n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
+    """Simulate ensemble requiring CD4-CD-Pairs for triple formation"""
+    pass
+
+
 def plot_details(contacts, tracks):
     """Plot distances over time and time within contact radius"""
     sns.set(style='white')
@@ -330,6 +336,64 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
     plt.show()
 
 
+def plot_triples(triples, parameters='CD8 Delay'):
+    """Plot final numbers and times between 1st and 2nd contact"""
+    sns.set(style='white')
+
+    final_ax = plt.subplot(1,2,1)
+    timing_ax = plt.subplot(1,2,2)
+
+    final_ax.set_title('Final State')
+    final_ax.set_ylabel('Percentage of Final Contacts')
+    timing_ax.set_title('Time Between CD4-DC and CD8-DC Contact')
+
+    final_sum = triples.groupby(parameters).count()['Time']
+    order = list(final_sum.order().index.values)
+
+    for label, _triples in triples.groupby(parameters):
+        i = order.index(label)
+        n_runs = triples['Run'].max() + 1
+        label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
+        final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+
+        color = sns.color_palette(n_colors=i+1)[-1]
+
+        accumulation = _triples[['Run', 'Time']].pivot_table(
+            columns='Run', index='Time', aggfunc=len, fill_value=0).cumsum()
+        runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
+        runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
+        runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
+        runs_with_geq_n_contacts.loc[triples['Time'].max(), :] = \
+            runs_with_geq_n_contacts.iloc[-1]
+
+        for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
+            percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1]/n_runs*100
+            final_ax.bar(i*2, percentage, color=color,
+                alpha=1/runs_with_n_contacts.columns.max())
+
+            if n_contacts == runs_with_geq_n_contacts.columns.max():
+                next_percentage = 0
+            else:
+                next_n = next(n for n in runs_with_geq_n_contacts.columns[::-1]
+                    if n > n_contacts)
+                next_percentage = runs_with_geq_n_contacts[next_n].iloc[-1]/n_runs*100
+
+            percentage_diff = percentage - next_percentage
+            if percentage_diff > 3:
+                final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
+                    int(n_contacts), ha='center', va='center')
+
+        sns.kdeplot(_triples['Time Between Contacts'], shade=True, color=color,
+            ax=timing_ax, legend=False)
+
+    final_ax.set_xlim(left=-0.8)
+    final_ax.set_xticks([])
+    final_ax.set_ylim([0,100])
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_situation(tracks, n_DCs=50, tcz_volume=0.125e9/100, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('white')
@@ -388,5 +452,6 @@ if __name__ == '__main__':
     # plot_details(pairs, tracks)
 
     triples = find_pairs_and_triples(tracks, tracks)
-    plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
-    plot_numbers(triples['Triples'], parameters='CD8 Delay')
+    # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
+    # plot_numbers(triples['Triples'], parameters='CD8 Delay')
+    plot_triples(triples['Triples'])
