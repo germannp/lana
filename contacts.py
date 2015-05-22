@@ -74,7 +74,6 @@ def find_pairs(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
 
     pairs = pd.DataFrame()
     for n_run in range(n_iter):
-        runs_contacts = pd.DataFrame()
         for cr, nT, nDC in itertools.product(contact_radius, n_Tcells, n_DCs):
             T_tracks = tracks[tracks['Track_ID'].isin(
                 np.random.choice(tracks['Track_ID'].unique(), nT,
@@ -105,6 +104,113 @@ def find_pairs(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
     pairs.loc[max_index + 1, 'Run'] = n_iter - 1
 
     return pairs
+
+
+def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
+    CD8_delay=[0, 15], n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
+    """Simulate ensemble of triple contacts allowing CD4/DC and CD8/DC pairs"""
+    print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
+        .format(n_iter))
+
+    if type(n_CD4) == int:
+        n_CD4 = [n_CD4]
+    if type(n_CD8) == int:
+        n_CD8 = [n_CD8]
+    if type(n_DCs) == int:
+        n_DCs = [n_DCs]
+    if type(CD8_delay) != list:
+        CD8_delay = [CD8_delay]
+    if type(contact_radius) != list:
+        contact_radius = [contact_radius]
+    if max(n_CD4) > CD4_tracks['Track_ID'].unique().__len__():
+        print('Max. n_CD4 is larger than # of given CD4+ tracks.')
+        return
+    if max(n_CD8) > CD8_tracks['Track_ID'].unique().__len__():
+        print('Max. n_CD8 is larger than # of given CD8+ tracks.')
+        return
+
+    CD4_pairs = pd.DataFrame()
+    CD8_pairs = pd.DataFrame()
+    triples = pd.DataFrame()
+    for n_run in range(n_iter):
+        for cr, n4, n8, nDC, delay in itertools.product(contact_radius, n_CD4,
+            n_CD8, n_DCs, CD8_delay):
+            tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
+            r = tcz_radius*np.random.rand(nDC)**(1/3)
+            theta = np.random.rand(nDC)*2*np.pi
+            phi = np.arccos(2*np.random.rand(nDC) - 1)
+            DCs = pd.DataFrame({
+                'X': r*np.sin(theta)*np.sin(phi),
+                'Y': r*np.cos(theta)*np.sin(phi),
+                'Z': r*np.cos(phi)})
+
+            T_tracks = CD4_tracks[CD4_tracks['Track_ID'].isin(
+                np.random.choice(CD4_tracks['Track_ID'].unique(), n4,
+                replace=False))]
+            run_CD4_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_CD4_pairs['Run'] = n_run
+            run_CD4_pairs['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+            run_CD4_pairs['Contact Radius'] = cr
+            run_CD4_pairs['CD8 Delay'] = delay
+            CD4_pairs = CD4_pairs.append(run_CD4_pairs)
+
+            T_tracks = CD8_tracks[CD8_tracks['Track_ID'].isin(
+                np.random.choice(CD8_tracks['Track_ID'].unique(), n8,
+                replace=False))]
+            T_tracks.loc[:, 'Time'] = T_tracks['Time'] + delay # gives warning
+            run_CD8_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_CD8_pairs['Run'] = n_run
+            run_CD8_pairs['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+            run_CD8_pairs['Contact Radius'] = cr
+            run_CD8_pairs['CD8 Delay'] = delay
+            CD8_pairs = CD8_pairs.append(run_CD8_pairs)
+
+            run_triples = pd.DataFrame()
+            for _, pair in run_CD8_pairs.iterrows():
+                try:
+                    pair_triples = run_CD4_pairs[
+                        np.isclose(run_CD4_pairs['X'], pair['X']) &
+                        np.isclose(run_CD4_pairs['Y'], pair['Y']) &
+                        np.isclose(run_CD4_pairs['Z'], pair['Z'])]
+                except KeyError:
+                    pair_triples = []
+                if len(pair_triples) > 0:
+                    pair_triples['CD4 Track_ID'] = pair_triples['Track_ID']
+                    pair_triples['CD8 Track_ID'] = pair['Track_ID']
+                    pair_triples['Time Between Contacts'] = pair['Time']\
+                        - pair_triples['Time']
+                    pair_triples['Run'] = n_run
+                    pair_triples['Cell Numbers'] = \
+                        '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+                    pair_triples['Contact Radius'] = cr
+                    pair_triples['CD8 Delay'] = \
+                        '{} minutes between CD4 and CD8 injection'.format(delay)
+                    pair_triples['Priming'] = 'Not Required'
+                    pair_triples.drop('Track_ID', axis=1, inplace=True)
+                    for idx, triple in pair_triples.iterrows():
+                        if triple['Time'] < pair['Time']:
+                            pair_triples.loc[idx, 'Time'] = pair['Time']
+                    run_triples = run_triples.append(pair_triples)
+            triples = triples.append(run_triples)
+
+            assert len(run_triples) <= len(run_CD4_pairs)*len(run_CD8_pairs), \
+                'More triples found than possible.'
+            # TODO: Assert distance between CD4 and CD8 < 2*contact_radius
+
+        print('  Run {} done.'.format(n_run+1))
+
+    # Save duration and number of runs for analysis
+    for df, tracks in zip([CD4_pairs, CD8_pairs, triples],
+        [CD4_tracks, CD8_tracks, CD4_tracks]):
+        df.reset_index(drop=True, inplace=True)
+        max_index = df.index.max()
+        df.loc[max_index + 1, 'Time'] = tracks['Time'].max()
+        df.loc[max_index + 1, 'Run'] = n_iter - 1
+
+    return pd.Panel({'CD4-DC-Pairs': CD4_pairs, 'CD8-DC-Pairs': CD8_pairs,
+        'Triples': triples})
 
 
 def plot_details(contacts, tracks):
@@ -275,8 +381,12 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks)
+    # plot_situation(tracks)
 
-    pairs = find_pairs(tracks)
-    plot_numbers(pairs)
-    plot_details(pairs, tracks)
+    # pairs = find_pairs(tracks)
+    # plot_numbers(pairs)
+    # plot_details(pairs, tracks)
+
+    triples = find_pairs_and_triples(tracks, tracks)
+    plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
+    plot_numbers(triples['Triples'], parameters='CD8 Delay')
