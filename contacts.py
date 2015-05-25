@@ -448,6 +448,7 @@ def plot_triples(triples, parameters='CD8 Delay'):
     final_ax.set_title('Final State')
     final_ax.set_ylabel('Percentage of Final Contacts')
     timing_ax.set_title('Time Between Contacts')
+    timing_ax.set_yticks([])
 
     final_sum = triples.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
@@ -485,8 +486,10 @@ def plot_triples(triples, parameters='CD8 Delay'):
                 final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-        sns.distplot(_triples['Time Between Contacts'], kde=False, norm_hist=True, color=color,
-            ax=timing_ax)
+        bins = np.arange(triples['Time Between Contacts'].min(),
+            triples['Time Between Contacts'].max(), 15)/60
+        sns.distplot(_triples['Time Between Contacts']/60, kde=False, bins=bins,
+            norm_hist=True, color=color, ax=timing_ax, axlabel='Time [h]')
 
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
