@@ -18,11 +18,22 @@ from utils import track_identifiers
 
 def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
     """Find contacts among T-cell tracks and DC positions"""
+    if 'Appearance Time' in DCs.columns:
+        available_DCs = pd.DataFrame()
+    else:
+        DC_tree = spatial.cKDTree(DCs[['X', 'Y', 'Z']])
+        available_DCs = DCs
     free_T_cells = set(tracks['Track_ID'].unique())
-    DC_tree = spatial.cKDTree(DCs)
     contacts = pd.DataFrame()
     max_index = 0
     for time, positions in tracks.sort('Time').groupby('Time'):
+        if 'Appearance Time' not in DCs.columns:
+            pass
+        elif len(DCs[DCs['Appearance Time'] <= time]) == 0:
+            continue
+        elif len(available_DCs) != len(DCs[DCs['Appearance Time'] <= time]):
+            available_DCs = DCs[DCs['Appearance Time'] <= time].reset_index()
+            DC_tree = spatial.cKDTree(available_DCs[['X', 'Y', 'Z']])
         positions = positions[positions['Track_ID'].isin(free_T_cells)]
         positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
             axis=1) < (tcz_radius + contact_radius)]
@@ -35,9 +46,9 @@ def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
                     contacts.loc[max_index, 'Time'] = time
                     contacts.loc[max_index, 'Track_ID'] = \
                         positions.iloc[T_cell]['Track_ID']
-                    contacts.loc[max_index, 'X'] = DCs.loc[DC, 'X']
-                    contacts.loc[max_index, 'Y'] = DCs.loc[DC, 'Y']
-                    contacts.loc[max_index, 'Z'] = DCs.loc[DC, 'Z']
+                    contacts.loc[max_index, 'X'] = available_DCs.loc[DC, 'X']
+                    contacts.loc[max_index, 'Y'] = available_DCs.loc[DC, 'Y']
+                    contacts.loc[max_index, 'Z'] = available_DCs.loc[DC, 'Z']
                     max_index += 1
                     try:
                         free_T_cells.remove(
@@ -215,7 +226,99 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
 def find_triples_req_priming(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
     CD8_delay=[0, 15], n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
     """Simulate ensemble requiring CD4-CD-Pairs for triple formation"""
-    pass
+    print('\nSimulating triple contacts requiring CD4/DC pair {} times'
+        .format(n_iter))
+
+    if type(n_CD4) == int:
+        n_CD4 = [n_CD4]
+    if type(n_CD8) == int:
+        n_CD8 = [n_CD8]
+    if type(n_DCs) == int:
+        n_DCs = [n_DCs]
+    if type(CD8_delay) != list:
+        CD8_delay = [CD8_delay]
+    if type(contact_radius) != list:
+        contact_radius = [contact_radius]
+    if max(n_CD4) > CD4_tracks['Track_ID'].unique().__len__():
+        print('Max. n_CD4 is larger than # of given CD4+ tracks.')
+        return
+    if max(n_CD8) > CD8_tracks['Track_ID'].unique().__len__():
+        print('Max. n_CD8 is larger than # of given CD8+ tracks.')
+        return
+
+    CD4_pairs = pd.DataFrame()
+    triples = pd.DataFrame()
+    max_index = 0
+    for n_run in range(n_iter):
+        for cr, n4, n8, nDC, delay in itertools.product(contact_radius, n_CD4,
+            n_CD8, n_DCs, CD8_delay):
+            tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
+            r = tcz_radius*np.random.rand(nDC)**(1/3)
+            theta = np.random.rand(nDC)*2*np.pi
+            phi = np.arccos(2*np.random.rand(nDC) - 1)
+            DCs = pd.DataFrame({
+                'X': r*np.sin(theta)*np.sin(phi),
+                'Y': r*np.cos(theta)*np.sin(phi),
+                'Z': r*np.cos(phi)})
+
+            T_tracks = CD4_tracks[CD4_tracks['Track_ID'].isin(
+                np.random.choice(CD4_tracks['Track_ID'].unique(), n4,
+                replace=False))]
+            run_CD4_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_CD4_pairs['Run'] = n_run
+            run_CD4_pairs['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+            run_CD4_pairs['Contact Radius'] = cr
+            run_CD4_pairs['CD8 Delay'] = delay
+            CD4_pairs = CD4_pairs.append(run_CD4_pairs)
+
+            for idx, DC in DCs.iterrows():
+                DC_contacts = run_CD4_pairs[
+                    np.isclose(run_CD4_pairs['X'], DC['X']) &
+                    np.isclose(run_CD4_pairs['Y'], DC['Y']) &
+                    np.isclose(run_CD4_pairs['Z'], DC['Z'])]
+                if len(DC_contacts) > 0:
+                    DCs.loc[idx, 'Appearance Time'] = DC_contacts['Time'].min()
+            DCs = DCs.dropna().reset_index(drop=True)
+
+            T_tracks = CD8_tracks[CD8_tracks['Track_ID'].isin(
+                np.random.choice(CD8_tracks['Track_ID'].unique(), n8,
+                replace=False))]
+            T_tracks.loc[:, 'Time'] = T_tracks['Time'] + delay # gives warning
+            run_triples = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_triples['Run'] = n_run
+            run_triples['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+            run_triples['Contact Radius'] = cr
+            run_triples['CD8 Delay'] =  \
+                '{} min. between injections, priming required'.format(delay)
+            for idx, triple in run_triples.iterrows():
+                same_DC_CD4_pairs = run_CD4_pairs[
+                    np.isclose(run_CD4_pairs['X'], triple['X']) &
+                    np.isclose(run_CD4_pairs['Y'], triple['Y']) &
+                    np.isclose(run_CD4_pairs['Z'], triple['Z'])]
+                prev_CD4_pairs = same_DC_CD4_pairs[
+                    same_DC_CD4_pairs['Time'] <= triple['Time']]
+                closest_prev_CD4_pair = prev_CD4_pairs.loc[
+                    (prev_CD4_pairs['Time'] - triple['Time']).abs().idxmax(), :]
+                run_triples.loc[idx, 'Time Between Contacts'] = triple['Time'] \
+                    - closest_prev_CD4_pair['Time']
+                run_triples.loc[idx, 'CD4 Track_ID'] = \
+                    closest_prev_CD4_pair['Track_ID']
+            triples = triples.append(run_triples)
+
+            # TODO: Assert distance between CD4 and CD8 < 2*contact_radius
+
+        print('  Run {} done.'.format(n_run+1))
+
+    # Save duration and number of runs for analysis
+    for df, tracks in zip([CD4_pairs, triples], [CD4_tracks, CD8_tracks]):
+        df.reset_index(drop=True, inplace=True)
+        max_index = df.index.max()
+        df.loc[max_index + 1, 'Time'] = tracks['Time'].max()
+        df.loc[max_index + 1, 'Run'] = n_iter - 1
+
+    return pd.Panel({'CD4-DC-Pairs': CD4_pairs, 'Triples': triples})
 
 
 def plot_details(contacts, tracks):
@@ -382,8 +485,8 @@ def plot_triples(triples, parameters='CD8 Delay'):
                 final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-        sns.kdeplot(_triples['Time Between Contacts'], shade=True, color=color,
-            ax=timing_ax, legend=False)
+        sns.distplot(_triples['Time Between Contacts'], kde=False, norm_hist=True, color=color,
+            ax=timing_ax)
 
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
@@ -450,7 +553,10 @@ if __name__ == '__main__':
     # plot_numbers(pairs)
     # plot_details(pairs, tracks)
 
-    triples = find_pairs_and_triples(tracks, tracks)
+    # triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(triples['Triples'], parameters='CD8 Delay')
+    # plot_triples(triples['Triples'])
+
+    triples = find_triples_req_priming(tracks, tracks)
     plot_triples(triples['Triples'])
