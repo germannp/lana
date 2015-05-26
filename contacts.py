@@ -117,8 +117,8 @@ def find_pairs(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
     return pairs
 
 
-def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=50,
-    CD8_delay=[0, 15], n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
+def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
+    n_DCs=50, CD8_delay=0, n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
     """Simulate ensemble of triple contacts allowing CD4/DC and CD8/DC pairs"""
     print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
         .format(n_iter))
@@ -499,6 +499,41 @@ def plot_triples(triples, parameters='CD8 Delay'):
     plt.show()
 
 
+def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
+    """Scatter plot pure CD8-DC-Pairs vs Triples per run"""
+    pairs = triples['CD8-DC-Pairs']
+    triples = triples['Triples']
+
+    contact_numbers = pd.DataFrame()
+    max_index = 0
+    for run, par in itertools.product(range(int(pairs['Run'].max()) + 1),
+        pairs[parameters].dropna().unique()):
+        contact_numbers.loc[max_index, 'Run'] = run
+        contact_numbers.loc[max_index, 'Parameter'] = par
+        CD8_in_triples = triples[(triples['Run'] == run) &
+            (triples[parameters] == par)]['CD8 Track_ID'].unique()
+        contact_numbers.loc[max_index, '# CD8 in Triples'] = \
+            len(CD8_in_triples)
+        CD8_in_pairs = pairs[(pairs['Run'] == run) &
+            (pairs[parameters] == par)]['Track_ID'].unique()
+        contact_numbers.loc[max_index, '# CD8 in Pairs'] = \
+            len(CD8_in_pairs) - len(CD8_in_triples)
+        max_index += 1
+
+    sns.set(style='white')
+    plt.xlabel('# CD8 in Triples')
+    plt.ylabel('# CD8 in Pairs')
+    legend = []
+    for i, (par, numbers) in enumerate(contact_numbers.groupby('Parameter')):
+        plt.scatter(numbers['# CD8 in Triples'] + np.random.rand(len(numbers))/2,
+            numbers['# CD8 in Pairs'] + np.random.rand(len(numbers))/2,
+            color=sns.color_palette(n_colors=i+1)[-1])
+        legend.append(par)
+    plt.legend(legend)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_situation(tracks, n_DCs=50, tcz_volume=0.125e9/100, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('white')
@@ -556,10 +591,11 @@ if __name__ == '__main__':
     # plot_numbers(pairs)
     # plot_details(pairs, tracks)
 
-    # triples = find_pairs_and_triples(tracks, tracks)
+    triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(triples['Triples'], parameters='CD8 Delay')
     # plot_triples(triples['Triples'])
+    plot_triples_vs_pairs(triples)
 
-    triples = find_triples_req_priming(tracks, tracks)
-    plot_triples(triples['Triples'])
+    # triples = find_triples_req_priming(tracks, tracks)
+    # plot_triples(triples['Triples'])
