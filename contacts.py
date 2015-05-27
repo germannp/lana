@@ -203,8 +203,14 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
                         '{} min. between injections, priming not required'.format(delay)
                     max_index += 1
 
-            n_triples_of_run = len(triples[triples['Run'] == n_run])
-            n_DC8_pairs_of_run = len(CD8_pairs[CD8_pairs['Run'] == n_run])
+            try:
+                n_triples_of_run = len(triples[triples['Run'] == n_run])
+            except KeyError:
+                n_triples_of_run = 0
+            try:
+                n_DC8_pairs_of_run = len(CD8_pairs[CD8_pairs['Run'] == n_run])
+            except KeyError:
+                n_DC8_pairs_of_run = 0
             assert n_triples_of_run <= n_DC8_pairs_of_run, \
                 'More triples found than possible.'
             # TODO: Assert distance between CD4 and CD8 < 2*contact_radius
