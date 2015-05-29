@@ -9,7 +9,7 @@ def silly_steps(track_data):
     """Generate a walk from track data"""
     velocities = track_data['Velocity'].dropna().values
     turning_angles = track_data['Turning Angle'].dropna().values
-    rolling_angles = track_data['Rolling Angle'].dropna().values
+    plane_angles = track_data['Plane Angle'].dropna().values
     if 'Condtion' in track_data.columns:
         condition = track_data['Condition'].iloc[0] + ' Rebuilt'
     else:
@@ -28,7 +28,7 @@ def silly_steps(track_data):
     # Add up and move 1st turn to origin
     r = np.cumsum(dr, axis=0) - dr[1,:]
 
-    # Rotate moved positions minus the rolling angles around the next step
+    # Rotate moved positions minus the plane angles around the next step
     for i in range(2, n_steps+1):
         r = r - dr[i,:]
         if i == n_steps:
@@ -41,8 +41,8 @@ def silly_steps(track_data):
             n_vec[1] = np.cos(theta)*np.sin(phi)
             n_vec[2] = np.cos(phi)
         else:
-            cost = np.cos(-rolling_angles[i-2])
-            sint = np.sin(-rolling_angles[i-2])
+            cost = np.cos(-plane_angles[i-2])
+            sint = np.sin(-plane_angles[i-2])
             n_vec = dr[i,:]/np.sqrt(np.sum(dr[i,:]*dr[i,:]))
         for j in range(i):
             cross_prod = np.cross(n_vec, r[j,:])
@@ -64,12 +64,12 @@ def silly_tracks(n_tracks=100, n_steps=60):
         # track_data = pd.DataFrame({
         #     'Velocity': np.cumsum(np.ones(n_steps)),
         #     'Turning Angle': np.zeros(n_steps),
-        #     'Rolling Angle': np.zeros(n_steps),
+        #     'Plane Angle': np.zeros(n_steps),
         #     'Condition': 'Trivial'})
         track_data = pd.DataFrame({
             'Velocity': np.random.lognormal(0, 0.5, n_steps)*3,
             'Turning Angle': np.random.lognormal(0, 0.5, n_steps),
-            'Rolling Angle': (np.random.rand(n_steps) - 0.5)*2*np.pi,
+            'Plane Angle': (np.random.rand(n_steps) - 0.5)*2*np.pi,
             'Condition': 'Random'})
         track = silly_steps(track_data)
         track['Track_ID'] = track_id
@@ -156,9 +156,9 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
 
     velocities_only = tracks[tracks['Turning Angle'].isnull()] \
         ['Velocity'].dropna()
-    velo_and_turn = tracks[tracks['Rolling Angle'].isnull()] \
+    velo_and_turn = tracks[tracks['Plane Angle'].isnull()] \
         [['Velocity', 'Turning Angle']].dropna()
-    remaining_data = tracks[['Velocity', 'Turning Angle', 'Rolling Angle']].dropna()
+    remaining_data = tracks[['Velocity', 'Turning Angle', 'Plane Angle']].dropna()
 
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
@@ -197,7 +197,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     # Generate initial remix
     remix = tracks.dropna()
     remix = remix.ix[np.random.choice(remix.index.values, n_tracks*n_steps)] \
-        [['Velocity', 'Turning Angle', 'Rolling Angle']]
+        [['Velocity', 'Turning Angle', 'Plane Angle']]
     remix['Track_ID'] = 0
 
     # Shuffle until mean lag is preserved
@@ -241,7 +241,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
         track_data = remix.iloc[n_steps*i:n_steps*(i+1)]
-        track_data.loc[n_steps*i, 'Rolling Angle'] = np.nan
+        track_data.loc[n_steps*i, 'Plane Angle'] = np.nan
         new_track = silly_steps(track_data)
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
@@ -272,15 +272,15 @@ if __name__ == '__main__':
     # rebuilt = silly_steps(ctrl)
     # motility.plot_tracks(ctrl.append(rebuilt))
     # motility._analyze(rebuilt)
-    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
+    # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
 
 
     """Remix Ctrl"""
     # remix = remix(ctrl, n_tracks=1, n_steps=5)
     # motility._analyze(remix)
-    # print(remix[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
-    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Rolling Angle']])
+    # print(remix[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
+    # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
 
     # """Sample dr"""
     # sample_dr(tracks)
