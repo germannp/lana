@@ -82,7 +82,7 @@ def _split_at_skip(tracks):
 
 
 def _analyze(tracks, uniform_timesteps=True, min_length=6):
-    """Calculate velocity, turning angle & rolling angle"""
+    """Calculate velocity, turning angle & plane angle"""
     if 'Displacement' in tracks.columns and tracks['Displacement'].isnull().sum() == 0:
         return
     else:
@@ -125,7 +125,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 np.arccos(dot_products[:-1]/norm_products)
 
             if 'Z' in track.columns:
-                tracks.loc[track.index, 'Rolling Angle'] = np.nan
+                tracks.loc[track.index, 'Plane Angle'] = np.nan
 
                 n_vectors = np.cross(dr, dr.shift())
                 n_norms = np.linalg.norm(n_vectors, axis=1)
@@ -138,7 +138,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 cross_norms = np.linalg.norm(cross_products[2:], axis=1)
                 signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
 
-                tracks.loc[track.index[2:-1], 'Rolling Angle'] = signs*angles[2:]
+                tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
 
 
 def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
@@ -225,7 +225,7 @@ def animate_tracks(tracks, palette='deep'):
         plt.pause(1)
 
 
-def plot(tracks, save=False, palette='deep', plot_minmax=False,
+def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
     condition='Condition'):
     """Plot aspects of motility for different conditions"""
     _analyze(tracks)
@@ -239,7 +239,7 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__()))
     sns.set_context("paper", font_scale=1.5)
-    if 'Rolling Angle' in tracks.columns:
+    if 'Plane Angle' in tracks.columns:
         figure, axes = plt.subplots(ncols=4, figsize=(16,6))
         # axes = [axes[0][0], axes[0][1], axes[1][0], axes[1][1]]
     else:
@@ -262,8 +262,8 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
-    if 'Rolling Angle' in tracks.columns:
-        axes[3].set_title('Rolling Angles')
+    if 'Plane Angle' in tracks.columns:
+        axes[3].set_title('Plane Angles')
         axes[3].set_xlim([-np.pi, np.pi])
         axes[3].set_xticks([-np.pi, 0, np.pi])
         axes[3].set_xticklabels([r'$-\pi$', r'$0$', r'$\pi$'])
@@ -273,15 +273,24 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
         # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
         median = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').median()
+        print(median)
+        if max_time:
+            median = median[median.index <= max_time]
         axes[0].plot(np.sqrt(median.index), median)
         low = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.25)
         high = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.75)
+        if max_time:
+            low = low[low.index <= max_time]
+            high = high[high.index <= max_time]
         axes[0].fill_between(np.sqrt(median.index),
             low['Displacement'], high['Displacement'],
             alpha=.2, color=color)
         if plot_minmax:
             minima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').min()
             maxima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').max()
+            if max_time:
+                minima = minima[minima.index <= max_time]
+                maxima = maxima[maxima.index <= max_time]
             axes[0].fill_between(np.sqrt(median.index),
                 minima['Displacement'], maxima['Displacement'],
                 alpha=.2, color=color)
@@ -301,14 +310,14 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False,
             axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
         sns.kdeplot(turning_angles, shade=True, ax=axes[2])
 
-        # Plot Rolling Angles TODO: estimate variation
-        if 'Rolling Angle' in tracks.columns:
-            rolling_angles = cond_tracks['Rolling Angle'].dropna().as_matrix()
-            rolling_angles = np.concatenate(( # Mirror at boundaries.
-                -2*np.pi+rolling_angles, rolling_angles, 2*np.pi+rolling_angles))
+        # Plot Plane Angles TODO: estimate variation
+        if 'Plane Angle' in tracks.columns:
+            plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
+            plane_angles = np.concatenate(( # Mirror at boundaries.
+                -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
             axes[3].plot([-np.pi, np.pi], [1/(6*np.pi), 1/(6*np.pi)], '--k')
-            # sns.distplot(rolling_angles, ax=axes[3])
-            sns.kdeplot(rolling_angles, shade=True, ax=axes[3])
+            # sns.distplot(plane_angles, ax=axes[3])
+            sns.kdeplot(plane_angles, shade=True, ax=axes[3])
 
     if save:
         conditions = [cond.replace('= ', '')
@@ -441,7 +450,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 
     sns.set(style="white", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__() + skip_color))
-    if 'Rolling Angle' in tracks.columns:
+    if 'Plane Angle' in tracks.columns:
         fig, ax = plt.subplots(1,3, figsize=(12,4.25))
     else:
         fig, ax = plt.subplots(1,2, figsize=(8,4.25))
@@ -455,8 +464,8 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     ax[1].set_xlabel(r'$\theta$(t)')
     ax[1].set_ylabel(r'$\theta$(t+1)')
     ax[1].axis('equal')
-    if 'Rolling Angle' in tracks.columns:
-        ax[2].set_title('Rolling Angle')
+    if 'Plane Angle' in tracks.columns:
+        ax[2].set_title('Plane Angle')
         ax[2].set_xlabel(r'$\phi$(t)')
         ax[2].set_ylabel(r'$\phi$(t+1)')
         ax[2].axis('equal')
@@ -467,8 +476,8 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
             facecolors='0.8')
         ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
             facecolors='0.8')
-        if 'Rolling Angle' in tracks.columns:
-            ax[2].scatter(null_model['Rolling Angle'], null_model['Rolling Angle'].shift(),
+        if 'Plane Angle' in tracks.columns:
+            ax[2].scatter(null_model['Plane Angle'], null_model['Plane Angle'].shift(),
                 facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
@@ -478,8 +487,8 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
                 facecolors=color)
             ax[1].scatter(track['Turning Angle'], track['Turning Angle'].shift(),
                 facecolors=color)
-            if 'Rolling Angle' in tracks.columns:
-                ax[2].scatter(track['Rolling Angle'], track['Rolling Angle'].shift(),
+            if 'Plane Angle' in tracks.columns:
+                ax[2].scatter(track['Plane Angle'], track['Plane Angle'].shift(),
                     facecolors=color)
 
     plt.tight_layout()
@@ -511,8 +520,8 @@ def summarize(tracks, skip_steps=4):
 
         summary.loc[i, 'Mean Velocity'] = track['Velocity'].mean()
         summary.loc[i, 'Mean Turning Angle'] = track['Turning Angle'].mean()
-        if 'Rolling Angle' in track.columns:
-            summary.loc[i, 'Mean Rolling Angle'] = track['Rolling Angle'].mean()
+        if 'Plane Angle' in track.columns:
+            summary.loc[i, 'Mean Plane Angle'] = track['Plane Angle'].mean()
 
         summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
@@ -576,7 +585,7 @@ def plot_summary(summary, save=False, condition='Condition'):
         if (column != condition and summary[column].var() == 0
         or 'Turn ' in column)]
     to_drop.extend([column for column
-        in ['Track_ID', 'Skew Lines Distance',
+        in ['Track_ID', 'Sample', 'Skew Lines Distance',
             'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag']
         if column in summary.columns])
 
@@ -636,7 +645,7 @@ if __name__ == "__main__":
     # track = pd.DataFrame({
     #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
     #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Rolling Angle': np.random.rand(7)/100})
+    #     'Plane Angle': np.random.rand(7)/100})
     # track.loc[2, 'Turning Angle'] = np.pi/2
     # track.loc[3, 'Turning Angle'] = np.pi/2
     #
@@ -648,13 +657,14 @@ if __name__ == "__main__":
 
     """Analyze several tracks"""
     tracks = remix.silly_tracks()
+    tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    # plot(tracks)
+    plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
 
-    summary = summarize(tracks)
+    # summary = summarize(tracks)
     # plot_summary(summary)
-    plot_uturns(summary)
+    # plot_uturns(summary)
     # plot_tracks(tracks, summary)
