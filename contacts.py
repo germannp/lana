@@ -186,22 +186,21 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
                         np.isclose(run_CD4_pairs['Y'], pair['Y']) &
                         np.isclose(run_CD4_pairs['Z'], pair['Z'])]
                 except KeyError:
-                    pair_triples = []
-                if len(pair_triples) > 0:
-                    closest_CD4_pair = pair_triples.loc[
-                        (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
-                    triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
-                    triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
-                    triples.loc[max_index, 'Time'] = pair['Time']
-                    triples.loc[max_index, 'Time Between Contacts'] = pair['Time']\
-                        - closest_CD4_pair['Time']
-                    triples.loc[max_index, 'Run'] = n_run
-                    triples.loc[max_index, 'Cell Numbers'] = \
-                        '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
-                    triples.loc[max_index, 'Contact Radius'] = cr
-                    triples.loc[max_index, 'CD8 Delay'] = \
-                        '{} min. between injections, priming not required'.format(delay)
-                    max_index += 1
+                    continue
+                closest_CD4_pair = pair_triples.loc[
+                    (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
+                triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
+                triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
+                triples.loc[max_index, 'Time'] = pair['Time']
+                triples.loc[max_index, 'Time Between Contacts'] = pair['Time']\
+                    - closest_CD4_pair['Time']
+                triples.loc[max_index, 'Run'] = n_run
+                triples.loc[max_index, 'Cell Numbers'] = \
+                    '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+                triples.loc[max_index, 'Contact Radius'] = cr
+                triples.loc[max_index, 'CD8 Delay'] = \
+                    '{} min. between injections, priming not required'.format(delay)
+                max_index += 1
 
             try:
                 n_triples_of_run = len(triples[triples['Run'] == n_run])
@@ -279,12 +278,14 @@ def find_triples_req_priming(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=5
             CD4_pairs = CD4_pairs.append(run_CD4_pairs)
 
             for idx, DC in DCs.iterrows():
-                DC_contacts = run_CD4_pairs[
-                    np.isclose(run_CD4_pairs['X'], DC['X']) &
-                    np.isclose(run_CD4_pairs['Y'], DC['Y']) &
-                    np.isclose(run_CD4_pairs['Z'], DC['Z'])]
-                if len(DC_contacts) > 0:
+                try:
+                    DC_contacts = run_CD4_pairs[
+                        np.isclose(run_CD4_pairs['X'], DC['X']) &
+                        np.isclose(run_CD4_pairs['Y'], DC['Y']) &
+                        np.isclose(run_CD4_pairs['Z'], DC['Z'])]
                     DCs.loc[idx, 'Appearance Time'] = DC_contacts['Time'].min()
+                except KeyError:
+                    continue
             DCs = DCs.dropna().reset_index(drop=True)
 
             T_tracks = CD8_tracks[CD8_tracks['Track_ID'].isin(
@@ -299,10 +300,13 @@ def find_triples_req_priming(CD4_tracks, CD8_tracks, n_CD4=20, n_CD8=10, n_DCs=5
             run_triples['CD8 Delay'] =  \
                 '{} min. between injections, priming required'.format(delay)
             for idx, triple in run_triples.iterrows():
-                same_DC_CD4_pairs = run_CD4_pairs[
-                    np.isclose(run_CD4_pairs['X'], triple['X']) &
-                    np.isclose(run_CD4_pairs['Y'], triple['Y']) &
-                    np.isclose(run_CD4_pairs['Z'], triple['Z'])]
+                try:
+                    same_DC_CD4_pairs = run_CD4_pairs[
+                        np.isclose(run_CD4_pairs['X'], triple['X']) &
+                        np.isclose(run_CD4_pairs['Y'], triple['Y']) &
+                        np.isclose(run_CD4_pairs['Z'], triple['Z'])]
+                except KeyError:
+                    continue
                 prev_CD4_pairs = same_DC_CD4_pairs[
                     same_DC_CD4_pairs['Time'] <= triple['Time']]
                 closest_prev_CD4_pair = prev_CD4_pairs.loc[
