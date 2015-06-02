@@ -273,7 +273,6 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
         # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
         median = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').median()
-        print(median)
         if max_time:
             median = median[median.index <= max_time]
         axes[0].plot(np.sqrt(median.index), median)
@@ -381,8 +380,8 @@ def plot_dr(tracks, save=False, condition='Condition'):
         plt.show()
 
 
-def joint_plot(tracks, condition='Condition', save=False,
-    palette='deep', skip_color=0):
+def joint_plot(tracks, condition='Condition', save=False, palette='deep',
+    skip_color=0):
     """Plot the joint distribution of the velocities and turning angles."""
     _analyze(tracks)
 
@@ -398,7 +397,7 @@ def joint_plot(tracks, condition='Condition', save=False,
         color = sns.color_palette()[i + skip_color]
         sns.jointplot(cond_tracks['Turning Angle'], cond_tracks['Velocity'], kind='kde',
             stat_func=None, xlim=[0, np.pi], space=0, color=color,
-            ylim=[0, y_upper_lim])
+            ylim=[0, y_upper_lim], joint_kws={'shade': False})
         if save:
             plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
         else:
@@ -582,10 +581,10 @@ def plot_summary(summary, save=False, condition='Condition'):
     """Plot distributions and joint distributions of the track summary"""
     to_drop = [column
         for column in summary.columns
-        if (column != condition and summary[column].var() == 0
-        or 'Turn ' in column)]
+        if (column not in [condition, 'Sample'] and summary[column].var() == 0
+            or 'Turn ' in column)]
     to_drop.extend([column for column
-        in ['Track_ID', 'Sample', 'Skew Lines Distance',
+        in ['Track_ID', 'Skew Lines Distance',
             'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag']
         if column in summary.columns])
 
@@ -630,6 +629,25 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
         plt.savefig('U-Turns_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
+
+
+def all_out(tracks, condition='Condition'):
+    """Save all plots and the tracks & summary DataFrame"""
+    plot(tracks, save=True)
+    plot_dr(tracks, save=True)
+    joint_plot(tracks, save=True)
+    lag_plot(tracks, save=True, null_model=False)
+    for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
+        lag_plot(cond_tracks, save=True, skip_color=i)
+
+    summary = summarize(tracks)
+    plot_summary(summary, save=True)
+    plot_uturns(summary, save=True)
+
+    conditions = [cond.replace('= ', '')
+        for cond in summary[condition].unique()]
+    tracks.to_csv('Tracks_' + '-'.join(conditions) + '.csv')
+    summary.to_csv('Summary_' + '-'.join(conditions) + '.csv')
 
 
 if __name__ == "__main__":
