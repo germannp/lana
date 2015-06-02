@@ -228,23 +228,28 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
         'Triples': triples})
 
 
-def plot_details(contacts, tracks):
+def plot_details(contacts, tracks, condition='Contact Radius'):
     """Plot distances over time and time within contact radius"""
     sns.set(style='white')
-    distance_ax = plt.subplot(1,2,1)
-    duration_ax = plt.subplot(1,2,2)
+    figure, axes = plt.subplots(ncols=3, figsize=(12,6))
 
-    distance_ax.set_xlabel('Time [min]')
-    distance_ax.set_ylabel(r'Distance [$\mu$m]')
+    axes[0].set_xlabel('Time [min]')
+    axes[0].set_ylabel(r'Distance [$\mu$m]')
 
-    duration_ax.set_xlabel('Time within Contact Radius [min]')
-    duration_ax.set_ylabel('Density of Contacts')
+    axes[1].set_xlabel('Time within Contact Radius [min]')
+    axes[1].set_ylabel('Density of Contacts')
 
-    for i, (radius, _contacts) in enumerate(contacts.groupby('Contact Radius')):
+    axes[2].set_xlabel('Contact Time [h]')
+    axes[2].set_ylabel('Distance from Origin')
+
+    for i, (cond, cond_contacts) in enumerate(contacts.groupby(condition)):
+        assert len(cond_contacts['Contact Radius'].dropna().unique()) == 1, \
+            'Condition with more than one contact radius'
+        radius = cond_contacts['Contact Radius'].max()
         color = sns.color_palette(n_colors=i+1)[-1]
         distances = pd.Series()
         durations = []
-        for _, contact in _contacts.dropna().iterrows():
+        for _, contact in cond_contacts.dropna().iterrows():
             track = tracks[tracks['Track_ID'] == contact['Track_ID']]
             track = track[['Time', 'X', 'Y', 'Z']]
             track = track[track['Time'] <= contact['Time'] + 20]
@@ -260,14 +265,19 @@ def plot_details(contacts, tracks):
 
         distances.index = np.round(distances.index, 5) # Handle non-integer 'Times'
         distats = distances.groupby(distances.index).describe().unstack()
-        distance_ax.plot(distats.index, distats['50%'], color=color)
-        distance_ax.fill_between(distats.index, distats['25%'], distats['75%'],
+        axes[0].plot(distats.index, distats['50%'], color=color)
+        axes[0].fill_between(distats.index, distats['25%'], distats['75%'],
             color=color, alpha=0.2)
-        distance_ax.fill_between(distats.index, distats['min'], distats['max'],
+        axes[0].fill_between(distats.index, distats['min'], distats['max'],
             color=color, alpha=0.2)
 
-        sns.distplot(durations, bins=np.arange(20 + 1), kde=False, ax=duration_ax,
+        sns.distplot(durations, bins=np.arange(20 + 1), kde=False, ax=axes[1],
             color=color)
+
+        axes[2].scatter(cond_contacts['Time']/60,
+            np.linalg.norm(cond_contacts.dropna()[['X', 'Y', 'Z']], axis=1),
+            color=color, label=cond)
+        axes[2].legend(loc=4)
 
     plt.tight_layout()
     plt.show()
@@ -494,15 +504,15 @@ if __name__ == '__main__':
     tracks['Time'] = tracks['Time']/3
     # plot_situation(tracks)
 
-    # pairs = find_pairs(tracks)
+    pairs = find_pairs(tracks)
     # plot_numbers(pairs)
-    # plot_details(pairs, tracks)
+    plot_details(pairs, tracks, condition='Cell Numbers')
 
-    triples = find_pairs_and_triples(tracks, tracks)
+    # triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(triples['Triples'], parameters='CD8 Delay')
     # plot_triples(triples['Triples'])
-    plot_triples_vs_pairs(triples)
+    # plot_triples_vs_pairs(triples)
 
     # triples = find_triples_req_priming(tracks, tracks)
     # plot_triples(triples['Triples'])
