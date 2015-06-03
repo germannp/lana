@@ -465,7 +465,8 @@ def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
     plt.show()
 
 
-def plot_situation(tracks, n_DCs=50, tcz_volume=0.125e9/100, zoom=1):
+def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
+    min_distance=0, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('white')
 
@@ -473,14 +474,15 @@ def plot_situation(tracks, n_DCs=50, tcz_volume=0.125e9/100, zoom=1):
     space_ax = plt.subplot(gs[:,:-1], projection='3d')
     time_ax = plt.subplot(gs[:,-1])
 
-    n_tracks = 6*3
     space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_DCs))
     choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
     chosen_tracks = tracks[tracks['Track_ID'].isin(choice)]
     for _, track in chosen_tracks.groupby(track_identifiers(tracks)):
         space_ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
 
-    r = (3*tcz_volume/(4*np.pi))**(1/3)*np.random.rand(n_DCs)**(1/3)
+    tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
+    ratio = (min_distance/tcz_radius)**3
+    r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(n_DCs))**(1/3)
     theta = np.random.rand(n_DCs)*2*np.pi
     phi = np.arccos(2*np.random.rand(n_DCs) - 1)
     DCs = pd.DataFrame({
@@ -516,16 +518,16 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    # plot_situation(tracks)
+    plot_situation(tracks, n_tracks=0, n_DCs=2000, min_distance=60)
 
     # pairs = find_pairs(tracks)
     # plot_numbers(pairs, parameters='Minimal Initial Distance')
     # plot_details(pairs, tracks, parameters='Minimal Initial Distance')
 
-    pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    # pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(pairs_and_triples['Triples'], parameters='CD8 Delay')
-    plot_triples(pairs_and_triples, parameters='Cell Numbers')
+    # plot_triples(pairs_and_triples, parameters='Cell Numbers')
     # plot_triples_vs_pairs(pairs_and_triples)
 
     # triples = find_triples_req_priming(tracks, tracks)
