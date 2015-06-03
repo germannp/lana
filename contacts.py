@@ -122,7 +122,7 @@ def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
     return pairs
 
 
-def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[1, 20], n_CD8=10,
+def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[1, 20], n_CD8=[10, 25],
     n_DCs=50, CD8_delay=0, n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
     """Simulate ensemble of triple contacts allowing CD4/DC and CD8/DC pairs"""
     print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
@@ -293,24 +293,26 @@ def plot_details(contacts, tracks, parameters='Contact Radius'):
 
 
 def plot_numbers(contacts, parameters='Cell Numbers'):
-    """Plot accumulation and final number of contacts"""
+    """Plot accumulation and final number of T cells in contact with DC"""
+    T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
+
     sns.set(style='white')
 
-    n_parameter_sets = len(contacts[parameters].unique()) - 1 # nan for t_end
+    n_parameter_sets = len(T_cells_in_contact[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
     final_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
 
     final_ax.set_title('Final State')
-    final_ax.set_ylabel('Percentage of Final Contacts')
+    final_ax.set_ylabel('Percentage of Final T Cells in Contact')
     ax0.set_title('Dynamics')
 
-    final_sum = contacts.groupby(parameters).count()['Time']
+    final_sum = T_cells_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
 
-    for label, _contacts in contacts.groupby(parameters):
+    for label, _contacts in T_cells_in_contact.groupby(parameters):
         i = order.index(label)
-        n_runs = contacts['Run'].max() + 1
+        n_runs = T_cells_in_contact['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -331,7 +333,7 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[contacts['Time'].max(), :] = \
+        runs_with_geq_n_contacts.loc[T_cells_in_contact['Time'].max(), :] = \
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
@@ -364,24 +366,27 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
     plt.show()
 
 
-def plot_triples(triples, parameters='CD8 Delay'):
-    """Plot final numbers and times between 1st and 2nd contact"""
+def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
+    """Plot # of CD8+ T cells in contact and times between 1st and 2nd contact"""
+    CD8_in_contact = pairs_and_triples['Triples'].drop_duplicates(
+        ['CD8 Track_ID', 'Run', parameters])
+
     sns.set(style='white')
 
     final_ax = plt.subplot(1,2,1)
     timing_ax = plt.subplot(1,2,2)
 
     final_ax.set_title('Final State')
-    final_ax.set_ylabel('Percentage of Final Contacts')
+    final_ax.set_ylabel('Percentage of Final CD8+ T Cells in Contacts')
     timing_ax.set_title('Time Between Contacts')
     timing_ax.set_yticks([])
 
-    final_sum = triples.groupby(parameters).count()['Time']
+    final_sum = CD8_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
 
-    for label, _triples in triples.groupby(parameters):
+    for label, _triples in CD8_in_contact.groupby(parameters):
         i = order.index(label)
-        n_runs = triples['Run'].max() + 1
+        n_runs = CD8_in_contact['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -392,7 +397,7 @@ def plot_triples(triples, parameters='CD8 Delay'):
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[triples['Time'].max(), :] = \
+        runs_with_geq_n_contacts.loc[CD8_in_contact['Time'].max(), :] = \
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
@@ -412,8 +417,8 @@ def plot_triples(triples, parameters='CD8 Delay'):
                 final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-        bins = np.arange(triples['Time Between Contacts'].min(),
-            triples['Time Between Contacts'].max(), 15)/60
+        bins = np.arange(CD8_in_contact['Time Between Contacts'].min(),
+            CD8_in_contact['Time Between Contacts'].max(), 15)/60
         sns.distplot(_triples['Time Between Contacts']/60, kde=False, bins=bins,
             norm_hist=True, color=color, ax=timing_ax, axlabel='Time [h]')
 
@@ -513,15 +518,15 @@ if __name__ == '__main__':
     tracks['Time'] = tracks['Time']/3
     # plot_situation(tracks)
 
-    pairs = find_pairs(tracks)
-    plot_numbers(pairs, parameters='Minimal Initial Distance')
-    plot_details(pairs, tracks, parameters='Minimal Initial Distance')
+    # pairs = find_pairs(tracks)
+    # plot_numbers(pairs, parameters='Minimal Initial Distance')
+    # plot_details(pairs, tracks, parameters='Minimal Initial Distance')
 
-    # triples = find_pairs_and_triples(tracks, tracks)
-    # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
-    # plot_numbers(triples['Triples'], parameters='CD8 Delay')
-    # plot_triples(triples['Triples'])
-    # plot_triples_vs_pairs(triples)
+    pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')
+    # plot_numbers(pairs_and_triples['Triples'], parameters='CD8 Delay')
+    plot_triples(pairs_and_triples, parameters='Cell Numbers')
+    # plot_triples_vs_pairs(pairs_and_triples)
 
     # triples = find_triples_req_priming(tracks, tracks)
     # plot_triples(triples['Triples'])
