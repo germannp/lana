@@ -117,7 +117,7 @@ def find_pairs(tracks, n_Tcells=[10,20], n_DCs=[25,50], n_iter=10,
     return pairs
 
 
-def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
+def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[1, 20], n_CD8=10,
     n_DCs=50, CD8_delay=0, n_iter=10, tcz_volume=0.125e9/100, contact_radius=10):
     """Simulate ensemble of triple contacts allowing CD4/DC and CD8/DC pairs"""
     print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
@@ -169,8 +169,8 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
 
             T_tracks = CD8_tracks[CD8_tracks['Track_ID'].isin(
                 np.random.choice(CD8_tracks['Track_ID'].unique(), n8,
-                replace=False))]
-            T_tracks.loc[:, 'Time'] = T_tracks['Time'] + delay # gives warning
+                replace=False))].copy()
+            T_tracks['Time'] = T_tracks['Time'] + delay
             run_CD8_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
             run_CD8_pairs['Run'] = n_run
             run_CD8_pairs['Cell Numbers'] = \
@@ -187,8 +187,11 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, n_CD4=[5, 20], n_CD8=10,
                         np.isclose(run_CD4_pairs['Z'], pair['Z'])]
                 except KeyError:
                     continue
-                closest_CD4_pair = pair_triples.loc[
-                    (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
+                try:
+                    closest_CD4_pair = pair_triples.loc[
+                        (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
+                except ValueError:
+                    continue
                 triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
                 triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
                 triples.loc[max_index, 'Time'] = pair['Time']
@@ -504,15 +507,15 @@ if __name__ == '__main__':
     tracks['Time'] = tracks['Time']/3
     # plot_situation(tracks)
 
-    pairs = find_pairs(tracks)
+    # pairs = find_pairs(tracks)
     # plot_numbers(pairs)
-    plot_details(pairs, tracks, condition='Cell Numbers')
+    # plot_details(pairs, tracks, condition='Cell Numbers')
 
-    # triples = find_pairs_and_triples(tracks, tracks)
+    triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(triples['Triples'], parameters='CD8 Delay')
-    # plot_triples(triples['Triples'])
-    # plot_triples_vs_pairs(triples)
+    plot_triples(triples['Triples'])
+    plot_triples_vs_pairs(triples)
 
     # triples = find_triples_req_priming(tracks, tracks)
     # plot_triples(triples['Triples'])
