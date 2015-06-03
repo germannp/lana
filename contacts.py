@@ -94,7 +94,7 @@ def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
                 replace=False))]
 
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
-            ratio = min_dist/tcz_radius
+            ratio = (min_dist/tcz_radius)**3
             r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(nDC))**(1/3)
             theta = np.random.rand(nDC)*2*np.pi
             phi = np.arccos(2*np.random.rand(nDC) - 1)
