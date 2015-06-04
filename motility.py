@@ -569,6 +569,20 @@ def summarize(tracks, skip_steps=4):
                 (positions.shift(-skip_steps).loc[turns.idxmax()] - \
                 positions.loc[turns.idxmax()])*normal_vec))
 
+        all_turns = pd.DataFrame(index=dr.index[1:-1])
+        for skip in range(1, len(track) - 1):
+            dot_products = np.sum(dr.shift(-skip)*dr, axis=1).dropna()
+            norm_products = dr_norms[skip:]*dr_norms[:-skip]
+            all_turns.loc[dot_products.index, skip - 1] = \
+                np.arccos(dot_products/norm_products[1:])
+        max_col = all_turns.fillna(0).values.argmax()%(len(track) - 2)
+        max_idx = all_turns[max_col].idxmax()
+        assert all_turns.max().max() == all_turns.loc[max_idx, max_col], \
+            'Found maximal turn is not the maximum!'
+
+        summary.loc[i, 'Maximal Turn'] = all_turns.max().max()
+        summary.loc[i, 'Steps for Max. Turn'] = max_col + 2
+
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
             cond_summary.__len__(), cond,
@@ -605,7 +619,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
     turn_column = next(col for col in summary.columns
         if col.startswith('Max. Turn Over'))
     columns_of_interest = ['Skew Lines Distance', 'Mean Velocity',
-        'Arrest Coefficient', condition, turn_column]
+        'Arrest Coefficient', condition, turn_column, 'Maximal Turn', 'Steps for Max. Turn']
 
     uturns = summary[summary[turn_column] > critical_rad]
 
@@ -674,15 +688,15 @@ if __name__ == "__main__":
     # plot_tracks(tracks, summary)
 
     """Analyze several tracks"""
-    tracks = remix.silly_tracks()
-    tracks.loc[:, 'Time'] = tracks['Time']/3
+    tracks = remix.silly_tracks(n_steps=10)
+    tracks['Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    plot(tracks)
+    # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
 
-    # summary = summarize(tracks)
+    summary = summarize(tracks)
     # plot_summary(summary)
     # plot_uturns(summary)
     # plot_tracks(tracks, summary)
