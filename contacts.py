@@ -69,7 +69,8 @@ def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
 
 
 def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
-    tcz_volume=0.125e9/100, min_distance=[0, 15, 30, 50], contact_radius=10):
+    tcz_volume=0.125e9/100, min_distance=[0, 15, 30, 50],
+    min_dist_std=10, contact_radius=10):
     """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
     print('\nSimulating pair-wise contacts {} times'.format(n_iter))
 
@@ -79,6 +80,8 @@ def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
         n_DCs = [n_DCs]
     if type(min_distance) != list:
         min_distance = [min_distance]
+    if type(min_dist_std) != list:
+        min_dist_std = [min_dist_std]
     if type(contact_radius) != list:
         contact_radius = [contact_radius]
     if max(n_Tcells) > tracks['Track_ID'].unique().__len__():
@@ -87,11 +90,20 @@ def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
 
     pairs = pd.DataFrame()
     for n_run in range(n_iter):
-        for min_dist, cr, nT, nDC in itertools.product(min_distance, contact_radius,
-            n_Tcells, n_DCs):
+        for min_dist, min_std, cr, nT, nDC in itertools.product(min_distance,
+            min_dist_std, contact_radius, n_Tcells, n_DCs):
             T_tracks = tracks[tracks['Track_ID'].isin(
                 np.random.choice(tracks['Track_ID'].unique(), nT,
-                replace=False))]
+                replace=False))].copy()
+            if min_std != 0:
+                # Such noise makes contacts seem to be none!
+                for id, track in T_tracks.groupby('Track_ID'):
+                    T_tracks.loc[T_tracks['Track_ID'] == id, 'X'] += \
+                        np.random.randn()*min_std
+                    T_tracks.loc[T_tracks['Track_ID'] == id, 'Y'] += \
+                        np.random.randn()*min_std
+                    T_tracks.loc[T_tracks['Track_ID'] == id, 'Z'] += \
+                        np.random.randn()*min_std
 
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
             ratio = (min_dist/tcz_radius)**3
@@ -109,6 +121,7 @@ def find_pairs(tracks, n_Tcells=10, n_DCs=50, n_iter=10,
                 '{} T cells, {} DCs'.format(nT, nDC)
             run_pairs['Contact Radius'] = cr
             run_pairs['Minimal Initial Distance'] = min_dist
+            run_pairs['Std. of Initial Position'] = min_std
             pairs = pairs.append(run_pairs)
 
         print('  Run {} done.'.format(n_run+1))
@@ -518,17 +531,14 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks, n_tracks=0, n_DCs=2000, min_distance=60)
+    # plot_situation(tracks, n_tracks=0, n_DCs=2000, min_distance=60)
 
-    # pairs = find_pairs(tracks)
-    # plot_numbers(pairs, parameters='Minimal Initial Distance')
-    # plot_details(pairs, tracks, parameters='Minimal Initial Distance')
+    pairs = find_pairs(tracks)
+    plot_numbers(pairs, parameters='Minimal Initial Distance')
+    plot_details(pairs, tracks, parameters='Minimal Initial Distance')
 
     # pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(pairs_and_triples['Triples'], parameters='CD8 Delay')
     # plot_triples(pairs_and_triples, parameters='Cell Numbers')
     # plot_triples_vs_pairs(pairs_and_triples)
-
-    # triples = find_triples_req_priming(tracks, tracks)
-    # plot_triples(triples['Triples'])
