@@ -1,4 +1,6 @@
 """Analyze and plot cell motility from tracks"""
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -142,19 +144,16 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
 
 
-def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
-    condition='Condition', plot_each_sample=False):
+def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
+    plot_each_sample=False):
     """Plot aspects of motility for different conditions"""
     _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    if tracks[condition].unique().__len__() == 1:
-        plot_minmax = True
-
     sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__()))
+        palette, len(tracks[condition].unique())))
     sns.set_context("paper", font_scale=1.5)
     if 'Plane Angle' in tracks.columns:
         figure, axes = plt.subplots(ncols=4, figsize=(16,6))
@@ -185,51 +184,70 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
         axes[3].set_xticks([-np.pi, 0, np.pi])
         axes[3].set_xticklabels([r'$-\pi$', r'$0$', r'$\pi$'])
 
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+    colors = {cond: sns.color_palette(n_colors=i+1)[-1]
+        for i, cond in enumerate(tracks[condition].dropna().unique())}
+    if plot_each_sample:
+        groups = [condition, 'Sample']
+    else:
+        groups = condition
+
+    for _, cond_tracks in tracks.groupby(groups):
         # Plot displacements, inspired by http://stackoverflow.com/questions/
         # 22795348/plotting-time-series-data-with-seaborn
-        color = sns.color_palette(n_colors=i+1)[-1]
+        label = cond_tracks[condition].iloc[0]
+        color = colors[label]
         displacements = cond_tracks[['Time', 'Displacement']].groupby('Time').\
             describe().unstack()['Displacement']
         if max_time:
             displacements = displacements[displacements.index < max_time]
-        axes[0].plot(np.sqrt(displacements.index), displacements['50%'])
-        axes[0].fill_between(np.sqrt(displacements.index),
-            displacements['25%'], displacements['75%'],
-            alpha=.2, color=color)
-        if plot_minmax:
+        axes[0].plot(np.sqrt(displacements.index), displacements['50%'],
+            color=color)
+        if not plot_each_sample:
+            axes[0].fill_between(np.sqrt(displacements.index),
+                displacements['25%'], displacements['75%'],
+                alpha=.2, color=color)
+        if not plot_each_sample and len(tracks[condition].unique()) == 1:
             axes[0].fill_between(np.sqrt(displacements.index),
                 displacements['min'], displacements['max'],
                 alpha=.2, color=color)
 
-        # Plot velocities TODO: estimate variation
-        sns.kdeplot(cond_tracks['Velocity'].dropna(),
-            shade=True, ax=axes[1], gridsize=500, label=cond)
+        # Plot velocities
+        sns.kdeplot(cond_tracks['Velocity'].dropna(), clip=(0,np.inf), color=color,
+            shade=not plot_each_sample, ax=axes[1], gridsize=500, label=label)
 
-        # Plot turning angles TODO: estimate variation
+        # Plot turning angles
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
         if 'Z' in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
             axes[2].plot(x, np.sin(x)/2, '--k')
+            sns.kdeplot(turning_angles, clip=(0,np.inf),
+                color=color, shade=not plot_each_sample, ax=axes[2])
         else:
             turning_angles = np.concatenate(( # Mirror at boundaries.
                 -turning_angles, turning_angles, 2*np.pi-turning_angles))
             axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
-        sns.kdeplot(turning_angles, shade=True, ax=axes[2])
+            sns.kdeplot(turning_angles,
+                color=color, shade=not plot_each_sample, ax=axes[2])
 
-        # Plot Plane Angles TODO: estimate variation
+        # Plot Plane Angles
         if 'Plane Angle' in tracks.columns:
             plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
             plane_angles = np.concatenate(( # Mirror at boundaries.
                 -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
             axes[3].plot([-np.pi, np.pi], [1/(6*np.pi), 1/(6*np.pi)], '--k')
             # sns.distplot(plane_angles, ax=axes[3])
-            sns.kdeplot(plane_angles, shade=True, ax=axes[3])
+            sns.kdeplot(plane_angles, color=color, shade=not plot_each_sample,
+                ax=axes[3])
+
+    handles, labels = axes[1].get_legend_handles_labels()
+    unique_entries = OrderedDict(zip(labels, handles))
+    axes[1].legend(unique_entries.values(), unique_entries.keys())
 
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
-        plt.savefig('Motility_' + '-'.join(conditions) + '.png')
+        plt.savefig('Motility_' + '-'.join(conditions) +
+            '_all-samples'*plot_each_sample + '.png')
     else:
         plt.show()
 
@@ -542,6 +560,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
 def all_out(tracks, condition='Condition'):
     """Save all plots and the tracks & summary DataFrame"""
     plot(tracks, save=True)
+    plot(tracks, plot_each_sample=True, save=True)
     plot_dr(tracks, save=True)
     joint_plot(tracks, save=True)
     lag_plot(tracks, save=True, null_model=False)
