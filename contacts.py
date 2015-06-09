@@ -238,7 +238,16 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 n_DC8_pairs_of_run = 0
             assert n_triples_of_run <= n_DC8_pairs_of_run, \
                 'More triples found than possible.'
-            # TODO: Assert distance between CD4 and CD8 < 2*contact_radius
+            for _, triple in run_triples.iterrows():
+                CD8_position = CD8_tracks[
+                    (CD8_tracks['Track_ID'] == triple['CD8 Track_ID']) &
+                    (CD8_tracks['Time'] == triple['Time'])][['X', 'Y', 'Z']]
+                CD4_contact_time = triple['Time'] - triple['Time Between Contacts']
+                CD4_position = CD4_tracks[
+                    (CD4_tracks['Track_ID'] == triple['CD4 Track_ID']) &
+                    np.isclose(CD4_tracks['Time'], CD4_contact_time)][['X', 'Y', 'Z']]
+                distance = np.linalg.norm(CD4_position.values - CD8_position.values)
+                assert  distance <= cr*(1 + lic_fac), 'Triple too far apart.'
             triples = triples.append(run_triples)
 
         print('  Run {} done.'.format(n_run+1))
