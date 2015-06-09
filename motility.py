@@ -143,7 +143,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
 
 
 def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
-    condition='Condition'):
+    condition='Condition', plot_each_sample=False):
     """Plot aspects of motility for different conditions"""
     _analyze(tracks)
 
@@ -189,26 +189,17 @@ def plot(tracks, save=False, palette='deep', plot_minmax=False, max_time=9,
         # Plot displacements, inspired by http://stackoverflow.com/questions/
         # 22795348/plotting-time-series-data-with-seaborn
         color = sns.color_palette(n_colors=i+1)[-1]
-        median = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').median()
+        displacements = cond_tracks[['Time', 'Displacement']].groupby('Time').\
+            describe().unstack()['Displacement']
         if max_time:
-            median = median[median.index <= max_time]
-        axes[0].plot(np.sqrt(median.index), median)
-        low = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.25)
-        high = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').quantile(0.75)
-        if max_time:
-            low = low[low.index <= max_time]
-            high = high[high.index <= max_time]
-        axes[0].fill_between(np.sqrt(median.index),
-            low['Displacement'], high['Displacement'],
+            displacements = displacements[displacements.index < max_time]
+        axes[0].plot(np.sqrt(displacements.index), displacements['50%'])
+        axes[0].fill_between(np.sqrt(displacements.index),
+            displacements['25%'], displacements['75%'],
             alpha=.2, color=color)
         if plot_minmax:
-            minima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').min()
-            maxima = cond_tracks[['Track Time', 'Displacement']].groupby('Track Time').max()
-            if max_time:
-                minima = minima[minima.index <= max_time]
-                maxima = maxima[maxima.index <= max_time]
-            axes[0].fill_between(np.sqrt(median.index),
-                minima['Displacement'], maxima['Displacement'],
+            axes[0].fill_between(np.sqrt(displacements.index),
+                displacements['min'], displacements['max'],
                 alpha=.2, color=color)
 
         # Plot velocities TODO: estimate variation
@@ -573,19 +564,19 @@ if __name__ == "__main__":
 
 
     """Uniquize & split single track"""
-    to_uniquize = pd.DataFrame({
-        'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
-    to_uniquize = to_uniquize.append(pd.DataFrame({
-        'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
-    track_2 = pd.DataFrame({
-        'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
-    to_uniquize = to_uniquize.append(track_2)
-    _uniquize_tracks(to_uniquize)
-    print(to_uniquize, '\n', track_2, '\n')
+    # to_uniquize = pd.DataFrame({
+    #     'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
+    # to_uniquize = to_uniquize.append(pd.DataFrame({
+    #     'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
+    # track_2 = pd.DataFrame({
+    #     'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
+    # to_uniquize = to_uniquize.append(track_2)
+    # _uniquize_tracks(to_uniquize)
+    # print(to_uniquize, '\n', track_2, '\n')
 
-    to_split = pd.DataFrame({'Track_ID': 0, 'Time': np.arange(10)/3}).drop(4)
-    _split_at_skip(to_split)
-    print(to_split)
+    # to_split = pd.DataFrame({'Track_ID': 0, 'Time': np.arange(10)/3}).drop(4)
+    # _split_at_skip(to_split)
+    # print(to_split)
 
 
     """Find steepest turn in single track"""
@@ -603,11 +594,11 @@ if __name__ == "__main__":
     # plot_tracks(tracks, summary)
 
     """Analyze several tracks"""
-    # tracks = remix.silly_tracks()
-    # tracks.loc[:, 'Time'] = tracks['Time']/3
+    tracks = remix.silly_tracks()
+    tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    # plot(tracks)
+    plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
 
