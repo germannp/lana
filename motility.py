@@ -29,6 +29,7 @@ def _uniquize_tracks(tracks):
     for identifiers, track in tracks.groupby(track_identifiers(tracks)):
         if sum(track['Time'].duplicated()) != 0:
             n_clusters = track['Time'].value_counts().max()
+            track = track.copy()
             index = track.index
             if 'Track_ID' in track.columns:
                 tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
@@ -572,7 +573,19 @@ if __name__ == "__main__":
 
 
     """Uniquize & split single track"""
-    # TODO: Test _uniquize & _split_at_skip
+    to_uniquize = pd.DataFrame({
+        'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
+    to_uniquize = to_uniquize.append(pd.DataFrame({
+        'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
+    track_2 = pd.DataFrame({
+        'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
+    to_uniquize = to_uniquize.append(track_2)
+    _uniquize_tracks(to_uniquize)
+    print(to_uniquize, '\n', track_2, '\n')
+
+    to_split = pd.DataFrame({'Track_ID': 0, 'Time': np.arange(10)/3}).drop(4)
+    _split_at_skip(to_split)
+    print(to_split)
 
 
     """Find steepest turn in single track"""
@@ -582,7 +595,7 @@ if __name__ == "__main__":
     #     'Plane Angle': np.random.rand(7)/100})
     # track.loc[2, 'Turning Angle'] = np.pi/2
     # track.loc[3, 'Turning Angle'] = np.pi/2
-    #
+
     # tracks = remix.silly_steps(track)
     # tracks['Track_ID'] = 0
     # tracks['Time'] = np.arange(8)
@@ -590,12 +603,11 @@ if __name__ == "__main__":
     # plot_tracks(tracks, summary)
 
     """Analyze several tracks"""
-    tracks = remix.silly_tracks()
-    tracks.loc[:, 'Time'] = tracks['Time']/3
+    # tracks = remix.silly_tracks()
+    # tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
-    animate_tracks(tracks)
 
-    plot(tracks)
+    # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # lag_plot(tracks, skip_color=1)
 
