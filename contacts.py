@@ -266,14 +266,14 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
 
 def plot_details(contacts, tracks, parameters='Contact Radius'):
     """Plot distances over time and time within contact radius"""
-    sns.set(style='white')
+    sns.set(style='ticks')
     figure, axes = plt.subplots(ncols=3, figsize=(12,6))
 
     axes[0].set_xlabel('Time [min]')
     axes[0].set_ylabel(r'Distance [$\mu$m]')
 
     axes[1].set_xlabel('Time within Contact Radius [min]')
-    axes[1].set_ylabel('Density of Contacts')
+    axes[1].set_ylabel('Number of Contacts')
 
     axes[2].set_xlabel('Contact Time [h]')
     axes[2].set_ylabel('Distance from Origin')
@@ -315,6 +315,7 @@ def plot_details(contacts, tracks, parameters='Contact Radius'):
             color=color, label=cond)
         axes[2].legend(loc=4)
 
+    sns.despine()
     plt.tight_layout()
     plt.show()
 
@@ -323,7 +324,7 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
     """Plot accumulation and final number of T cells in contact with DC"""
     T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
-    sns.set(style='white')
+    sns.set(style='ticks')
 
     n_parameter_sets = len(T_cells_in_contact[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
@@ -345,6 +346,7 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
 
         if i == 0:
             ax = ax0
+            ax.set_yticks([0, 50, 100])
         else:
             ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
 
@@ -386,9 +388,11 @@ def plot_numbers(contacts, parameters='Cell Numbers'):
 
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
+    final_ax.set_yticks([0, 25, 50, 75, 100])
     final_ax.set_ylim([0,100])
     ax.set_ylim([0,100])
 
+    sns.despine()
     plt.tight_layout()
     plt.show()
 
@@ -398,7 +402,7 @@ def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
     CD8_in_contact = pairs_and_triples['Triples'].drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
 
-    sns.set(style='white')
+    sns.set(style='ticks')
 
     final_ax = plt.subplot(1,2,1)
     timing_ax = plt.subplot(1,2,2)
@@ -453,6 +457,7 @@ def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
     final_ax.set_xticks([])
     final_ax.set_ylim([0,100])
 
+    sns.despine()
     plt.tight_layout()
     plt.show()
 
@@ -478,16 +483,24 @@ def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
             len(CD8_in_pairs.difference(CD8_in_triples))
         max_index += 1
 
-    sns.set(style='white')
-    plt.xlabel('# CD8 in Triples')
-    plt.ylabel('# CD8 in Pairs')
+    sns.set(style='ticks')
+    igure, axes = plt.subplots(ncols=2, figsize=(11,5.5))
+    axes[0].set_xlabel('# CD8 in Triples')
+    axes[0].set_ylabel('# CD8 in Pairs')
+    axes[1].set_xlabel('arctan of # Triples/# Pairs')
+    axes[1].set_ylabel('Numbers of Simulations')
     legend = []
     for i, (par, numbers) in enumerate(contact_numbers.groupby('Parameter')):
-        plt.scatter(numbers['# CD8 in Triples'] + np.random.rand(len(numbers))/2,
+        color = sns.color_palette(n_colors=i+1)[-1]
+        axes[0].scatter(numbers['# CD8 in Triples'] + np.random.rand(len(numbers))/2,
             numbers['# CD8 in Pairs'] + np.random.rand(len(numbers))/2,
-            color=sns.color_palette(n_colors=i+1)[-1])
+            color=color)
+        ratios = np.arctan(numbers['# CD8 in Triples']/numbers['# CD8 in Pairs'])
+        sns.distplot(ratios, hist=True, kde=False, color=color, ax=axes[1],
+            bins=np.arange(21)*np.pi/40)
         legend.append(par)
-    plt.legend(legend)
+    axes[0].legend(legend)
+    sns.despine()
     plt.tight_layout()
     plt.show()
 
@@ -548,8 +561,8 @@ if __name__ == '__main__':
     # plot_situation(tracks, n_tracks=0, n_DCs=2000, min_distance=60)
 
     # pairs = find_pairs(tracks)
-    # plot_numbers(pairs)
     # plot_details(pairs, tracks)
+    # plot_numbers(pairs)
 
     pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')

@@ -152,34 +152,36 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="white", palette=sns.color_palette(
+    sns.set(style="ticks", palette=sns.color_palette(
         palette, len(tracks[condition].unique())))
-    sns.set_context("paper", font_scale=1.5)
     if 'Plane Angle' in tracks.columns:
-        figure, axes = plt.subplots(ncols=4, figsize=(16,6))
-        # axes = [axes[0][0], axes[0][1], axes[1][0], axes[1][1]]
+        figure, axes = plt.subplots(ncols=4, figsize=(16,5.5))
     else:
-        figure, axes = plt.subplots(ncols=3, figsize=(12,6))
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.9)
+        figure, axes = plt.subplots(ncols=3, figsize=(12,5.5))
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
-    axes[0].set_title('Median Displacements')
-    axes[0].set_xlabel('Sqrt. of Time')
+    axes[0].set_ylabel('Median Displacement')
+    axes[0].set_xlabel(r'Sqrt. of Time [min$^{1/2}$]')
+    axes[0].set_xlim([0, np.sqrt(max_time)])
+    axes[0].set_xticks([0, np.sqrt(max_time)])
+    axes[0].set_xticklabels(['0', str(int(np.sqrt(max_time)))])
 
-    axes[1].set_title('Velocities')
+    axes[1].set_xlabel(r'Velocity  [$\mu$m/min]')
+    axes[1].set_ylabel('Density')
     axes[1].set_xlim(0, np.percentile(tracks['Velocity'].dropna(), 99.5))
-    axes[1].set_xticks([0])
-    axes[1].set_xticklabels(['0'])
+    axes[1].set_xticks([0, 10])
+    axes[1].set_xticklabels(['0', '10'])
 
-    axes[2].set_title('Turning Angles')
+    axes[2].set_xlabel('Turning Angle')
+    axes[2].set_ylabel('Density')
     axes[2].set_xlim([0,np.pi])
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
     if 'Plane Angle' in tracks.columns:
-        axes[3].set_title('Plane Angles')
+        axes[3].set_xlabel('Plane Angle')
+        axes[3].set_ylabel('Density')
         axes[3].set_xlim([-np.pi, np.pi])
         axes[3].set_xticks([-np.pi, 0, np.pi])
         axes[3].set_xticklabels([r'$-\pi$', r'$0$', r'$\pi$'])
@@ -196,10 +198,10 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         # 22795348/plotting-time-series-data-with-seaborn
         label = cond_tracks[condition].iloc[0]
         color = colors[label]
-        displacements = cond_tracks[['Time', 'Displacement']].groupby('Time').\
-            describe().unstack()['Displacement']
+        displacements = cond_tracks[['Track Time', 'Displacement']].groupby(
+            'Track Time').describe().unstack()['Displacement']
         if max_time:
-            displacements = displacements[displacements.index < max_time]
+            displacements = displacements[displacements.index <= max_time]
         axes[0].plot(np.sqrt(displacements.index), displacements['50%'],
             color=color)
         if not plot_each_sample:
@@ -243,6 +245,8 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     unique_entries = OrderedDict(zip(labels, handles))
     axes[1].legend(unique_entries.values(), unique_entries.keys())
 
+    sns.despine()
+    plt.tight_layout()
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
@@ -268,8 +272,8 @@ def plot_dr(tracks, save=False, condition='Condition'):
         else:
             differences['Track_ID'] = track['Track_ID'].iloc[0]
 
-    sns.set(style="white", palette='deep')
-    fig, axes = plt.subplots(ncols=3, figsize=(12,4.25))
+    sns.set(style="ticks", palette='deep')
+    fig, axes = plt.subplots(ncols=3, figsize=(15.5,5.5))
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
@@ -286,7 +290,7 @@ def plot_dr(tracks, save=False, condition='Condition'):
     axes[1].axis('equal')
     axes[1].set_xlim([differences['X'].quantile(0.1), differences['X'].quantile(0.9)])
     axes[1].set_ylim([differences['Y'].quantile(0.1), differences['Y'].quantile(0.9)])
-    sns.kdeplot(differences[['X', 'Y']], shade=True, cmap='Greys', ax=axes[1])
+    sns.kdeplot(differences[['X', 'Y']], shade=False, cmap='Greys', ax=axes[1])
 
     axes[2].set_title(r'$\Delta \vec r$ Lag Plot')
     axes[2].axis('equal')
@@ -297,6 +301,7 @@ def plot_dr(tracks, save=False, condition='Condition'):
         for _, track in differences.groupby('Track_ID'):
             axes[2].scatter(track[dim], track[dim].shift(), facecolors=color)
 
+    sns.despine()
     plt.tight_layout()
     if save:
         conditions = [cond.replace('= ', '')
@@ -338,9 +343,9 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="white", palette=sns.color_palette(
+    sns.set(style="ticks", palette=sns.color_palette(
         palette, tracks[condition].unique().__len__() + skip_color))
-    fig, ax = plt.subplots(figsize=(8,8))
+    fig, ax = plt.subplots(figsize=(5.5,5.5))
     ax.set_xlabel('Turning Angle')
     ax.set_xlim([0,np.pi])
     ax.set_xticks([0, np.pi/2, np.pi])
@@ -355,6 +360,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
             ax.plot(track['Turning Angle'], track['Velocity'],
                 color=color, alpha=0.5)
 
+    sns.despine()
     plt.tight_layout()
     if save:
         conditions = [cond.replace('= ', '')
@@ -416,6 +422,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
                 ax[2].scatter(track['Plane Angle'], track['Plane Angle'].shift(),
                     facecolors=color)
 
+    sns.despine()
     plt.tight_layout()
     if save:
         conditions = [cond.replace('= ', '')
@@ -617,11 +624,13 @@ if __name__ == "__main__":
     tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    plot(tracks)
+    # plot(tracks)
+    # plot_dr(tracks)
     # joint_plot(tracks, skip_color=1)
+    # plot_tracks_parameter_space(tracks)
     # lag_plot(tracks, skip_color=1)
 
-    # summary = summarize(tracks)
-    # plot_summary(summary)
+    summary = summarize(tracks)
+    plot_summary(summary)
     # plot_uturns(summary)
     # plot_tracks(tracks, summary)
