@@ -144,6 +144,59 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
 
 
+def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
+    """Plot tracks"""
+    if type(summary) == pd.core.frame.DataFrame:
+        alpha = 0.33
+        skip_steps = int(next(word
+            for column in summary.columns
+            for word in column.split() if word.isdigit()))
+    else:
+        alpha = 1
+        _uniquize_tracks(tracks)
+        _split_at_skip(tracks)
+
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+    n_conditions = len(tracks[condition].unique())
+
+    sns.set_style('white')
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_subplot(1,1,1, projection='3d')
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+        if summary is not None:
+            cond_summary = summary[summary[condition] == cond]
+            max_turn_column = next(column for column in summary.columns
+                if column.startswith('Max. Turn'))
+            choice = cond_summary.sort(max_turn_column, ascending=False)\
+                ['Track_ID'][:int(n_tracks/n_conditions)]
+            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+        elif cond_tracks['Track_ID'].unique().__len__() < n_tracks/n_conditions:
+            pass
+        else:
+            choice = np.random.choice(cond_tracks['Track_ID'].unique(),
+                n_tracks, replace=False)
+            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+
+        color = sns.color_palette(n_colors=i+1)[-1]
+        for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
+            ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
+                color=color, alpha=alpha)
+            if summary is not None:
+                track_id = track['Track_ID'].iloc[0]
+                turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
+                turn_loc = track.index.get_loc(
+                    track[np.isclose(track['Time'], turn_time.values[0])].index.values[0])
+                turn_times = track['Time'][turn_loc - 1:turn_loc + skip_steps]
+                turn = track[track['Time'].isin(turn_times)]
+                ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
+                    color=color)
+
+    equalize_axis3d(ax)
+    plt.tight_layout()
+    plt.show()
+
+
 def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     plot_each_sample=False):
     """Plot aspects of motility for different conditions"""
@@ -624,13 +677,12 @@ if __name__ == "__main__":
     tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    # plot(tracks)
-    # plot_dr(tracks)
+    plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    plot_summary(summary)
+    # plot_summary(summary)
     # plot_uturns(summary)
-    # plot_tracks(tracks, summary)
+    plot_tracks(tracks, summary)
