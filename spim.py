@@ -4,7 +4,6 @@ import pandas as pd
 import seaborn as sns
 import skimage.io as io
 import matplotlib.pyplot as plt
-from matplotlib  import gridspec
 from matplotlib.widgets import Slider
 
 
@@ -22,7 +21,8 @@ def plot_stack(stack):
     img_ax.set_yticks([])
 
     slider = Slider(slider_ax, 'Slice', 0, stack.shape[0] - 1,
-        valinit=mid_slice, color='#AAAAAA')
+        valinit=mid_slice, valfmt=u'%d')
+    slider.vline.set_color('k')
     slider.on_changed(lambda slice: img.set_data(stack[slice]))
 
     plt.show()
