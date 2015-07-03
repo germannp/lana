@@ -14,4 +14,5 @@ Modules
   * **excalib2.py**: Wrapper to configure, run and analyze excalib2 cellular Potts model simulations. Includes functions to run parameter sweeps or compare different commands.
   * **imaris.py**: Loads cell tracks from excel spreadsheets exported from [Imaris](http://www.bitplane.com/imaris/imaris).
   * **volocity.py**: Handles [Volocity](http://www.perkinelmer.co.uk/volocity) cell tracks.
+  * **spim.py**: Handles SPIM (Single Plane Illumination Microscopy) data.
   * **utils.py**: Snippets used in different modules.
