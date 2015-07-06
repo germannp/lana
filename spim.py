@@ -10,7 +10,6 @@ from skimage import data, filters, measure
 def plot_stack(stack, cells=None):
     """Display stack with a slider to select the slice"""
     img_height = 8
-    slider_height = 0.02
     width = img_height*stack.shape[2]/stack.shape[1]
     mid_slice = stack.shape[0]//2 - 1
     plt.figure(figsize=(width, img_height*1.05))
@@ -19,7 +18,7 @@ def plot_stack(stack, cells=None):
     img_ax.set_yticks([])
     img = img_ax.imshow(stack[mid_slice], interpolation='nearest',
         cmap='Greys_r')
-    slider_ax = plt.axes([0.1, 0.014, 0.8, slider_height])
+    slider_ax = plt.axes([0.1, 0.014, 0.8, 0.02])
     slider = Slider(slider_ax, 'Slice', 0, stack.shape[0] - 1,
         valinit=mid_slice, valfmt=u'%d')
     slider.vline.set_color('k')
