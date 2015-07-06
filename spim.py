@@ -11,10 +11,10 @@ def plot_stack(stack, cells=None):
     """Display stack with a slider to select the slice"""
     img_height = 8
     slider_height = 0.02
-    width = img_height*stack.shape[1]/stack.shape[2]
+    width = img_height*stack.shape[2]/stack.shape[1]
     mid_slice = stack.shape[0]//2 - 1
-    plt.figure(figsize=(img_height + slider_height, width))
-    img_ax = plt.axes([0, 0.05, 1, 1])
+    plt.figure(figsize=(width, img_height*1.05))
+    img_ax = plt.axes([0, 0.05, 1, 0.95])
     img_ax.set_xticks([])
     img_ax.set_yticks([])
     img = img_ax.imshow(stack[mid_slice], interpolation='nearest',
