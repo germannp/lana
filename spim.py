@@ -7,14 +7,22 @@ from matplotlib.widgets import Slider
 from skimage import data, filters, measure
 
 
+def read_stack(path):
+    """Load and return stack as unsigned 8bit ints"""
+    stack = data.imread(path)
+    stack -= stack.min()
+    stack /= stack.max()/255
+    return stack.astype(np.uint8)
+
+
 def stacks2rgb(stack1, stack2, stack3=None):
-    stack1 = stack1[..., np.newaxis]
-    stack2 = stack2[..., np.newaxis]
+    """Shape stacks for channels into RGB stack"""
+    rgb_stack = np.zeros(stack1.shape + (3,), dtype=np.uint8)
+    rgb_stack[:,:,:,0] = stack1
+    rgb_stack[:,:,:,1] = stack2
     if stack3 is not None:
-        stack3 = stack3[..., np.newaxis]
-    else:
-        stack3 = np.zeros(stack1.shape)
-    return np.concatenate((stack1, stack2, stack3), axis=-1)
+        rgb_stack[:,:,:,2] = stack3
+    return rgb_stack
 
 
 def plot_stack(stack, cells=None):
@@ -57,17 +65,14 @@ def find_cells(stack):
 
 
 if __name__ == "__main__":
-    """Open & display example stack"""
-    # stack = data.imread('Examples/SPIM_example.tif')
-    # stack2 = data.imread('Examples/SPIM_example2.tif')
-    # rgb_stack = stacks2rgb(stack, stack2)
-    # plot_stack(stacks2rgb(stack, stack2))
-
-
-    """Create random stacks and plot them as RGB"""
-    stack1 = np.random.rand(50, 200, 150)
-    stack2 = np.random.rand(50, 200, 150)
-    rgb_stack = stacks2rgb(stack1, stack2)
+    """Open & display example stacks as RGB stack"""
+    # stack1 = (np.random.rand(50, 200, 150)*255).astype(np.uint8)
+    # stack2 = (np.random.rand(50, 200, 150)*255).astype(np.uint8)
+    # rgb_stack = stacks2rgb(stack1, stack2)
+    stack1 = read_stack('Examples/SPIM_example.tif')
+    stack2 = read_stack('Examples/SPIM_example2.tif')
+    stack3 = read_stack('Examples/SPIM_example3.tif')
+    rgb_stack = stacks2rgb(stack1, stack2, stack3)
     plot_stack(rgb_stack)
 
 
