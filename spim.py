@@ -7,6 +7,16 @@ from matplotlib.widgets import Slider
 from skimage import data, filters, measure
 
 
+def stacks2rgb(stack1, stack2, stack3=None):
+    stack1 = stack1[..., np.newaxis]
+    stack2 = stack2[..., np.newaxis]
+    if stack3 is not None:
+        stack3 = stack3[..., np.newaxis]
+    else:
+        stack3 = np.zeros(stack1.shape)
+    return np.concatenate((stack1, stack2, stack3), axis=-1)
+
+
 def plot_stack(stack, cells=None):
     """Display stack with a slider to select the slice"""
     img_height = 8
@@ -49,17 +59,27 @@ def find_cells(stack):
 if __name__ == "__main__":
     """Open & display example stack"""
     # stack = data.imread('Examples/SPIM_example.tif')
-    # plot_stack(stack)
+    # stack2 = data.imread('Examples/SPIM_example2.tif')
+    # rgb_stack = stacks2rgb(stack, stack2)
+    # plot_stack(stacks2rgb(stack, stack2))
+
+
+    """Create random stacks and plot them as RGB"""
+    stack1 = np.random.rand(50, 200, 150)
+    stack2 = np.random.rand(50, 200, 150)
+    rgb_stack = stacks2rgb(stack1, stack2)
+    plot_stack(rgb_stack)
 
 
     """Mock and find some cells"""
-    stack = np.zeros((50, 200, 150))
-    points = (stack.shape*np.random.rand(8, 3)).T.astype(np.int)
-    stack[[point for point in points]] = 1
-    stack = filters.gaussian_filter(stack, 1)
-    cells = find_cells(stack)
-    print(cells)
-    plot_stack(stack, cells)
+    # stack = np.zeros((50, 200, 150))
+    # points = (stack.shape*np.random.rand(8, 3)).T.astype(np.int)
+    # stack[[point for point in points]] = 1
+    # stack = filters.gaussian_filter(stack, 1)
+
+    # cells = find_cells(stack)
+    # print(cells)
+    # plot_stack(stack, cells)
 
 
     """Aggregate excel files from SPIM analysis with MATLAB"""
