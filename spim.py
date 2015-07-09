@@ -7,15 +7,19 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from skimage import data, filters, measure
+from skimage import data, exposure, filters, measure
 
 
-def read_stack(path):
+def read_stack(path, gamma=1):
     """Load and return stack as unsigned 8bit ints"""
     assert psutil.phymem_usage()[1] > 1000*1024*1024, \
         'Less than 1GiB of memory available'
     stack = data.imread(path)
     stack -= stack.min()
+    if gamma != 1:
+        assert psutil.phymem_usage()[1] > 8000*1024*1024, \
+            'Less than 8GiB of memory available'
+        stack = exposure.adjust_gamma(stack, gamma)
     stack /= stack.max()/255
     return stack.astype(np.uint8)
 
@@ -43,8 +47,8 @@ def plot_stack(stack, cells=None):
     img_ax = plt.axes([0, 0.05, 1, 0.95])
     img_ax.set_xticks([])
     img_ax.set_yticks([])
-    img = img_ax.imshow(stack[mid_slice], interpolation='nearest',
-        cmap='Greys_r')
+    img = img_ax.imshow(stack[mid_slice], interpolation='none',
+        cmap='gray')
     slider_ax = plt.axes([0.1, 0.014, 0.8, 0.02])
     slider = Slider(slider_ax, 'Slice', 0, stack.shape[0] - 1,
         valinit=mid_slice, valfmt=u'%d')
@@ -82,9 +86,10 @@ if __name__ == "__main__":
     # rgb_stack = stacks2rgb(stack1, stack2)
     stack1 = read_stack('Examples/SPIM_example.tif')
     stack2 = read_stack('Examples/SPIM_example2.tif')
-    stack3 = read_stack('Examples/SPIM_example3.tif')
+    stack3 = read_stack('Examples/SPIM_example3.tif', gamma=0.5)
     rgb_stack = stacks2rgb(stack1, stack2, stack3)
     plot_stack(rgb_stack)
+    # plot_stack(stack3)
 
 
     """Mock and find some cells"""
