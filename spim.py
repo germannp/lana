@@ -1,5 +1,4 @@
 """Handle SPIM data"""
-import sys
 import psutil
 
 import numpy as np
@@ -7,26 +6,33 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from skimage import data, exposure, filters, measure
+from skimage import data, filters, measure
 
 
-def read_stack(path, gamma=1):
-    """Load and return stack as unsigned 8bit ints"""
+def read_stack(path):
+    """Load and return stack as normalized unsigned 8bit ints"""
     assert psutil.phymem_usage()[1] > 1000*1024*1024, \
         'Less than 1GiB of memory available'
     stack = data.imread(path)
     stack -= stack.min()
-    if gamma != 1:
-        assert psutil.phymem_usage()[1] > 8000*1024*1024, \
-            'Less than 8GiB of memory available'
-        stack = exposure.adjust_gamma(stack, gamma)
     stack /= stack.max()/255
     return stack.astype(np.uint8)
 
 
+def adjust_gamma(stack, gamma=0.5):
+    """Return normalized stack**gamma"""
+    assert psutil.phymem_usage()[1] > 1.5*stack.nbytes, \
+        'Not enough memory available'
+    scale = 255/stack.max()**gamma
+    for i, slice in enumerate(stack):
+        slice = scale*slice**gamma
+        stack[i] = slice.astype(np.uint8)
+    return stack
+
+
 def stacks2rgb(stack1, stack2, stack3=None):
     """Shape stacks for channels into RGB stack"""
-    assert psutil.phymem_usage()[1] > 3*sys.getsizeof(stack1), \
+    assert psutil.phymem_usage()[1] > 3*stack1.nbytes, \
         'Not enough memory for the RGB stack available'
     rgb_stack = np.zeros(stack1.shape + (3,), dtype=np.uint8)
     rgb_stack[:,:,:,0] = stack1
@@ -38,8 +44,8 @@ def stacks2rgb(stack1, stack2, stack3=None):
 
 def plot_stack(stack, cells=None):
     """Display stack with a slider to select the slice"""
-    assert psutil.phymem_usage()[1] > 1000*1024*1024, \
-        'Less than 1GiB of memory available'
+    assert psutil.phymem_usage()[1] > stack.nbytes, \
+        'Not enough memory available'
     img_height = 8
     width = img_height*stack.shape[2]/stack.shape[1]
     mid_slice = stack.shape[0]//2 - 1
@@ -86,7 +92,8 @@ if __name__ == "__main__":
     # rgb_stack = stacks2rgb(stack1, stack2)
     stack1 = read_stack('Examples/SPIM_example.tif')
     stack2 = read_stack('Examples/SPIM_example2.tif')
-    stack3 = read_stack('Examples/SPIM_example3.tif', gamma=0.5)
+    stack3 = read_stack('Examples/SPIM_example3.tif')
+    stack3 = adjust_gamma(stack3, 0.5)
     rgb_stack = stacks2rgb(stack1, stack2, stack3)
     plot_stack(rgb_stack)
     # plot_stack(stack3)
