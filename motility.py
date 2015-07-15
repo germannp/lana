@@ -256,7 +256,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         if max_time:
             displacements = displacements[displacements.index <= max_time]
         axes[0].plot(np.sqrt(displacements.index), displacements['50%'],
-            color=color)
+            color=color, label=label)
         if not plot_each_sample:
             axes[0].fill_between(np.sqrt(displacements.index),
                 displacements['25%'], displacements['75%'],
@@ -268,7 +268,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
 
         # Plot velocities
         sns.kdeplot(cond_tracks['Velocity'].dropna(), clip=(0,np.inf), color=color,
-            shade=not plot_each_sample, ax=axes[1], gridsize=500, label=label)
+            shade=not plot_each_sample, ax=axes[1], gridsize=500, label='')
 
         # Plot turning angles
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
@@ -294,9 +294,10 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
             sns.kdeplot(plane_angles, color=color, shade=not plot_each_sample,
                 ax=axes[3])
 
-    handles, labels = axes[1].get_legend_handles_labels()
+    handles, labels = axes[0].get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
-    axes[1].legend(unique_entries.values(), unique_entries.keys())
+    axes[0].legend(unique_entries.values(), unique_entries.keys(),
+        loc='upper left')
 
     sns.despine()
     plt.tight_layout()
@@ -538,9 +539,9 @@ def summarize(tracks, skip_steps=4):
             track['Turning Angle'].diff()**2)
 
         if len(track) > skip_steps + 1:
-            dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1).dropna()
+            dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1)
             norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
-            turns = np.arccos(dot_products/norm_products[1:])
+            turns = np.arccos(dot_products.iloc[1:-skip_steps]/norm_products[1:])
 
             summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
                 max(turns)
@@ -618,9 +619,10 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
 
 
 def all_out(tracks, condition='Condition'):
-    """Save all plots and the tracks & summary DataFrame"""
+    """Save all plots and the tracks & summary DataFrame. Return summary."""
     plot(tracks, save=True)
-    plot(tracks, plot_each_sample=True, save=True)
+    if 'Sample' in tracks.columns:
+        plot(tracks, plot_each_sample=True, save=True)
     plot_dr(tracks, save=True)
     joint_plot(tracks, save=True)
     lag_plot(tracks, save=True, null_model=False)
@@ -635,6 +637,8 @@ def all_out(tracks, condition='Condition'):
         for cond in summary[condition].unique()]
     tracks.to_csv('Tracks_' + '-'.join(conditions) + '.csv')
     summary.to_csv('Summary_' + '-'.join(conditions) + '.csv')
+
+    return summary
 
 
 if __name__ == "__main__":
@@ -677,7 +681,7 @@ if __name__ == "__main__":
     tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    plot(tracks)
+    # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # lag_plot(tracks, skip_color=1)
