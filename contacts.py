@@ -455,6 +455,7 @@ def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
 
     final_ax.set_xlim(left=-0.8)
     final_ax.set_xticks([])
+    final_ax.set_yticks([0,25,50,75,100])
     final_ax.set_ylim([0,100])
 
     sns.despine()
@@ -484,6 +485,7 @@ def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
         max_index += 1
 
     sns.set(style='ticks')
+    # sns.set_style({"xtick.direction": "in","ytick.direction": "in"})
     igure, axes = plt.subplots(ncols=2, figsize=(11,5.5))
     axes[0].set_xlabel('# CD8 in Triples')
     axes[0].set_ylabel('# CD8 in Pairs')
@@ -540,9 +542,9 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
     time_ax.set_xlabel('Time within Lymph Node [h]')
     time_ax.set_ylabel('Number of T Cells')
 
-    residence_time = lambda track: track['Time'].diff().mean()/60*len(
+    def _residence_time(track): return track['Time'].diff().mean()/60*len(
         track[np.linalg.norm(track[['X', 'Y', 'Z']], axis=1) < r])
-    residence_times = [residence_time(track)
+    residence_times = [_residence_time(track)
         for _, track in tracks.groupby('Track_ID')]
 
     sns.distplot(residence_times, kde=False, ax=time_ax)
