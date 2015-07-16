@@ -28,6 +28,9 @@ def read_tracks(path, condition=None, sample=None, time_step=20,
         if track.__len__() < min_track_length:
             tracks = tracks[tracks['Track_ID'] != track_id]
 
+    print('Read {} tracks with {} seconds time step.'.format(
+        len(tracks['Track_ID'].unique()), time_step))
+
     return tracks.sort('Time')
 
 
