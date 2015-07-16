@@ -1,4 +1,4 @@
-"""Handle SPIM data"""
+"""Display and find cells in SPIM data"""
 import psutil
 
 import numpy as np
@@ -69,16 +69,23 @@ def plot_stack(stack, cells=None):
 
 def find_cells(stack):
     """Label spots"""
-    assert psutil.phymem_usage()[1] > 1000*1024*1024, \
+    assert psutil.phymem_usage()[1] > 8*stack.nbytes, \
         'Less than 1GiB of memory available'
-    threshold = (stack.max()/10)
-    labels = measure.label(stack > threshold)
+    threshold = stack.max()/5
+    thresholded_stack = stack > threshold
+    min_idxs = [min(indices) for indices in np.where(thresholded_stack)]
+    max_idxs = [max(indices) for indices in np.where(thresholded_stack)]
+    thresholded_stack = thresholded_stack[min_idxs[0]:max_idxs[0],
+        min_idxs[1]:max_idxs[1], min_idxs[2]:max_idxs[2]]
+    stack = stack[min_idxs[0]:max_idxs[0],
+        min_idxs[1]:max_idxs[1], min_idxs[2]:max_idxs[2]]
+    labels = measure.label(thresholded_stack)
     cells = pd.DataFrame()
     for label in np.unique(labels):
         locations = np.where(labels == label)
-        cells.loc[label, 'X'] = np.mean(locations[2])
-        cells.loc[label, 'Y'] = np.mean(locations[1])
-        cells.loc[label, 'Z'] = np.mean(locations[0])
+        cells.loc[label, 'X'] = min_idxs[2] + np.mean(locations[2])
+        cells.loc[label, 'Y'] = min_idxs[1] + np.mean(locations[1])
+        cells.loc[label, 'Z'] = min_idxs[0] + np.mean(locations[0])
         cells.loc[label, 'Mean intensity'] = np.mean(stack[labels == label])
         cells.loc[label, 'Max. intensity'] = np.max(stack[labels == label])
         cells.loc[label, 'Volume'] = np.sum(labels == label)
@@ -86,28 +93,32 @@ def find_cells(stack):
 
 
 if __name__ == "__main__":
-    """Open & display example stacks as RGB stack"""
+    """Open & display stacks in RGB"""
     # stack1 = (np.random.rand(50, 200, 150)*255).astype(np.uint8)
     # stack2 = (np.random.rand(50, 200, 150)*255).astype(np.uint8)
     # rgb_stack = stacks2rgb(stack1, stack2)
-    stack1 = read_stack('Examples/SPIM_example.tif')
-    stack2 = read_stack('Examples/SPIM_example2.tif')
-    stack3 = read_stack('Examples/SPIM_example3.tif')
-    stack3 = adjust_gamma(stack3, 0.5)
-    rgb_stack = stacks2rgb(stack1, stack2, stack3)
-    plot_stack(rgb_stack)
-    # plot_stack(stack3)
+    # plot_stack(rgb_stack)
+
+    # stack1 = read_stack('Examples/SPIM_example.tif')
+    # stack2 = read_stack('Examples/SPIM_example2.tif')
+    # stack3 = read_stack('Examples/SPIM_example3.tif')
+    # stack3 = adjust_gamma(stack3, 0.5)
+    # rgb_stack = stacks2rgb(stack1, stack2, stack3)
+    # plot_stack(rgb_stack)
 
 
-    """Mock and find some cells"""
+    """Find some cells"""
     # stack = np.zeros((50, 200, 150))
     # points = (stack.shape*np.random.rand(8, 3)).T.astype(np.int)
     # stack[[point for point in points]] = 1
     # stack = filters.gaussian_filter(stack, 1)
 
-    # cells = find_cells(stack)
-    # print(cells)
-    # plot_stack(stack, cells)
+    # stack = read_stack('Examples/SPIM_example.tif')
+    stack = read_stack('Examples/SPIM_example.tif')[160:190, 100:450, 300:600]
+
+    cells = find_cells(stack)
+    print(cells)
+    plot_stack(stack, cells)
 
 
     """Aggregate excel files from SPIM analysis with MATLAB"""
