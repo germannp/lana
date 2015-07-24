@@ -5,7 +5,7 @@ import pandas as pd
 def read_tracks_excel(path, condition=None, sample=None, time_step=20,
     min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
-    tracks = pd.read_excel(path)
+    tracks = pd.read_excel(path).reset_index()
 
     tracks['Track_ID'] = tracks['Track ID']
     tracks['Time'] = (tracks['Timepoint'] - 1)/60*time_step
@@ -13,8 +13,11 @@ def read_tracks_excel(path, condition=None, sample=None, time_step=20,
     tracks['Y'] = tracks['Centroid Y (µm)']
     tracks['Z'] = tracks['Centroid Z (µm)']
 
-    tracks = tracks.drop(['Name', 'Track ID', 'Centroid X (µm)', 'Timepoint',
-        'Centroid Y (µm)', 'Centroid Z (µm)'], 1)
+    to_drop = [col
+        for col in ['Name', 'Track ID', 'Timepoint', 'index',
+            'Centroid X (µm)', 'Centroid Y (µm)', 'Centroid Z (µm)']
+        if col in tracks.columns]
+    tracks = tracks.drop(to_drop, 1)
 
     tracks['Source'] = 'Volocity'
 
