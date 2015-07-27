@@ -578,6 +578,7 @@ def plot_summary(summary, save=False, condition='Condition'):
     sns.set(style='white')
     sns.pairplot(summary.drop(to_drop, axis=1), hue=condition,
         diag_kind='kde')
+    plt.tight_layout()
 
     if save:
         conditions = [cond.replace('= ', '')
@@ -609,16 +610,18 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
     sns.set(style='white')
     sns.pairplot(uturns[columns_of_interest],
         hue=condition, diag_kind='kde')
+    plt.tight_layout()
 
     if save:
         conditions = [cond.replace('= ', '')
             for cond in summary[condition].unique()]
-        plt.savefig('U-Turns_' + '-'.join(conditions) + '.png')
+        plt.savefig('U-Turns_' + '-'.join(conditions) +
+            '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps))
     else:
         plt.show()
 
 
-def all_out(tracks, condition='Condition'):
+def all_out(tracks, condition='Condition', return_summary=False):
     """Save all plots and the tracks & summary DataFrame. Return summary."""
     plot(tracks, save=True)
     if 'Sample' in tracks.columns:
@@ -638,7 +641,8 @@ def all_out(tracks, condition='Condition'):
     tracks.to_csv('Tracks_' + '-'.join(conditions) + '.csv')
     summary.to_csv('Summary_' + '-'.join(conditions) + '.csv')
 
-    return summary
+    if return_summary:
+        return summary
 
 
 if __name__ == "__main__":
