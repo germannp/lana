@@ -529,6 +529,9 @@ def summarize(tracks, skip_steps=4):
         dr = positions.diff()
         dr_norms = np.linalg.norm(dr, axis=1)
 
+        summary.loc[i, 'Confinement Ratio'] = track['Displacement'].iloc[-1] \
+            /dr_norms[1:].sum()
+
         summary.loc[i, 'Corr. Confinement Ratio'] = track['Displacement'].iloc[-1] \
             /dr_norms[1:].sum()*np.sqrt(track['Track Time'].max())
 
@@ -680,6 +683,7 @@ if __name__ == "__main__":
     # summary = summarize(tracks, skip_steps=2)
     # plot_tracks(tracks, summary)
 
+
     """Analyze several tracks"""
     tracks = remix.silly_tracks()
     tracks.loc[:, 'Time'] = tracks['Time']/3
@@ -691,6 +695,6 @@ if __name__ == "__main__":
     # lag_plot(tracks, skip_color=1)
 
     summary = summarize(tracks)
-    # plot_summary(summary)
+    plot_summary(summary)
     # plot_uturns(summary)
     plot_tracks(tracks, summary)
