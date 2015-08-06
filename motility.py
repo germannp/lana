@@ -144,24 +144,28 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
 
 
-def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
+def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
+    condition='Condition'):
     """Plot tracks"""
     if type(summary) == pd.core.frame.DataFrame:
-        alpha = 0.33
         skip_steps = int(next(word
             for column in summary.columns
             for word in column.split() if word.isdigit()))
     else:
-        alpha = 1
         _uniquize_tracks(tracks)
         _split_at_skip(tracks)
+
+    if summary is not None and draw_turns:
+        alpha = 0.33
+    else:
+        alpha = 1
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
     n_conditions = len(tracks[condition].unique())
 
     sns.set_style('white')
-    fig = plt.figure(figsize=(8,8))
+    fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(1,1,1, projection='3d')
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         if summary is not None:
@@ -180,10 +184,10 @@ def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
 
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
+            track_id = track['Track_ID'].iloc[0]
             ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
-                color=color, alpha=alpha)
-            if summary is not None:
-                track_id = track['Track_ID'].iloc[0]
+                color=color, alpha=alpha, label=track_id, picker=5)
+            if summary is not None and draw_turns:
                 turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
                 turn_loc = track.index.get_loc(
                     track[np.isclose(track['Time'], turn_time.values[0])].index.values[0])
@@ -191,6 +195,16 @@ def plot_tracks(tracks, summary=None, n_tracks=25, condition='Condition'):
                 turn = track[track['Time'].isin(turn_times)]
                 ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
                     color=color)
+
+    def on_pick(event):
+        track_id = float(event.artist.get_label())
+        if summary is not None:
+            print(summary[summary['Track_ID'] == track_id]
+                [['Track_ID', 'Condition', 'Mean Velocity', 'Track Duration']])
+        else:
+            print('Track_ID: ' + track_id)
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
 
     equalize_axis3d(ax)
     plt.tight_layout()
