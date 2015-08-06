@@ -236,7 +236,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     # Generate new tracks
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
-        track_data = remix.iloc[n_steps*i:n_steps*(i+1)]
+        track_data = remix.iloc[n_steps*i:n_steps*(i+1)].copy()
         track_data.loc[n_steps*i, 'Plane Angle'] = np.nan
         new_track = silly_steps(track_data)
         new_track['Track_ID'] = i
