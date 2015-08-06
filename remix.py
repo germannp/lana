@@ -182,7 +182,6 @@ def remix(tracks=None, n_tracks=50, n_steps=60):
 def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     """Return new tracks preserving mean sqrd. velocity & turning angle lags"""
 
-
     def mean_lags(tracks):
         """Calculate mean lag in velocity and turning angle of track(s)"""
         means = []
@@ -190,14 +189,11 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
             means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
         return np.mean(means, axis=0)
 
-
-    print('\nGenerating  {} steps from {} steps, preserving lag.'.format(
-        n_tracks*n_steps, tracks.dropna().__len__()))
-
     # Generate initial remix
-    remix = tracks.dropna()
-    remix = remix.ix[np.random.choice(remix.index.values, n_tracks*n_steps)] \
-        [['Velocity', 'Turning Angle', 'Plane Angle']]
+    remix = tracks[['Velocity', 'Turning Angle', 'Plane Angle']].dropna()
+    print('\nGenerating  {} steps from {} steps, preserving lag.'.format(
+        n_tracks*n_steps, len(remix)))
+    remix = remix.ix[np.random.choice(remix.index.values, n_tracks*n_steps)]
     remix['Track_ID'] = 0
 
     # Shuffle until mean lag is preserved
@@ -317,13 +313,17 @@ if __name__ == '__main__':
     # tracks = tracks.append(short_remix).append(long_remix)
     # motility.plot(tracks)
 
+
     """Create long tracks"""
     # import datetime
     #
+    # tracks = pd.read_csv('../Data/Parenchyme/Tracks_KO-WT.csv')
+    # tracks = tracks[tracks.Condition == 'WT']
+    #
     # long_remix = pd.DataFrame()
     # for i in range(10):
-    #     remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=16*60*3)
+    #     remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=24*60*3)
     #     remix['Track_ID'] = remix['Track_ID'] + 100*i
     #     long_remix = long_remix.append(remix)
-    #     long_remix.to_csv('16h_remix.csv')
+    #     long_remix.to_csv('24h_remix_WT.csv')
     #     print(i, datetime.datetime.now())
