@@ -197,9 +197,9 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
                     color=color)
 
     def on_pick(event):
-        track_id = float(event.artist.get_label())
+        track_id = event.artist.get_label()
         if summary is not None:
-            print(summary[summary['Track_ID'] == track_id]
+            print(summary[summary['Track_ID'] == float(track_id)]
                 [['Track_ID', 'Condition', 'Mean Velocity', 'Track Duration']])
         else:
             print('Track_ID: ' + track_id)
