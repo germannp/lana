@@ -439,34 +439,55 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
         plt.show()
 
 
-def plot_over_time(tracks, parameter='Velocity', condition='Condition',
-    n_tracks=10, save=False):
-    """Plot parameter for n_tracks over time"""
+def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False):
+    """Plot velocity aligned to minimum and distribution of arrested steps"""
     _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    fig, ax = plt.subplots(len(tracks[condition].unique()), 1,
-        sharex=True, sharey=True)
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
-        ax[i].set_title(cond)
-        ax[i].set_ylabel(parameter)
-        ax[i].axhline(3, c='0', ls=':')
-        choice = np.random.choice(cond_tracks['Track_ID'].unique(),
-            n_tracks, replace=False)
-        chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
-        color = sns.color_palette(n_colors=i+1)[-1]
-        for _, track in chosen_tracks.groupby('Track_ID'):
-            ax[i].plot(track['Track Time'], track[parameter], color=color)
+    fig, axes = plt.subplots(1, 2)
+    axes[0].set_xlabel('Time to minimum')
+    axes[0].set_ylabel('Velocity')
+    axes[1].set_xlabel(r'Consecutive steps below {} $\mu$m/min'.format(arrest_velocity))
+    axes[1].set_ylabel('Proportion')
 
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+        velocities = pd.Series()
+        arrested_segment_lengths = []
+        for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
+            min_index = track['Velocity'].argmin()
+            track_velocities = pd.Series(
+                track['Velocity'].values, track['Time'] - track.loc[min_index, 'Time'])
+            velocities = velocities.append(track_velocities.dropna())
+            arrested = track['Velocity'] < arrest_velocity
+            arrested_segments = np.split(arrested, np.where(np.diff(arrested))[0] + 1)
+            arrested_segment_lengths.extend([sum(segment)
+                for segment in arrested_segments
+                if sum(segment) > 0])
+
+        velocities.index = np.round(velocities.index, 5) # Handle non-integer 'Times'
+        arrestats = velocities.groupby(velocities.index).describe().unstack()
+
+        color = sns.color_palette(n_colors=i+1)[-1]
+        axes[0].plot(arrestats.index, arrestats['50%'], color=color)
+        axes[0].fill_between(arrestats.index, arrestats['25%'], arrestats['75%'],
+            color=color, alpha=0.2)
+        axes[0].fill_between(arrestats.index, arrestats['min'], arrestats['max'],
+            color=color, alpha=0.2)
+
+        sns.distplot(arrested_segment_lengths, bins=np.arange(1,
+            max(arrested_segment_lengths) + 1) - 0.5,
+            norm_hist=True, kde=False, color=color, ax=axes[1])
+
+    axes[0].set_xlim([-3, 3])
+    axes[1].get_xaxis().set_major_locator(plt.MaxNLocator(integer=True))
     sns.despine()
     plt.tight_layout()
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
-        plt.savefig('{}-over-time_'.format(parameter) +
-            '-'.join(conditions) + '.png')
+        plt.savefig('Arrest_' + '-'.join(conditions) + '.png')
     else:
         plt.show()
 
