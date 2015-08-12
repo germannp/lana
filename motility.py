@@ -532,7 +532,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         plt.show()
 
 
-def summarize(tracks, skip_steps=4):
+def summarize(tracks, arrest_velocity=3, skip_steps=4):
     """Summarize track statistics, e.g. mean velocity per track"""
     _analyze(tracks)
 
@@ -558,9 +558,9 @@ def summarize(tracks, skip_steps=4):
         summary.loc[i, 'Track Duration'] = \
             track['Time'].iloc[-1] - track['Time'].iloc[0]
 
-        # ratio of v < 2 um/min
         summary.loc[i, 'Arrest Coefficient'] = \
-            len(track[track['Velocity'] < 2])/len(track['Velocity'].dropna())
+            len(track[track['Velocity'] < arrest_velocity])/ \
+            len(track['Velocity'].dropna())
 
         if 'Z' in track.columns:
             positions = track[['X', 'Y', 'Z']]
