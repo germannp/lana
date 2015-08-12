@@ -439,6 +439,38 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
         plt.show()
 
 
+def plot_over_time(tracks, parameter='Velocity', condition='Condition',
+    n_tracks=10, save=False):
+    """Plot parameter for n_tracks over time"""
+    _analyze(tracks)
+
+    if condition not in tracks.columns:
+        tracks[condition] = 'Default'
+
+    fig, ax = plt.subplots(len(tracks[condition].unique()), 1,
+        sharex=True, sharey=True)
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
+        ax[i].set_title(cond)
+        ax[i].set_ylabel(parameter)
+        ax[i].axhline(3, c='0', ls=':')
+        choice = np.random.choice(cond_tracks['Track_ID'].unique(),
+            n_tracks, replace=False)
+        chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+        color = sns.color_palette(n_colors=i+1)[-1]
+        for _, track in chosen_tracks.groupby('Track_ID'):
+            ax[i].plot(track['Track Time'], track[parameter], color=color)
+
+    sns.despine()
+    plt.tight_layout()
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in tracks[condition].unique()]
+        plt.savefig('{}-over-time_'.format(parameter) +
+            '-'.join(conditions) + '.png')
+    else:
+        plt.show()
+
+
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, null_model=True):
     """Lag plot for velocities and turning angles"""
