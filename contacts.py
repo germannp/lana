@@ -279,8 +279,8 @@ def plot_details(contacts, tracks, parameters='Contact Radius'):
     axes[2].set_ylabel('Distance from Origin')
 
     for i, (cond, cond_contacts) in enumerate(contacts.groupby(parameters)):
-        assert len(cond_contacts['Contact Radius'].dropna().unique()) == 1, \
-            'Condition with more than one contact radius'
+        if len(cond_contacts['Contact Radius'].dropna().unique()) != 1:
+            raise ValueError('Condition with more than one contact radius')
         radius = cond_contacts['Contact Radius'].max()
         color = sns.color_palette(n_colors=i+1)[-1]
         distances = pd.Series()
