@@ -510,17 +510,27 @@ def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
 def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
     min_distance=0, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
-    sns.set_style('white')
+    sns.set_style('ticks')
 
     gs = gridspec.GridSpec(1,3)
     space_ax = plt.subplot(gs[:,:-1], projection='3d')
     time_ax = plt.subplot(gs[:,-1])
 
     space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_DCs))
-    choice = np.random.choice(tracks['Track_ID'].unique(), n_tracks)
-    chosen_tracks = tracks[tracks['Track_ID'].isin(choice)]
-    for _, track in chosen_tracks.groupby(track_identifiers(tracks)):
-        space_ax.plot(track['X'].values, track['Y'].values, track['Z'].values)
+
+    n_conditions = len(tracks['Condition'].unique())
+    palette = itertools.cycle(sns.color_palette())
+    for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
+        choice = np.random.choice(cond_tracks['Track_ID'].unique(),
+            n_tracks/n_conditions)
+        chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+        for _, track in chosen_tracks.groupby(track_identifiers(chosen_tracks)):
+            if n_conditions > 1:
+                color = sns.color_palette(n_colors=i+1)[-1]
+            else:
+                color = next(palette)
+            space_ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
+                color=color)
 
     tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
     ratio = (min_distance/tcz_radius)**3
@@ -544,11 +554,16 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
 
     def _residence_time(track): return track['Time'].diff().mean()/60*len(
         track[np.linalg.norm(track[['X', 'Y', 'Z']], axis=1) < r])
-    residence_times = [_residence_time(track)
-        for _, track in tracks.groupby('Track_ID')]
 
-    sns.distplot(residence_times, kde=False, ax=time_ax)
+    for cond, cond_tracks in tracks.groupby('Condition'):
+        residence_times = [_residence_time(track)
+            for _, track in cond_tracks.groupby('Track_ID')]
 
+        sns.distplot(residence_times, kde=False, norm_hist=True, ax=time_ax,
+            label=cond)
+
+    time_ax.legend()
+    sns.despine(ax=time_ax)
     equalize_axis3d(space_ax, zoom)
     plt.tight_layout()
     plt.show()
@@ -560,7 +575,7 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    # plot_situation(tracks, n_tracks=0, n_DCs=2000, min_distance=60)
+    plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
     # pairs = find_pairs(tracks)
     # plot_details(pairs, tracks)
