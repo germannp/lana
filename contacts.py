@@ -75,12 +75,17 @@ def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
     assert max(T_cell_ns) < tracks['Track_ID'].unique().__len__(),\
         'Max. T_cell_ns is larger than # of given tracks.'
 
+    if 'Condition' not in tracks.columns:
+        tracks['Condition'] = 'Default'
+    conditions = tracks['Condition'].unique()
+
     pairs = pd.DataFrame()
     for n_run in range(n_iter):
-        for min_dist, min_std, cr, nT, nDC in itertools.product(min_distances,
-            min_dist_stds, contact_radii, T_cell_ns, DC_ns):
-            T_tracks = tracks[tracks['Track_ID'].isin(
-                np.random.choice(tracks['Track_ID'].unique(), nT,
+        for min_dist, min_std, cr, nT, nDC, cond in itertools.product(min_distances,
+            min_dist_stds, contact_radii, T_cell_ns, DC_ns, conditions):
+            cond_tracks = tracks[tracks['Condition'] == cond]
+            T_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
+                np.random.choice(cond_tracks['Track_ID'].unique(), nT,
                 replace=False))].copy()
             if min_std != 0:
                 # Such noise makes contacts seem to be none!
@@ -106,6 +111,7 @@ def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
             run_pairs['Run'] = n_run
             run_pairs['Cell Numbers'] = \
                 '{} T cells, {} DCs'.format(nT, nDC)
+            run_pairs['T Cell Condition'] = cond
             run_pairs['Contact Radius'] = cr
             run_pairs['Minimal Initial Distance'] = min_dist
             run_pairs['Std. of Initial Position'] = min_std
@@ -575,14 +581,14 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
+    # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
-    # pairs = find_pairs(tracks)
-    # plot_details(pairs, tracks)
-    # plot_numbers(pairs)
+    pairs = find_pairs(tracks)
+    plot_details(pairs, tracks)
+    plot_numbers(pairs)
 
-    pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    # pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')
     # plot_numbers(pairs_and_triples['Triples'], parameters='CD8 Delay')
-    plot_triples(pairs_and_triples, parameters='Licensing Factor')
-    plot_triples_vs_pairs(pairs_and_triples, parameters='Licensing Factor')
+    # plot_triples(pairs_and_triples, parameters='Licensing Factor')
+    # plot_triples_vs_pairs(pairs_and_triples, parameters='Licensing Factor')
