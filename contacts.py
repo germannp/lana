@@ -115,6 +115,17 @@ def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
             run_pairs['Contact Radius'] = cr
             run_pairs['Minimal Initial Distance'] = min_dist
             run_pairs['Std. of Initial Position'] = min_std
+            description = []
+            if len(T_cell_ns) > 1 or len(conditions) > 1:
+                description.append('{} {} T cells'.format(nT, cond)
+                    .replace('Default ', ''))
+            if len(DC_ns) > 1:
+                description.append('{} DCs'.format(nDC))
+            if len(min_distances) > 1 or len(min_dist_stds) > 1:
+                description.append('Min. Distance {} +/- {}'.format(min_dist, min_std))
+            if len(contact_radii) > 1:
+                description.append('{} Contact Rad.'.format(cr))
+            run_pairs['Description'] = ', '.join(description)
             pairs = pairs.append(run_pairs)
 
         print('  Run {} done.'.format(n_run+1))
@@ -270,7 +281,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
         'Triples': triples})
 
 
-def plot_details(contacts, tracks, parameters='Contact Radius'):
+def plot_details(contacts, tracks, parameters='Description'):
     """Plot distances over time and time within contact radius"""
     sns.set(style='ticks')
     figure, axes = plt.subplots(ncols=3, figsize=(12,6))
@@ -313,8 +324,9 @@ def plot_details(contacts, tracks, parameters='Contact Radius'):
         axes[0].fill_between(distats.index, distats['min'], distats['max'],
             color=color, alpha=0.2)
 
-        sns.distplot(durations, bins=np.arange(20 + 1), kde=False, ax=axes[1],
-            color=color)
+        sns.distplot(durations, bins=np.arange(20 + 1), kde=False,
+            norm_hist=True, ax=axes[1], color=color,
+            hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
 
         axes[2].scatter(cond_contacts['Time']/60,
             np.linalg.norm(cond_contacts.dropna()[['X', 'Y', 'Z']], axis=1),
@@ -326,7 +338,7 @@ def plot_details(contacts, tracks, parameters='Contact Radius'):
     plt.show()
 
 
-def plot_numbers(contacts, parameters='Cell Numbers'):
+def plot_numbers(contacts, parameters='Description'):
     """Plot accumulation and final number of T cells in contact with DC"""
     T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
@@ -585,7 +597,7 @@ if __name__ == '__main__':
 
     pairs = find_pairs(tracks)
     plot_details(pairs, tracks)
-    plot_numbers(pairs)
+    # plot_numbers(pairs)
 
     # pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')

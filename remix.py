@@ -13,7 +13,7 @@ def silly_steps(track_data):
     if 'Condtion' in track_data.columns:
         condition = track_data['Condition'].iloc[0] + ' Rebuilt'
     else:
-        condition = 'Silly Steps'
+        condition = 'Silly'
     n_steps = velocities.__len__()
 
     # Walk in x-y plane w/ given velocity and turning angles
@@ -318,12 +318,12 @@ if __name__ == '__main__':
     # import datetime
     #
     # tracks = pd.read_csv('../Data/Parenchyme/Tracks_KO-WT.csv')
-    # tracks = tracks[tracks.Condition == 'WT']
+    # tracks = tracks[tracks.Condition == 'KO']
     #
     # long_remix = pd.DataFrame()
-    # for i in range(10):
+    # for i in range(6):
     #     remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=24*60*3)
     #     remix['Track_ID'] = remix['Track_ID'] + 100*i
     #     long_remix = long_remix.append(remix)
-    #     long_remix.to_csv('24h_remix_WT.csv')
+    #     long_remix.to_csv('24h_remix_KO.csv')
     #     print(i, datetime.datetime.now())
