@@ -343,10 +343,9 @@ if __name__ == '__main__':
     motility.plot(tracks)
 
     long_remix = pd.DataFrame()
-    for i in range(6):
-        remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=24*60*3)
-        remix['Track_ID'] = remix['Track_ID'] + 100*i
-        remix['Time'] = remix['Time']/3
+    for i in range(10):
+        remix = remix_preserving_lags(tracks, n_tracks=50, n_steps=24*60*3)
+        remix['Track_ID'] = remix['Track_ID'] + 50*i
         long_remix = long_remix.append(remix)
         long_remix.to_csv('24h_remix_KO.csv')
         print(i, datetime.datetime.now())
