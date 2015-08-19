@@ -283,35 +283,46 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    remix_dr = remix_dr(tracks)
-    remix = remix(tracks)
-    remix_lags = remix_preserving_lags(tracks)
-    tracks = tracks.append(remix_dr)
-    tracks = tracks.append(remix)
-    tracks = tracks.append(remix_lags).reset_index()
-    motility.plot(tracks)
+    # remix_dr = remix_dr(tracks)
+    # remix = remix(tracks)
+    # remix_lags = remix_preserving_lags(tracks)
+    # tracks = tracks.append(remix_dr)
+    # tracks = tracks.append(remix)
+    # tracks = tracks.append(remix_lags).reset_index()
+    # motility.plot(tracks)
     # motility.lag_plot(tracks, null_model=False)
 
 
     """Remix from short vs from long tracks"""
     # summary = motility.summarize(tracks)
-    #
+
     # # Is not prefect, at least if there are non-unique Track_IDs ...
     # short_track_ids = [summary.ix[index]['Track_ID']
     #     for index in summary.sort('Track Duration').index
     #     if summary['Track Duration'].order().cumsum().ix[index]
     #         < summary['Track Duration'].sum()/2]
-    #
+
     # short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
     #     n_tracks=25, n_steps=60)
     # long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
     #     n_tracks=25, n_steps=60)
-    #
+
     # short_remix['Condition'] = 'Short Tracks Remixed'
     # long_remix['Condition'] = 'Long Tracks Remixed'
-    #
+
     # tracks = tracks.append(short_remix).append(long_remix)
     # motility.plot(tracks)
+
+
+    """Remix long or short tracks"""
+    short_remix = remix_preserving_lags(tracks, n_tracks=50, n_steps=300)
+    long_remix = remix_preserving_lags(tracks, n_tracks=25, n_steps=600)
+
+    short_remix['Condition'] = 'Short Remix'
+    long_remix['Condition'] = 'Long Remix'
+
+    tracks = tracks.append(short_remix).append(long_remix)
+    motility.plot(tracks, max_time=60)
 
 
     """Create long tracks"""
@@ -320,10 +331,16 @@ if __name__ == '__main__':
     # tracks = pd.read_csv('../Data/Parenchyme/Tracks_KO-WT.csv')
     # tracks = tracks[tracks.Condition == 'KO']
     #
+    # tracks = pd.read_csv('../Data/FRC-depletion/Analysis/Tracks_Complete-Ctrl-Partial.csv')
+    # tracks = tracks[tracks.Condition == 'Ctrl']
+    #
+    # motility.plot(tracks)
+    #
     # long_remix = pd.DataFrame()
     # for i in range(6):
     #     remix = remix_preserving_lags(tracks, n_tracks=100, n_steps=24*60*3)
     #     remix['Track_ID'] = remix['Track_ID'] + 100*i
+    #     remix['Time'] = remix['Time']/3
     #     long_remix = long_remix.append(remix)
     #     long_remix.to_csv('24h_remix_KO.csv')
     #     print(i, datetime.datetime.now())
