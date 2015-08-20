@@ -89,12 +89,12 @@ def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
                 replace=False))].copy()
             if min_std != 0:
                 # Such noise makes contacts seem to be none!
-                for id, track in T_tracks.groupby('Track_ID'):
-                    T_tracks.loc[T_tracks['Track_ID'] == id, 'X'] += \
+                for track_id, track in T_tracks.groupby('Track_ID'):
+                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'X'] += \
                         np.random.randn()*min_std
-                    T_tracks.loc[T_tracks['Track_ID'] == id, 'Y'] += \
+                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'Y'] += \
                         np.random.randn()*min_std
-                    T_tracks.loc[T_tracks['Track_ID'] == id, 'Z'] += \
+                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'Z'] += \
                         np.random.randn()*min_std
 
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
