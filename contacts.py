@@ -338,11 +338,11 @@ def plot_details(contacts, tracks, parameters='Description'):
     plt.show()
 
 
-def plot_numbers(contacts, parameters='Description'):
+def plot_numbers(contacts, parameters='Description', palette='deep'):
     """Plot accumulation and final number of T cells in contact with DC"""
     T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
-    sns.set(style='ticks')
+    sns.set(style='ticks', palette=palette)
 
     n_parameter_sets = len(T_cells_in_contact[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
