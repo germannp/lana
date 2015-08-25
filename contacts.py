@@ -157,6 +157,20 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
     for n_run in range(n_iter):
         for cr, lic_fac, n4, n8, nDC, delay in itertools.product(contact_radii,
             licensing_factors, CD4_ns, CD8_ns, DC_ns, CD8_delays):
+            description = []
+            if len(CD4_ns) > 1:
+                description.append('{} CD4'.format(n4))
+            if len(CD8_delays) > 1:
+                description.append('{} CD8 {} min. later'.format(n8, delay))
+            elif len(CD8_ns) > 1:
+                description.append('{} CD8'.format(n8, delay))
+            if len(DC_ns) > 1:
+                description.append('{} DCs'.format(nDC))
+            if len(contact_radii) > 1:
+                description.append('{} Contact Rad.'.format(cr))
+            if len(licensing_factors) > 1:
+                description.append('{}x Licensing'.format(lic_fac))
+
             # Create DCs
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
             r = tcz_radius*np.random.rand(nDC)**(1/3)
@@ -178,6 +192,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
             run_CD4_pairs['Contact Radius'] = cr
             run_CD4_pairs['Licensing Factor'] = lic_fac
             run_CD4_pairs['CD8 Delay'] = delay
+            run_CD4_pairs['Description'] = ', '.join(description)
             CD4_pairs = CD4_pairs.append(run_CD4_pairs)
 
             # Find CD8-DC-Pairs
@@ -192,6 +207,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
             run_CD8_pairs['Contact Radius'] = cr
             run_CD8_pairs['Licensing Factor'] = lic_fac
             run_CD8_pairs['CD8 Delay'] = delay
+            run_CD8_pairs['Description'] = ', '.join(description)
             CD8_pairs = CD8_pairs.append(run_CD8_pairs)
 
             # Find pairs among CD8s and DCs licensed by CD4s
@@ -243,7 +259,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 run_triples.loc[max_index, 'Contact Radius'] = cr
                 run_triples.loc[max_index, 'Licensing Factor'] = lic_fac
                 run_triples.loc[max_index, 'CD8 Delay'] = \
-                    '{} min. between injections, priming not required'.format(delay)
+                    '{} min. between injections'.format(delay)
                 max_index += 1
             try:
                 n_triples_of_run = len(run_triples)
@@ -265,6 +281,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                     np.isclose(CD4_tracks['Time'], CD4_contact_time)][['X', 'Y', 'Z']]
                 distance = np.linalg.norm(CD4_position.values - CD8_position.values)
                 assert  distance <= cr*(1 + lic_fac), 'Triple too far apart.'
+            run_triples['Description'] = ', '.join(description)
             triples = triples.append(run_triples)
 
         print('  Run {} done.'.format(n_run+1))
@@ -415,7 +432,7 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
     plt.show()
 
 
-def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
+def plot_triples(pairs_and_triples, parameters='Description'):
     """Plot # of CD8+ T cells in contact and times between 1st and 2nd contact"""
     CD8_in_contact = pairs_and_triples['Triples'].drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
@@ -481,7 +498,7 @@ def plot_triples(pairs_and_triples, parameters='CD8 Delay'):
     plt.show()
 
 
-def plot_triples_vs_pairs(triples, parameters='Cell Numbers'):
+def plot_triples_vs_pairs(triples, parameters='Description'):
     """Scatter plot pure CD8-DC-Pairs vs Triples per run"""
     pairs = triples['CD8-DC-Pairs']
     triples = triples['Triples']
@@ -606,14 +623,15 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
+    # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
     # pairs = find_pairs(tracks)
     # plot_details(pairs, tracks)
     # plot_numbers(pairs)
 
-    # pairs_and_triples = find_pairs_and_triples(tracks, tracks)
-    # plot_numbers(pairs_and_triples['CD8-DC-Pairs'], parameters='CD8 Delay')
-    # plot_numbers(pairs_and_triples['Triples'], parameters='CD8 Delay')
-    # plot_triples(pairs_and_triples, parameters='Licensing Factor')
-    # plot_triples_vs_pairs(pairs_and_triples, parameters='Licensing Factor')
+    pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
+    plot_numbers(pairs_and_triples['Triples'])
+    print(pairs_and_triples['Triples'])
+    # plot_triples(pairs_and_triples)
+    # plot_triples_vs_pairs(pairs_and_triples)
