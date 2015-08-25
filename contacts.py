@@ -248,6 +248,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                         (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
                 except (KeyError, ValueError):
                     continue
+                run_triples.loc[max_index, 'Track_ID'] = pair['Track_ID']
                 run_triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
                 run_triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
                 run_triples.loc[max_index, 'Time'] = pair['Time']
@@ -632,6 +633,5 @@ if __name__ == '__main__':
     pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
     plot_numbers(pairs_and_triples['Triples'])
-    print(pairs_and_triples['Triples'])
     # plot_triples(pairs_and_triples)
     # plot_triples_vs_pairs(pairs_and_triples)
