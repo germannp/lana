@@ -302,7 +302,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
 
 
 def plot_details(contacts, tracks, parameters='Description'):
-    """Plot distances over time and time within contact radius"""
+    """Plot distances over time, time in contact and time vs. distance to 0"""
     sns.set(style='ticks')
     figure, axes = plt.subplots(ncols=3, figsize=(12,6))
 
@@ -315,6 +315,7 @@ def plot_details(contacts, tracks, parameters='Description'):
     axes[2].set_xlabel('Contact Time [h]')
     axes[2].set_ylabel('Distance from Origin')
 
+    contacts = contacts.dropna(axis=1, how='all').copy()
     for i, (cond, cond_contacts) in enumerate(contacts.groupby(parameters)):
         if len(cond_contacts['Contact Radius'].dropna().unique()) != 1:
             raise ValueError('Condition with more than one contact radius')
@@ -349,7 +350,7 @@ def plot_details(contacts, tracks, parameters='Description'):
             hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
 
         axes[2].scatter(cond_contacts['Time']/60,
-            np.linalg.norm(cond_contacts.dropna()[['X', 'Y', 'Z']], axis=1),
+            np.linalg.norm(cond_contacts[['X', 'Y', 'Z']].astype(np.float64), axis=1),
             color=color, label=cond)
         axes[2].legend(loc=4)
 
@@ -676,7 +677,9 @@ if __name__ == '__main__':
     # plot_numbers(pairs)
 
     pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
     # plot_numbers(pairs_and_triples['Triples'])
     # plot_triples(pairs_and_triples)
-    plot_triples_vs_pairs(pairs_and_triples)
+    # plot_triples_vs_pairs(pairs_and_triples)
+    plot_triples_ratio(pairs_and_triples)
