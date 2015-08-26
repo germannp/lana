@@ -157,6 +157,8 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
     for n_run in range(n_iter):
         for cr, lic_fac, n4, n8, nDC, delay in itertools.product(contact_radii,
             licensing_factors, CD4_ns, CD8_ns, DC_ns, CD8_delays):
+            assert lic_fac >= 1, 'Licensing Factor must be >= 1'
+
             description = []
             if len(CD4_ns) > 1:
                 description.append('{} CD4'.format(n4))
@@ -535,10 +537,53 @@ def plot_triples_vs_pairs(triples, parameters='Description'):
             color=color)
         ratios = np.arctan(numbers['# CD8 in Triples']/numbers['# CD8 in Pairs'])
         sns.distplot(ratios, hist=True, kde=False, color=color, ax=axes[1],
-            bins=np.arange(21)*np.pi/40)
+            bins=np.arange(21)*np.pi/40,
+            hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1})
         legend.append(par)
     axes[0].legend(legend)
     sns.despine()
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_triples_ratio(triples, parameters='Description'):
+    """Plot #triples/(#triples + #doublets)/(#licensedDCs/#DCs)"""
+    pairs = triples['CD8-DC-Pairs']
+    licensed = triples['CD4-DC-Pairs']
+    triples = triples['Triples']
+
+    ratios = pd.DataFrame()
+    max_index = 0
+    for run, par in itertools.product(range(int(pairs['Run'].max()) + 1),
+                                      pairs[parameters].dropna().unique()):
+        _pairs = pairs[(pairs['Run'] == run) & (pairs[parameters] == par)]
+        _licensed = licensed[(licensed['Run'] == run) & (licensed[parameters] == par)]
+        _triples = triples[(triples['Run'] == run) & (triples[parameters] == par)]
+        # More triples than pairs possible if lic_fac > 1! Thus sets ...
+        CD8_in_triples = set(_triples['CD8 Track_ID'])
+        n_CD8_in_pairs_or_triples = len(CD8_in_triples.union(set(_pairs['Track_ID'])))
+        n_CD8_in_triples = len(CD8_in_triples)
+        n_lic_DCs = len(_licensed['X'].unique())
+        if n_CD8_in_pairs_or_triples > 0 and n_lic_DCs > 0:
+            try:
+                cell_numbers = _triples['Cell Numbers'].iloc[0]
+            except IndexError:
+                cell_numbers = _pairs['Cell Numbers'].iloc[0]
+            n_DCs = int(next(sub for sub in cell_numbers.split()[::-1]
+                if sub.isdigit()))
+            ratios.loc[max_index, 'Ratio'] = \
+                (n_CD8_in_triples/n_CD8_in_pairs_or_triples)/(n_lic_DCs/n_DCs)
+            ratios.loc[max_index, 'Run'] = run
+            ratios.loc[max_index, parameters] = par
+            max_index += 1
+
+    sns.set(style='ticks')
+    sns.boxplot(x='Ratio', y=parameters, data=ratios, notch=False)
+    sns.stripplot(x='Ratio', y=parameters, data=ratios, jitter=True, color='0.3', size=1)
+    sns.despine(trim=True)
+    plt.gca().axvline(1, c='0', ls=':')
+    plt.gca().set_xlabel('Ratio #triples/(#triples + #doublets) vs. #licensedDCs/#DCs')
+    plt.gca().set_ylabel('')
     plt.tight_layout()
     plt.show()
 
@@ -632,6 +677,6 @@ if __name__ == '__main__':
 
     pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
-    plot_numbers(pairs_and_triples['Triples'])
+    # plot_numbers(pairs_and_triples['Triples'])
     # plot_triples(pairs_and_triples)
-    # plot_triples_vs_pairs(pairs_and_triples)
+    plot_triples_vs_pairs(pairs_and_triples)
