@@ -301,58 +301,65 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
         'Triples': triples})
 
 
-def plot_details(contacts, tracks, parameters='Description'):
+def plot_details(contacts, tracks=None, parameters='Description'):
     """Plot distances over time, time in contact and time vs. distance to 0"""
     sns.set(style='ticks')
-    figure, axes = plt.subplots(ncols=3, figsize=(12,6))
+    if tracks is not None:
+        figure, axes = plt.subplots(ncols=3, figsize=(12,6))
+        axes[0].set_xlabel('Time [min]')
+        axes[0].set_ylabel(r'Distance [$\mu$m]')
+        axes[1].set_xlabel('Time within Contact Radius [min]')
+        axes[1].set_ylabel('Number of Contacts')
+        axes[2].set_xlabel('Contact Time [h]')
+        axes[2].set_ylabel('Distance from Origin')
+    else:
+        plt.gca().set_xlabel('Contact Time [h]')
+        plt.gca().set_ylabel('Distance from Origin')
 
-    axes[0].set_xlabel('Time [min]')
-    axes[0].set_ylabel(r'Distance [$\mu$m]')
-
-    axes[1].set_xlabel('Time within Contact Radius [min]')
-    axes[1].set_ylabel('Number of Contacts')
-
-    axes[2].set_xlabel('Contact Time [h]')
-    axes[2].set_ylabel('Distance from Origin')
 
     contacts = contacts.dropna(axis=1, how='all').copy()
     for i, (cond, cond_contacts) in enumerate(contacts.groupby(parameters)):
-        if len(cond_contacts['Contact Radius'].dropna().unique()) != 1:
-            raise ValueError('Condition with more than one contact radius')
-        radius = cond_contacts['Contact Radius'].max()
         color = sns.color_palette(n_colors=i+1)[-1]
-        distances = pd.Series()
-        durations = []
-        for _, contact in cond_contacts.dropna().iterrows():
-            track = tracks[tracks['Track_ID'] == contact['Track_ID']]
-            track = track[['Time', 'X', 'Y', 'Z']]
-            track = track[track['Time'] <= contact['Time'] + 20]
-            track = track[track['Time'] >= contact['Time'] - 10]
-            distance = pd.Series(
-                np.linalg.norm(
-                    track[['X', 'Y', 'Z']].astype(float)
-                    - contact[['X', 'Y', 'Z']].astype(float), axis=1),
-                    track['Time'] - contact['Time'])
-            time_step = track['Time'].diff().mean()
-            distances = distances.append(distance)
-            durations.append(distance[distance <= radius].size*time_step)
+        if tracks is not None:
+            if len(cond_contacts['Contact Radius'].dropna().unique()) != 1:
+                raise ValueError('Condition with more than one contact radius')
+            radius = cond_contacts['Contact Radius'].max()
+            distances = pd.Series()
+            durations = []
+            for _, contact in cond_contacts.dropna().iterrows():
+                track = tracks[tracks['Track_ID'] == contact['Track_ID']]
+                track = track[['Time', 'X', 'Y', 'Z']]
+                track = track[track['Time'] <= contact['Time'] + 20]
+                track = track[track['Time'] >= contact['Time'] - 10]
+                distance = pd.Series(
+                    np.linalg.norm(
+                        track[['X', 'Y', 'Z']].astype(float)
+                        - contact[['X', 'Y', 'Z']].astype(float), axis=1),
+                        track['Time'] - contact['Time'])
+                time_step = track['Time'].diff().mean()
+                distances = distances.append(distance)
+                durations.append(distance[distance <= radius].size*time_step)
 
-        distances.index = np.round(distances.index, 5) # Handle non-integer 'Times'
-        distats = distances.groupby(distances.index).describe().unstack()
-        axes[0].plot(distats.index, distats['50%'], color=color)
-        axes[0].fill_between(distats.index, distats['25%'], distats['75%'],
-            color=color, alpha=0.2)
-        axes[0].fill_between(distats.index, distats['min'], distats['max'],
-            color=color, alpha=0.2)
+            distances.index = np.round(distances.index, 5) # Handle non-integer 'Times'
+            distats = distances.groupby(distances.index).describe().unstack()
+            axes[0].plot(distats.index, distats['50%'], color=color)
+            axes[0].fill_between(distats.index, distats['25%'], distats['75%'],
+                color=color, alpha=0.2)
+            axes[0].fill_between(distats.index, distats['min'], distats['max'],
+                color=color, alpha=0.2)
 
-        sns.distplot(durations, bins=np.arange(20 + 1), kde=False,
-            norm_hist=True, ax=axes[1], color=color,
-            hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
+            sns.distplot(durations, bins=np.arange(20 + 1), kde=False,
+                norm_hist=True, ax=axes[1], color=color,
+                hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
 
-        axes[2].scatter(cond_contacts['Time']/60,
+        if tracks is not None:
+            ax = axes[2]
+        else:
+            ax = plt.gca()
+        ax.scatter(cond_contacts['Time']/60,
             np.linalg.norm(cond_contacts[['X', 'Y', 'Z']].astype(np.float64), axis=1),
             color=color, label=cond)
-        axes[2].legend(loc=4)
+        ax.legend(loc=4)
 
     sns.despine()
     plt.tight_layout()
