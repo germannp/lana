@@ -254,6 +254,10 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 run_triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
                 run_triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
                 run_triples.loc[max_index, 'Time'] = pair['Time']
+                # run_triples.loc[max_index, ['X', 'Y', 'Z']] = pair[['X', 'Y', 'Z']]
+                run_triples.loc[max_index, 'X'] = pair['X']
+                run_triples.loc[max_index, 'Y'] = pair['Y']
+                run_triples.loc[max_index, 'Z'] = pair['Z']
                 run_triples.loc[max_index, 'Time Between Contacts'] = pair['Time']\
                     - closest_CD4_pair['Time']
                 run_triples.loc[max_index, 'Run'] = n_run
@@ -685,8 +689,9 @@ if __name__ == '__main__':
 
     pairs_and_triples = find_pairs_and_triples(tracks, tracks)
     plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
+    plot_details(pairs_and_triples['Triples'])
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
     # plot_numbers(pairs_and_triples['Triples'])
     # plot_triples(pairs_and_triples)
     # plot_triples_vs_pairs(pairs_and_triples)
-    plot_triples_ratio(pairs_and_triples)
+    # plot_triples_ratio(pairs_and_triples)
