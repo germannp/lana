@@ -448,28 +448,32 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
 
 
 def plot_triples(pairs_and_triples, parameters='Description'):
-    """Plot # of CD8+ T cells in contact and times between 1st and 2nd contact"""
-    CD8_in_contact = pairs_and_triples['Triples'].drop_duplicates(
+    """Plot # of CD8+ T cells in triples and times between 1st and 2nd contact"""
+    CD8_in_triples = pairs_and_triples['Triples'].drop_duplicates(
+        ['CD8 Track_ID', 'Run', parameters])
+    CD8_in_pairs = pairs_and_triples['CD8-DC-Pairs'].drop_duplicates(
+        ['Track_ID', 'Run', parameters]).copy()
+    CD8_in_pairs['CD8 Track_ID'] = CD8_in_pairs['Track_ID']
+    CD8_activated = CD8_in_pairs.append(CD8_in_triples).drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
 
     sns.set(style='ticks')
 
-    final_ax = plt.subplot(1,2,1)
-    timing_ax = plt.subplot(1,2,2)
+    _, (activ_ax, triples_ax, timing_ax) = plt.subplots(ncols=3, figsize=(12,5.5))
 
-    final_ax.set_title('Final State')
-    final_ax.set_ylabel('Percentage of Final CD8+ T Cells in Contacts')
-    timing_ax.set_title('Time Between Contacts')
+    activ_ax.set_ylabel('Percentage of Final Activated CD8+ T Cells')
+    triples_ax.set_ylabel('Percentage of Final CD8+ T Cells in Triples')
+    timing_ax.set_ylabel('Time Between Contacts')
     timing_ax.set_yticks([])
 
-    final_sum = CD8_in_contact.groupby(parameters).count()['Time']
+    final_sum = CD8_activated.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
 
-    for label, _triples in CD8_in_contact.groupby(parameters):
+    for label, _triples in CD8_activated.groupby(parameters):
         i = order.index(label)
-        n_runs = CD8_in_contact['Run'].max() + 1
+        n_runs = CD8_in_triples['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
-        final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+        activ_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
         color = sns.color_palette(n_colors=i+1)[-1]
 
@@ -478,12 +482,12 @@ def plot_triples(pairs_and_triples, parameters='Description'):
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[CD8_in_contact['Time'].max(), :] = \
+        runs_with_geq_n_contacts.loc[CD8_in_triples['Time'].max(), :] = \
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1]/n_runs*100
-            final_ax.bar(i*2, percentage, color=color,
+            activ_ax.bar(i*2, percentage, color=color,
                 alpha=1/runs_with_n_contacts.columns.max())
 
             if n_contacts == runs_with_geq_n_contacts.columns.max():
@@ -495,18 +499,56 @@ def plot_triples(pairs_and_triples, parameters='Description'):
 
             percentage_diff = percentage - next_percentage
             if percentage_diff > 3:
-                final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
+                activ_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-        bins = np.arange(CD8_in_contact['Time Between Contacts'].min(),
-            CD8_in_contact['Time Between Contacts'].max(), 15)/60
+    for label, _triples in CD8_in_triples.groupby(parameters):
+        i = order.index(label)
+        n_runs = CD8_in_triples['Run'].max() + 1
+        label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
+        triples_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+
+        color = sns.color_palette(n_colors=i+1)[-1]
+
+        accumulation = _triples[['Run', 'Time']].pivot_table(
+            columns='Run', index='Time', aggfunc=len, fill_value=0).cumsum()
+        runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
+        runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
+        runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
+        runs_with_geq_n_contacts.loc[CD8_in_triples['Time'].max(), :] = \
+            runs_with_geq_n_contacts.iloc[-1]
+
+        for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
+            percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1]/n_runs*100
+            triples_ax.bar(i*2, percentage, color=color,
+                alpha=1/runs_with_n_contacts.columns.max())
+
+            if n_contacts == runs_with_geq_n_contacts.columns.max():
+                next_percentage = 0
+            else:
+                next_n = next(n for n in runs_with_geq_n_contacts.columns[::-1]
+                    if n > n_contacts)
+                next_percentage = runs_with_geq_n_contacts[next_n].iloc[-1]/n_runs*100
+
+            percentage_diff = percentage - next_percentage
+            if percentage_diff > 3:
+                triples_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
+                    int(n_contacts), ha='center', va='center')
+
+        bins = np.arange(CD8_in_triples['Time Between Contacts'].min(),
+            CD8_in_triples['Time Between Contacts'].max(), 15)/60
         sns.distplot(_triples['Time Between Contacts']/60, kde=False, bins=bins,
             norm_hist=True, color=color, ax=timing_ax, axlabel='Time [h]')
 
-    final_ax.set_xlim(left=-0.8)
-    final_ax.set_xticks([])
-    final_ax.set_yticks([0,25,50,75,100])
-    final_ax.set_ylim([0,100])
+    triples_ax.set_xlim(left=-0.8)
+    triples_ax.set_xticks([])
+    triples_ax.set_yticks([0,25,50,75,100])
+    triples_ax.set_ylim([0,100])
+
+    activ_ax.set_xlim(left=-0.8)
+    activ_ax.set_xticks([])
+    activ_ax.set_yticks([0,25,50,75,100])
+    activ_ax.set_ylim([0,100])
 
     sns.despine()
     plt.tight_layout()
