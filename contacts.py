@@ -558,7 +558,7 @@ def plot_triples_vs_pairs(triples, parameters='Description'):
     plt.show()
 
 
-def plot_triples_ratio(triples, parameters='Description'):
+def plot_triples_ratio(triples, parameters='Description', order=None):
     """Plot #triples/(#triples + #doublets)/(#licensedDCs/#DCs)"""
     pairs = triples['CD8-DC-Pairs']
     licensed = triples['CD4-DC-Pairs']
@@ -583,20 +583,42 @@ def plot_triples_ratio(triples, parameters='Description'):
                 cell_numbers = _pairs['Cell Numbers'].iloc[0]
             n_DCs = int(next(sub for sub in cell_numbers.split()[::-1]
                 if sub.isdigit()))
-            ratios.loc[max_index, 'Ratio'] = \
+            ratios.loc[max_index, 'Triple Ratio'] = \
                 (n_CD8_in_triples/n_CD8_in_pairs_or_triples)/(n_lic_DCs/n_DCs)
             ratios.loc[max_index, 'Run'] = run
             ratios.loc[max_index, parameters] = par
             max_index += 1
+        if n_CD8_in_pairs_or_triples > 0:
+            try:
+                cell_numbers = _triples['Cell Numbers'].iloc[0]
+            except IndexError:
+                cell_numbers = _pairs['Cell Numbers'].iloc[0]
+            n_CD8 = int(cell_numbers.split()[4])
+            ratios.loc[max_index, 'CD8 Ratio'] = n_CD8_in_pairs_or_triples/n_CD8
+        else:
+            ratios.loc[max_index, 'CD8 Ratio'] = 0
+        ratios.loc[max_index, 'Run'] = run
+        ratios.loc[max_index, parameters] = par
+        max_index += 1
 
     sns.set(style='ticks')
-    sns.boxplot(x='Ratio', y=parameters, data=ratios, notch=False)
-    sns.stripplot(x='Ratio', y=parameters, data=ratios, jitter=True, color='0.3', size=1)
-    sns.despine(trim=True)
-    plt.gca().axvline(1, c='0', ls=':')
-    plt.gca().set_xlabel(r'$\frac{\mathrm{Triples}/\mathrm{Activated}}'
+    _, axes = plt.subplots(1, 2)
+    sns.boxplot(x='Triple Ratio', y=parameters, data=ratios, notch=False, order=order, ax=axes[0])
+    sns.stripplot(x='Triple Ratio', y=parameters, data=ratios, jitter=True, color='0.3',
+        size=1, order=order, ax=axes[0])
+    sns.boxplot(x='CD8 Ratio', y=parameters, data=ratios, notch=False, order=order, ax=axes[1])
+    sns.stripplot(x='CD8 Ratio', y=parameters, data=ratios, jitter=True, color='0.3',
+        size=1, order=order, ax=axes[1])
+    axes[0].axvline(1, c='0', ls=':')
+    axes[0].set_xlabel(r'$\frac{\mathrm{Triples}/\mathrm{Activated}}'
         '{\mathrm{Licensed}/\mathrm{Total}}$', fontsize=15)
-    plt.gca().set_ylabel('')
+    axes[0].set_ylabel('')
+    axes[1].set_xlabel('Activated CD8/Total CD8')
+    axes[1].set_ylabel('')
+    axes[1].get_yaxis().set_visible(False)
+    sns.despine(trim=True)
+    sns.despine(ax=axes[1], top=True, right=True, left=True,
+        bottom=False, trim=True)
     plt.tight_layout()
     plt.show()
 
