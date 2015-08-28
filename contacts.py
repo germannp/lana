@@ -594,7 +594,8 @@ def plot_triples_ratio(triples, parameters='Description'):
     sns.stripplot(x='Ratio', y=parameters, data=ratios, jitter=True, color='0.3', size=1)
     sns.despine(trim=True)
     plt.gca().axvline(1, c='0', ls=':')
-    plt.gca().set_xlabel('Ratio #triples/(#triples + #doublets) vs. #licensedDCs/#DCs')
+    plt.gca().set_xlabel(r'$\frac{\mathrm{Triples}/\mathrm{Activated}}'
+        '{\mathrm{Licensed}/\mathrm{Total}}$', fontsize=15)
     plt.gca().set_ylabel('')
     plt.tight_layout()
     plt.show()
