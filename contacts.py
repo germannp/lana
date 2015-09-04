@@ -68,7 +68,7 @@ def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
     return contacts
 
 
-def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
+def simulate_priming(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
     min_dist_stds=(0,), contact_radii=(10,), tcz_volume=0.125e9/100, n_iter=10):
     """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
     print('\nSimulating pair-wise contacts {} times'.format(n_iter))
@@ -139,10 +139,10 @@ def find_pairs(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
     return pairs
 
 
-def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
-    DC_ns=(50,), CD8_delays=(0,), contact_radii=(10,), licensing_factors=(1, 2, 4),
+def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
+    DC_ns=(50,), CD8_delays=(0,), contact_radii=(10,), focusing_factors=(1, 2, 4),
     tcz_volume=0.125e9/100, n_iter=10):
-    """Simulate ensemble of triple contacts allowing CD4/DC and CD8/DC pairs"""
+    """Simulate stable contacts among CD4/CD8/DCs w/ CD4 focusing CD8 on DC"""
     print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
         .format(n_iter))
     assert max(CD4_ns) < CD4_tracks['Track_ID'].unique().__len__(),\
@@ -155,9 +155,9 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
     triples = pd.DataFrame()
     max_index = 0
     for n_run in range(n_iter):
-        for cr, lic_fac, n4, n8, nDC, delay in itertools.product(contact_radii,
-            licensing_factors, CD4_ns, CD8_ns, DC_ns, CD8_delays):
-            assert lic_fac >= 1, 'Licensing Factor must be >= 1'
+        for cr, foc_fac, n4, n8, nDC, delay in itertools.product(contact_radii,
+            focusing_factors, CD4_ns, CD8_ns, DC_ns, CD8_delays):
+            assert foc_fac >= 1, 'Focusing Factor must be >= 1'
 
             description = []
             if len(CD4_ns) > 1:
@@ -170,8 +170,8 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 description.append('{} DCs'.format(nDC))
             if len(contact_radii) > 1:
                 description.append('{} Contact Rad.'.format(cr))
-            if len(licensing_factors) > 1:
-                description.append('{}x Licensing'.format(lic_fac))
+            if len(focusing_factors) > 1:
+                description.append('{}x Focusing'.format(foc_fac))
 
             # Create DCs
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
@@ -192,7 +192,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
             run_CD4_pairs['Cell Numbers'] = \
                 '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
             run_CD4_pairs['Contact Radius'] = cr
-            run_CD4_pairs['Licensing Factor'] = lic_fac
+            run_CD4_pairs['Focusing Factor'] = foc_fac
             run_CD4_pairs['CD8 Delay'] = delay
             run_CD4_pairs['Description'] = ', '.join(description)
             CD4_pairs = CD4_pairs.append(run_CD4_pairs)
@@ -207,13 +207,13 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
             run_CD8_pairs['Cell Numbers'] = \
                 '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
             run_CD8_pairs['Contact Radius'] = cr
-            run_CD8_pairs['Licensing Factor'] = lic_fac
+            run_CD8_pairs['Focusing Factor'] = foc_fac
             run_CD8_pairs['CD8 Delay'] = delay
             run_CD8_pairs['Description'] = ', '.join(description)
             CD8_pairs = CD8_pairs.append(run_CD8_pairs)
 
             # Find pairs among CD8s and DCs licensed by CD4s
-            if lic_fac != 1:
+            if foc_fac != 1:
                 for idx, DC in DCs.iterrows():
                     try:
                         DC_contacts = run_CD4_pairs[
@@ -224,7 +224,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                     except KeyError:
                         continue
                 DCs = DCs.dropna().reset_index(drop=True)
-                lic_CD8_pairs = _find_by_distance(T_tracks, DCs, cr*lic_fac,
+                lic_CD8_pairs = _find_by_distance(T_tracks, DCs, cr*foc_fac,
                     tcz_radius)
                 lic_CD8_pairs['Run'] = n_run
                 lic_CD8_pairs['Cell Numbers'] = \
@@ -264,7 +264,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 run_triples.loc[max_index, 'Cell Numbers'] = \
                     '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
                 run_triples.loc[max_index, 'Contact Radius'] = cr
-                run_triples.loc[max_index, 'Licensing Factor'] = lic_fac
+                run_triples.loc[max_index, 'Focusing Factor'] = foc_fac
                 run_triples.loc[max_index, 'CD8 Delay'] = \
                     '{} min. between injections'.format(delay)
                 max_index += 1
@@ -287,7 +287,7 @@ def find_pairs_and_triples(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                     (CD4_tracks['Track_ID'] == triple['CD4 Track_ID']) &
                     np.isclose(CD4_tracks['Time'], CD4_contact_time)][['X', 'Y', 'Z']]
                 distance = np.linalg.norm(CD4_position.values - CD8_position.values)
-                assert  distance <= cr*(1 + lic_fac), 'Triple too far apart.'
+                assert  distance <= cr*(1 + foc_fac), 'Triple too far apart.'
             run_triples['Description'] = ', '.join(description)
             triples = triples.append(run_triples)
 
@@ -613,7 +613,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
         _pairs = pairs[(pairs['Run'] == run) & (pairs[parameters] == par)]
         _licensed = licensed[(licensed['Run'] == run) & (licensed[parameters] == par)]
         _triples = triples[(triples['Run'] == run) & (triples[parameters] == par)]
-        # More triples than pairs possible if lic_fac > 1! Thus sets ...
+        # More triples than pairs possible if foc_fac > 1! Thus sets ...
         CD8_in_triples = set(_triples['CD8 Track_ID'])
         n_CD8_in_pairs_or_triples = len(CD8_in_triples.union(set(_pairs['Track_ID'])))
         n_CD8_in_triples = len(CD8_in_triples)
@@ -748,11 +748,11 @@ if __name__ == '__main__':
     tracks['Time'] = tracks['Time']/3
     # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
-    # pairs = find_pairs(tracks)
+    # pairs = simulate_priming(tracks)
     # plot_details(pairs, tracks)
     # plot_numbers(pairs)
 
-    pairs_and_triples = find_pairs_and_triples(tracks, tracks)
+    pairs_and_triples = simulate_clustering(tracks, tracks)
     plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
     plot_details(pairs_and_triples['Triples'])
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
