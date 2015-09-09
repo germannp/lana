@@ -370,7 +370,7 @@ def plot_details(contacts, tracks=None, parameters='Description'):
     plt.show()
 
 
-def plot_numbers(contacts, parameters='Description', palette='deep'):
+def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep'):
     """Plot accumulation and final number of T cells in contact with DC"""
     T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
@@ -378,12 +378,12 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
 
     n_parameter_sets = len(T_cells_in_contact[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
-    final_ax = plt.subplot(gs[:,0])
+    detail_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
 
-    final_ax.set_title('Final State')
-    final_ax.set_ylabel('Percentage of Final T Cells in Contact')
-    ax0.set_title('Dynamics')
+    if t_detail > T_cells_in_contact['Time'].max():
+        t_detail = T_cells_in_contact['Time'].max()
+    detail_ax.set_ylabel('Percentage of T Cells in Contact at {}h'.format(t_detail))
 
     final_sum = T_cells_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.order().index.values)
@@ -392,18 +392,21 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
         i = order.index(label)
         n_runs = T_cells_in_contact['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
-        final_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+        detail_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
         if i == 0:
-            ax = ax0
-            ax.set_yticks([0, 50, 100])
+            dynamic_ax = ax0
+            dynamic_ax.set_yticks([0, 50, 100])
         else:
-            ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
+            dynamic_ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
 
         if i < n_parameter_sets - 1:
-            plt.setp(ax.get_xticklabels(), visible=False)
+            plt.setp(dynamic_ax.get_xticklabels(), visible=False)
         else:
-            ax.set_xlabel('Time [h]')
+            dynamic_ax.set_xlabel('Time [h]')
+
+        if t_detail < T_cells_in_contact['Time'].max():
+            dynamic_ax.axvline(t_detail, c='0', ls=':')
 
         color = sns.color_palette(n_colors=i+1)[-1]
 
@@ -416,12 +419,13 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
-            ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
+            dynamic_ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
                 runs_with_geq_n_contacts[n_contacts].values/n_runs*100,
                 color=color, alpha=1/runs_with_n_contacts.columns.max())
 
-            percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1]/n_runs*100
-            final_ax.bar(i*2, percentage, color=color,
+            percentage = runs_with_geq_n_contacts[runs_with_geq_n_contacts.index <= t_detail*60] \
+                [n_contacts].iloc[-1]/n_runs*100
+            detail_ax.bar(i*2, percentage, color=color,
                 alpha=1/runs_with_n_contacts.columns.max())
 
             if n_contacts == runs_with_geq_n_contacts.columns.max():
@@ -433,14 +437,14 @@ def plot_numbers(contacts, parameters='Description', palette='deep'):
 
             percentage_diff = percentage - next_percentage
             if percentage_diff > 3:
-                final_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
+                detail_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-    final_ax.set_xlim(left=-0.8)
-    final_ax.set_xticks([])
-    final_ax.set_yticks([0, 25, 50, 75, 100])
-    final_ax.set_ylim([0,100])
-    ax.set_ylim([0,100])
+    detail_ax.set_xlim(left=-0.8)
+    detail_ax.set_xticks([])
+    detail_ax.set_yticks([0, 25, 50, 75, 100])
+    detail_ax.set_ylim([0,100])
+    dynamic_ax.set_ylim([0,100])
 
     sns.despine()
     plt.tight_layout()
@@ -745,16 +749,16 @@ if __name__ == '__main__':
     from remix import silly_tracks
 
     tracks = silly_tracks(25, 180)
-    tracks['Time'] = tracks['Time']/3
+    # tracks['Time'] = tracks['Time']/3
     # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
-    # pairs = simulate_priming(tracks)
+    pairs = simulate_priming(tracks)
     # plot_details(pairs, tracks)
-    # plot_numbers(pairs)
+    plot_numbers(pairs)
 
-    pairs_and_triples = simulate_clustering(tracks, tracks)
-    plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
-    plot_details(pairs_and_triples['Triples'])
+    # pairs_and_triples = simulate_clustering(tracks, tracks)
+    # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
+    # plot_details(pairs_and_triples['Triples'])
     # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
     # plot_numbers(pairs_and_triples['Triples'])
     # plot_triples(pairs_and_triples)
