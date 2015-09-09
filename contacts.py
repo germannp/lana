@@ -420,23 +420,23 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
         runs_with_geq_n_contacts.loc[t_max, :] = runs_with_geq_n_contacts.iloc[-1]
+        detail_runs = runs_with_geq_n_contacts[runs_with_geq_n_contacts.index <= t_detail*60]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             dynamic_ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
                 runs_with_geq_n_contacts[n_contacts].values/n_runs*100,
                 color=color, alpha=1/runs_with_n_contacts.columns.max())
 
-            percentage = runs_with_geq_n_contacts[runs_with_geq_n_contacts.index <= t_detail*60] \
-                [n_contacts].iloc[-1]/n_runs*100
+            percentage = detail_runs[n_contacts].iloc[-1]/n_runs*100
             detail_ax.bar(i*2, percentage, color=color,
                 alpha=1/runs_with_n_contacts.columns.max())
 
-            if n_contacts == runs_with_geq_n_contacts.columns.max():
+            if n_contacts == detail_runs.columns.max():
                 next_percentage = 0
             else:
-                next_n = next(n for n in runs_with_geq_n_contacts.columns[::-1]
+                next_n = next(n for n in detail_runs.columns[::-1]
                     if n > n_contacts)
-                next_percentage = runs_with_geq_n_contacts[next_n].iloc[-1]/n_runs*100
+                next_percentage = detail_runs[next_n].iloc[-1]/n_runs*100
 
             percentage_diff = percentage - next_percentage
             if percentage_diff > 3:
