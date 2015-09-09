@@ -381,8 +381,9 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     detail_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
 
-    if t_detail > T_cells_in_contact['Time'].max():
-        t_detail = T_cells_in_contact['Time'].max()
+    t_max = T_cells_in_contact['Time'].max()
+    if t_detail > t_max:
+        t_detail = t_max
     detail_ax.set_ylabel('Percentage of T Cells in Contact at {}h'.format(t_detail))
 
     final_sum = T_cells_in_contact.groupby(parameters).count()['Time']
@@ -400,12 +401,15 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
         else:
             dynamic_ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
 
+        if (t_max % 4*60 == 0) and (t_max//4*60 > 1):
+            dynamic_ax.set_xticks([4*i for i in range(int(t_max//4) + 1)])
+
         if i < n_parameter_sets - 1:
             plt.setp(dynamic_ax.get_xticklabels(), visible=False)
         else:
             dynamic_ax.set_xlabel('Time [h]')
 
-        if t_detail < T_cells_in_contact['Time'].max():
+        if t_detail < t_max/60:
             dynamic_ax.axvline(t_detail, c='0', ls=':')
 
         color = sns.color_palette(n_colors=i+1)[-1]
@@ -415,8 +419,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[T_cells_in_contact['Time'].max(), :] = \
-            runs_with_geq_n_contacts.iloc[-1]
+        runs_with_geq_n_contacts.loc[t_max, :] = runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             dynamic_ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
