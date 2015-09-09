@@ -401,7 +401,8 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
         else:
             dynamic_ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
 
-        if (t_max % 4*60 == 0) and (t_max//4*60 > 1):
+        print(t_max)
+        if (t_max % (4*60) == 0) and (t_max//(4*60) > 1):
             dynamic_ax.set_xticks([4*i for i in range(int(t_max//4) + 1)])
 
         if i < n_parameter_sets - 1:
