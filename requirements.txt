@@ -3,5 +3,5 @@ numpy
 pandas
 matplotlib
 seaborn
-sklearn
-skimage
+scikit-learn
+scikit-image
