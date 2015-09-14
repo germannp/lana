@@ -16,4 +16,4 @@ Modules
   * **volocity.py**: Loads [Volocity](http://www.perkinelmer.co.uk/volocity) cell tracks.
   * **spim.py**: Displays and finds cells in SPIM (Single Plane Illumination Microscopy) data.
 
-For usage see the examples in `if __name__ == '__main__'` in the corresponding module.
+To install the required packages run `$ pip install -r requirements.txt`, for usage see the examples in `if __name__ == '__main__'` in the corresponding module.
