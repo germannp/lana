@@ -743,6 +743,7 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
             label=cond, color=color)
 
     time_ax.set_yticks([])
+    time_ax.axvline(np.median(residence_times), c='0', ls=':')
     sns.despine(ax=time_ax)
     reach_ax.set_yticks([])
     reach_ax.legend()
