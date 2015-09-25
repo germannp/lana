@@ -688,11 +688,14 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
     palette = itertools.cycle(sns.color_palette())
 
     if min_distance_std != 0:
+        moved_tracks = tracks.copy()
         for id in tracks['Track_ID'].unique():
-            tracks.loc[tracks['Track_ID'] == id, ['X', 'Y', 'Z']] += \
+            moved_tracks.loc[moved_tracks['Track_ID'] == id, ['X', 'Y', 'Z']] += \
                 np.random.randn(3)*min_distance_std
+    else:
+        moved_tracks = tracks
 
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
+    for i, (cond, cond_tracks) in enumerate(moved_tracks.groupby('Condition')):
         choice = np.random.choice(cond_tracks['Track_ID'].unique(),
             n_tracks/n_conditions)
         chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
@@ -730,7 +733,7 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
     def residence_time(track): return track['Time'].diff().mean()/60*len(
         track[np.linalg.norm(track[['X', 'Y', 'Z']], axis=1) < r])
 
-    for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
+    for i, (cond, cond_tracks) in enumerate(moved_tracks.groupby('Condition')):
         color = sns.color_palette(n_colors=i+1)[-1]
         residence_times = [residence_time(track)
             for _, track in cond_tracks.groupby('Track_ID')]
