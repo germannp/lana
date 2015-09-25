@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from utils import track_identifiers
+from lana.utils import track_identifiers
 
 
 def silly_steps(track_data, time_step=60):
@@ -266,7 +266,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
 
 if __name__ == '__main__':
     """Test & illustrate rebuilding and remixing tracks"""
-    import motility
+    from lana import motility
 
     tracks = pd.read_csv('Examples/ctrl.csv')
     ctrl = tracks[tracks.Track_ID == 1015.0]

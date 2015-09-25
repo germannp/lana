@@ -12,8 +12,8 @@ import matplotlib.gridspec as gridspec
 from matplotlib.patches import Circle, PathPatch
 from matplotlib.ticker import MaxNLocator
 
-from utils import equalize_axis3d
-from utils import track_identifiers
+from lana.utils import equalize_axis3d
+from lana.utils import track_identifiers
 
 
 def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
@@ -673,7 +673,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
 
 
 def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
-    min_distance=0, zoom=1):
+    min_distance=0, min_distance_std=0, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
 
@@ -748,8 +748,7 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
 
 
 if __name__ == '__main__':
-    import motility
-    from remix import silly_tracks
+    from lana.remix import silly_tracks
 
     tracks = silly_tracks(25, 180)
     # tracks['Time'] = tracks['Time']/3

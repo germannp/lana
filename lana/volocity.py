@@ -90,7 +90,7 @@ def read_tracks_txt(path, condition=None, sample=None, time_step=20,
 if __name__ == '__main__':
     """Illustrates the analysis of Volocity data"""
     import matplotlib.pyplot as plt
-    import motility
+    from lana import motility
 
     # tracks = read_tracks_txt('Examples/Volocity_example.txt', sample='Movie 1')
     # motility.plot(tracks)

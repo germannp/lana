@@ -10,8 +10,8 @@ import datetime
 import numpy as np
 import pandas as pd
 
-import motility
-import remix
+from lana import motility
+from lana import remix
 
 
 def read_tracks(posfile='positions.txt', ndim=2, condition=None):

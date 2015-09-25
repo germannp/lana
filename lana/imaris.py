@@ -36,7 +36,7 @@ def read_tracks(path, condition=None, sample=None, time_step=20,
 
 if __name__ == '__main__':
     """Illustrates loading of Imaris tracks"""
-    import motility
+    from lana import motility
 
     tracks = read_tracks('Examples/Imaris_example.xls', sample='Movie 1')
     motility.plot_dr(tracks)

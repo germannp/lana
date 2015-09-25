@@ -10,8 +10,8 @@ import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 
-from utils import equalize_axis3d
-from utils import track_identifiers
+from lana.utils import equalize_axis3d
+from lana.utils import track_identifiers
 
 
 def _uniquize_tracks(tracks):
@@ -717,7 +717,7 @@ def all_out(tracks, condition='Condition', return_summary=False):
 
 if __name__ == "__main__":
     """Demostrate motility analysis of simulated data."""
-    import remix
+    from lana import remix
 
 
     """Uniquize & split single track"""
@@ -756,12 +756,12 @@ if __name__ == "__main__":
     tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
-    # plot(tracks)
+    plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # lag_plot(tracks, skip_color=1)
 
-    summary = summarize(tracks)
-    plot_summary(summary)
+    # summary = summarize(tracks)
+    # plot_summary(summary)
     # plot_uturns(summary)
-    plot_tracks(tracks, summary)
+    # plot_tracks(tracks, summary)
