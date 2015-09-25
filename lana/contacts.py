@@ -90,12 +90,8 @@ def simulate_priming(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(
             if min_std != 0:
                 # Such noise makes contacts seem to be none!
                 for track_id, track in T_tracks.groupby('Track_ID'):
-                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'X'] += \
-                        np.random.randn()*min_std
-                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'Y'] += \
-                        np.random.randn()*min_std
-                    T_tracks.loc[T_tracks['Track_ID'] == track_id, 'Z'] += \
-                        np.random.randn()*min_std
+                    T_tracks.loc[T_tracks['Track_ID'] == track_id, ['X', 'Y', 'Z']] += \
+                        np.random.randn(3)*min_std
 
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
             ratio = (min_dist/tcz_radius)**3
@@ -762,10 +758,10 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     # tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
+    # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
-    # pairs = simulate_priming(tracks)
-    # plot_details(pairs, tracks)
+    pairs = simulate_priming(tracks, min_dist_stds=(60,))
+    plot_details(pairs, tracks)
     # plot_numbers(pairs)
 
     # pairs_and_triples = simulate_clustering(tracks, tracks)
