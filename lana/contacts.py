@@ -673,7 +673,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
 
 
 def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
-    min_distance=0, min_distance_std=0, zoom=1):
+    min_distance=0, min_distance_std=15, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
 
@@ -686,6 +686,12 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
 
     n_conditions = len(tracks['Condition'].unique())
     palette = itertools.cycle(sns.color_palette())
+
+    if min_distance_std != 0:
+        for id in tracks['Track_ID'].unique():
+            tracks.loc[tracks['Track_ID'] == id, ['X', 'Y', 'Z']] += \
+                np.random.randn(3)*min_distance_std
+
     for i, (cond, cond_tracks) in enumerate(tracks.groupby('Condition')):
         choice = np.random.choice(cond_tracks['Track_ID'].unique(),
             n_tracks/n_conditions)
@@ -752,11 +758,11 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     # tracks['Time'] = tracks['Time']/3
-    # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
+    plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
-    pairs = simulate_priming(tracks)
+    # pairs = simulate_priming(tracks)
     # plot_details(pairs, tracks)
-    plot_numbers(pairs)
+    # plot_numbers(pairs)
 
     # pairs_and_triples = simulate_clustering(tracks, tracks)
     # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
