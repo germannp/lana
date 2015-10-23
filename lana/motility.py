@@ -9,6 +9,7 @@ import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
+from scipy.spatial import ConvexHull
 
 from lana.utils import equalize_axis3d
 from lana.utils import track_identifiers
@@ -625,6 +626,28 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
             summary.loc[i, 'Skew Lines Distance'] = abs(np.sum(
                 (positions.shift(-skip_steps).loc[turns.idxmax()] - \
                 positions.loc[turns.idxmax()])*normal_vec))
+
+        def hull_surface(points, simplices):
+            """Calculate surfaces of hull"""
+            vec1 = points[simplices[:,1]] - points[simplices[:,0]]
+            vec2 = points[simplices[:,2]] - points[simplices[:,1]]
+            prod = np.cross(vec1, vec2)
+            return np.sum(np.linalg.norm(prod, axis=1))/2
+
+        def hull_volume(points, simplices):
+            """Calculate volume of closed surface (inspired by pyformex)"""
+            center = np.mean(points, axis=0)
+            vec1 = points[simplices[:,1]] - points[simplices[:,0]]
+            vec2 = points[simplices[:,1]] - points[simplices[:,2]]
+            vec3 = center - points[simplices[:,1]]
+            cross = np.cross(vec1, vec2)
+            return np.sum(cross*vec3/6)
+
+        hull = ConvexHull(track[['X', 'Y', 'Z']])
+        summary.loc[i, 'Scan. Area/Step'] = \
+            hull_surface(hull.points, hull.simplices)/len(track)
+        summary.loc[i, 'Scan. Vol./Step'] = \
+            hull_volume(hull.points, hull.simplices)/len(track)
 
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
