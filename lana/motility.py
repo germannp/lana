@@ -631,6 +631,12 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
         summary.loc[i, 'Scan. Area/Step'] = hull.area/len(track)
         summary.loc[i, 'Scan. Vol./Step'] = hull.volume/len(track)
 
+        if 'Surface Area (µm2)' in track.columns:
+            summary.loc[i, 'Mean Surface Area (µm2)'] = track['Surface Area (µm2)'].mean()
+
+        if 'Volume (µm3)' in track.columns:
+            summary.loc[i, 'Mean Volume (µm3)'] = track['Volume (µm3)'].mean()
+
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
             cond_summary.__len__(), cond,
@@ -647,7 +653,8 @@ def plot_summary(summary, save=False, condition='Condition'):
             or 'Turn ' in column)]
     to_drop.extend([column for column
         in ['Track_ID', 'Skew Lines Distance',
-            'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag']
+            'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag',
+            'Mean Surface Area (µm2)', 'Mean Volume (µm3)']
         if column in summary.columns])
 
     sns.set(style='white')
