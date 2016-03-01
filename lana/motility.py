@@ -654,6 +654,7 @@ def plot_summary(summary, save=False, condition='Condition'):
     to_drop.extend([column for column
         in ['Track_ID', 'Skew Lines Distance',
             'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag',
+            'Scan. Area/Step', 'Scan. Vol./Step',
             'Mean Surface Area (µm2)', 'Mean Volume (µm3)']
         if column in summary.columns])
 
@@ -690,8 +691,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
             n_tracks, cond, n_turns, n_turns/n_tracks*100))
 
     sns.set(style='white')
-    sns.pairplot(uturns[columns_of_interest],
-        hue=condition, diag_kind='kde')
+    sns.pairplot(uturns[columns_of_interest], hue=condition, diag_kind='kde')
     plt.tight_layout()
 
     if save:
@@ -699,6 +699,24 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
             for cond in summary[condition].unique()]
         plt.savefig('U-Turns_' + '-'.join(conditions) +
             '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps))
+    else:
+        plt.show()
+
+
+def plot_shapes(summary, save=False, condition='Condition'):
+    """Plot and print area and volume of all steps and averaged over track"""
+    columns_of_interest = ['Scan. Area/Step', 'Scan. Vol./Step',
+        'Mean Surface Area (µm2)', 'Mean Volume (µm3)',
+        condition]
+
+    sns.set(style='white')
+    sns.pairplot(summary[columns_of_interest], hue=condition, diag_kind='kde')
+    plt.tight_layout()
+
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in summary[condition].unique()]
+        plt.savefig('Shapes_' + '-'.join(conditions))
     else:
         plt.show()
 
@@ -717,6 +735,7 @@ def all_out(tracks, condition='Condition', return_summary=False):
     summary = summarize(tracks)
     plot_summary(summary, save=True)
     plot_uturns(summary, save=True)
+    plot_shapes(summary, save=True)
 
     conditions = [cond.replace('= ', '')
         for cond in summary[condition].unique()]
