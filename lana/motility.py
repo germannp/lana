@@ -637,6 +637,10 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
         if 'Volume (µm3)' in track.columns:
             summary.loc[i, 'Mean Volume (µm3)'] = track['Volume (µm3)'].mean()
 
+        if 'Surface Area (µm2)' in track.columns and 'Volume (µm3)' in track.columns:
+            summary.loc[i, 'Mean Sphericity'] = (np.pi**(1/3) \
+                *(6*track['Volume (µm3)'])**(2/3)/track['Surface Area (µm2)']).mean()
+
     for cond, cond_summary in summary.groupby('Condition'):
         print('  {} tracks in {} with {} timesteps in total.'.format(
             cond_summary.__len__(), cond,
@@ -706,7 +710,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
 def plot_shapes(summary, save=False, condition='Condition'):
     """Plot and print area and volume of all steps and averaged over track"""
     columns_of_interest = ['Scan. Area/Step', 'Scan. Vol./Step',
-        'Mean Surface Area (µm2)', 'Mean Volume (µm3)',
+        'Mean Surface Area (µm2)', 'Mean Volume (µm3)', 'Mean Sphericity',
         condition]
 
     sns.set(style='white')
