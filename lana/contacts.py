@@ -450,6 +450,26 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     plt.show()
 
 
+def plot_percentage(contacts, parameters='Description', t_detail=1, palette='deep'):
+    """Plot final percentage of T cells in contact with DC"""
+    n = contacts['Run'].max()
+    T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
+    contacts_at_t_detail = T_cells_in_contact[T_cells_in_contact['Time'] <= t_detail*60]
+
+    sns.set(style='ticks', palette=palette)
+
+    total_contacts = contacts_at_t_detail[['Run', parameters]].pivot_table(
+        columns=parameters, index='Run', aggfunc=len, fill_value=0)
+
+    ax = sns.violinplot(data=total_contacts/n*100, cut=0, inner=None)
+    ax.set_xlabel('')
+    ax.set_ylabel('% T cells in contact')
+
+    sns.despine()
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_triples(pairs_and_triples, parameters='Description'):
     """Plot # of CD8+ T cells in triples and times between 1st and 2nd contact"""
     CD8_in_triples = pairs_and_triples['Triples'].drop_duplicates(
@@ -761,8 +781,9 @@ if __name__ == '__main__':
     # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
 
     pairs = simulate_priming(tracks, min_dist_stds=(60,))
-    plot_details(pairs, tracks)
+    # plot_details(pairs, tracks)
     plot_numbers(pairs)
+    plot_percentage(pairs)
 
     # pairs_and_triples = simulate_clustering(tracks, tracks)
     # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
