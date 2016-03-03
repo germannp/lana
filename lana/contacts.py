@@ -668,8 +668,8 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
     plt.show()
 
 
-def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
-    min_distance=0, min_distance_std=15, zoom=1):
+def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.524e9/400,
+    min_distance=0, min_distance_std=200/10, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
 
