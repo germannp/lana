@@ -383,7 +383,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     detail_ax.set_ylabel('Percentage of T Cells in Contact at {}h'.format(t_detail))
 
     final_sum = T_cells_in_contact.groupby(parameters).count()['Time']
-    order = list(final_sum.order().index.values)
+    order = list(final_sum.sort_values().index.values)
 
     for label, _contacts in T_cells_in_contact.groupby(parameters):
         i = order.index(label)
@@ -470,7 +470,7 @@ def plot_triples(pairs_and_triples, parameters='Description'):
     timing_ax.set_yticks([])
 
     final_sum = CD8_activated.groupby(parameters).count()['Time']
-    order = list(final_sum.order().index.values)
+    order = list(final_sum.sort_values().index.values)
 
     for label, _triples in CD8_activated.groupby(parameters):
         i = order.index(label)
