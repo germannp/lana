@@ -712,7 +712,7 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.125e9/100,
         'X': r*np.sin(theta)*np.sin(phi),
         'Y': r*np.cos(theta)*np.sin(phi),
         'Z': r*np.cos(phi)})
-    space_ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], color='y')
+    space_ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], c='y')
 
     r = (3*tcz_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
