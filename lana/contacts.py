@@ -26,7 +26,7 @@ def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
     free_T_cells = set(tracks['Track_ID'].unique())
     contacts = pd.DataFrame()
     max_index = 0
-    for time, positions in tracks.sort('Time').groupby('Time'):
+    for time, positions in tracks.sort_values('Time').groupby('Time'):
         if 'Appearance Time' not in DCs.columns:
             pass
         elif len(DCs[DCs['Appearance Time'] <= time]) == 0:
@@ -229,7 +229,7 @@ def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
                 lic_CD8_pairs['CD8 Delay'] = delay
                 run_CD8_pairs = run_CD8_pairs.append(lic_CD8_pairs)
                 try:
-                    run_CD8_pairs = run_CD8_pairs.sort('Time').drop_duplicates(
+                    run_CD8_pairs = run_CD8_pairs.sort_values('Time').drop_duplicates(
                         'Track_ID')
                 except KeyError:
                     pass
@@ -762,7 +762,7 @@ if __name__ == '__main__':
 
     pairs = simulate_priming(tracks, min_dist_stds=(60,))
     plot_details(pairs, tracks)
-    # plot_numbers(pairs)
+    plot_numbers(pairs)
 
     # pairs_and_triples = simulate_clustering(tracks, tracks)
     # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)

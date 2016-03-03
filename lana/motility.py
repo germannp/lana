@@ -173,7 +173,7 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
             cond_summary = summary[summary[condition] == cond]
             max_turn_column = next(column for column in summary.columns
                 if column.startswith('Max. Turn'))
-            choice = cond_summary.sort(max_turn_column, ascending=False)\
+            choice = cond_summary.sort_values(max_turn_column, ascending=False)\
                 ['Track_ID'][:int(n_tracks/n_conditions)]
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
         elif cond_tracks['Track_ID'].unique().__len__() < n_tracks/n_conditions:

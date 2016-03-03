@@ -146,5 +146,5 @@ if __name__ == "__main__":
     # print(positions)
     #
     # df = positions[['Cell Type', 'Distance to Closest HEV', 'Distance to LN Center']]
-    # df.set_index([df.index, 'Cell Type']).unstack('Cell Type').swaplevel(0,1,axis = 1).sort(axis = 1)
+    # df.set_index([df.index, 'Cell Type']).unstack('Cell Type').swaplevel(0,1,axis = 1).sort_values(axis = 1)
     # print(df)

@@ -31,7 +31,7 @@ def read_tracks(path, condition=None, sample=None, time_step=20,
     print('Read {} tracks with {} seconds time step.'.format(
         len(tracks['Track_ID'].unique()), time_step))
 
-    return tracks.sort('Time')
+    return tracks.sort_values('Time')
 
 
 if __name__ == '__main__':

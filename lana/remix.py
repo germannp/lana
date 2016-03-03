@@ -308,7 +308,7 @@ if __name__ == '__main__':
 
     # # Is not prefect, at least if there are non-unique Track_IDs ...
     # short_track_ids = [summary.ix[index]['Track_ID']
-    #     for index in summary.sort('Track Duration').index
+    #     for index in summary.sort_values('Track Duration').index
     #     if summary['Track Duration'].order().cumsum().ix[index]
     #         < summary['Track Duration'].sum()/2]
 
