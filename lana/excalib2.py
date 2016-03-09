@@ -19,7 +19,7 @@ def read_tracks(posfile='positions.txt', ndim=2, condition=None):
     try:
         positions = np.loadtxt(posfile)
     except:
-        print ('Error: Cannot read positions file!')
+        print('Error: Cannot read positions file!')
         return
 
     tracks = pd.DataFrame()
