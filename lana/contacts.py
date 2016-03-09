@@ -16,43 +16,43 @@ from lana.utils import equalize_axis3d
 from lana.utils import track_identifiers
 
 
-def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
+def _find_by_distance(tracks, dcs, contact_radius, tcz_radius):
     """Find contacts among T-cell tracks and DC positions"""
-    if 'Appearance Time' in DCs.columns:
-        available_DCs = pd.DataFrame()
+    if 'Appearance Time' in dcs.columns:
+        available_dcs = pd.DataFrame()
     else:
-        DC_tree = spatial.cKDTree(DCs[['X', 'Y', 'Z']])
-        available_DCs = DCs
-    free_T_cells = set(tracks['Track_ID'].unique())
+        dc_tree = spatial.cKDTree(dcs[['X', 'Y', 'Z']])
+        available_dcs = dcs
+    free_t_cells = set(tracks['Track_ID'].unique())
     contacts = pd.DataFrame()
     max_index = 0
     for time, positions in tracks.sort_values('Time').groupby('Time'):
-        if 'Appearance Time' not in DCs.columns:
+        if 'Appearance Time' not in dcs.columns:
             pass
-        elif len(DCs[DCs['Appearance Time'] <= time]) == 0:
+        elif len(dcs[dcs['Appearance Time'] <= time]) == 0:
             continue
-        elif len(available_DCs) != len(DCs[DCs['Appearance Time'] <= time]):
-            available_DCs = DCs[DCs['Appearance Time'] <= time].reset_index()
-            DC_tree = spatial.cKDTree(available_DCs[['X', 'Y', 'Z']])
-        positions = positions[positions['Track_ID'].isin(free_T_cells)]
+        elif len(available_dcs) != len(dcs[dcs['Appearance Time'] <= time]):
+            available_dcs = dcs[dcs['Appearance Time'] <= time].reset_index()
+            dc_tree = spatial.cKDTree(available_dcs[['X', 'Y', 'Z']])
+        positions = positions[positions['Track_ID'].isin(free_t_cells)]
         positions = positions[np.linalg.norm(positions[['X', 'Y', 'Z']],
             axis=1) < (tcz_radius + contact_radius)]
         if positions.__len__() != 0:
-            T_cell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
-            new_contacts = DC_tree.query_ball_tree(
-                T_cell_tree, contact_radius)
-            for DC, DC_contacts in enumerate(new_contacts):
-                for T_cell in DC_contacts:
+            t_cell_tree = spatial.cKDTree(positions[['X', 'Y', 'Z']])
+            new_contacts = dc_tree.query_ball_tree(
+                t_cell_tree, contact_radius)
+            for dc, dc_contacts in enumerate(new_contacts):
+                for t_cell in dc_contacts:
                     contacts.loc[max_index, 'Time'] = time
                     contacts.loc[max_index, 'Track_ID'] = \
-                        positions.iloc[T_cell]['Track_ID']
-                    contacts.loc[max_index, 'X'] = available_DCs.loc[DC, 'X']
-                    contacts.loc[max_index, 'Y'] = available_DCs.loc[DC, 'Y']
-                    contacts.loc[max_index, 'Z'] = available_DCs.loc[DC, 'Z']
+                        positions.iloc[t_cell]['Track_ID']
+                    contacts.loc[max_index, 'X'] = available_dcs.loc[dc, 'X']
+                    contacts.loc[max_index, 'Y'] = available_dcs.loc[dc, 'Y']
+                    contacts.loc[max_index, 'Z'] = available_dcs.loc[dc, 'Z']
                     max_index += 1
                     try:
-                        free_T_cells.remove(
-                            positions.iloc[T_cell]['Track_ID'])
+                        free_t_cells.remove(
+                            positions.iloc[t_cell]['Track_ID'])
                     except KeyError:
                         print('  Warning: T cell binding two DCs.')
 
@@ -68,12 +68,12 @@ def _find_by_distance(tracks, DCs, contact_radius, tcz_radius):
     return contacts
 
 
-def simulate_priming(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(0,),
+def simulate_priming(tracks, t_cell_ns=(10, 20), dc_ns=(10, 50), min_distances=(0,),
     min_dist_stds=(0,), contact_radii=(10,), tcz_volume=0.125e9/100, n_iter=10):
     """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
     print('\nSimulating pair-wise contacts {} times'.format(n_iter))
-    assert max(T_cell_ns) < tracks['Track_ID'].unique().__len__(),\
-        'Max. T_cell_ns is larger than # of given tracks.'
+    assert max(t_cell_ns) < tracks['Track_ID'].unique().__len__(),\
+        'Max. t_cell_ns is larger than # of given tracks.'
 
     if 'Condition' not in tracks.columns:
         tracks['Condition'] = 'Default'
@@ -81,42 +81,42 @@ def simulate_priming(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(
 
     pairs = pd.DataFrame()
     for n_run in range(n_iter):
-        for min_dist, min_std, cr, nT, nDC, cond in itertools.product(min_distances,
-            min_dist_stds, contact_radii, T_cell_ns, DC_ns, conditions):
+        for min_dist, min_std, cr, nt, ndc, cond in itertools.product(min_distances,
+            min_dist_stds, contact_radii, t_cell_ns, dc_ns, conditions):
             cond_tracks = tracks[tracks['Condition'] == cond]
-            T_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
-                np.random.choice(cond_tracks['Track_ID'].unique(), nT,
+            t_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
+                np.random.choice(cond_tracks['Track_ID'].unique(), nt,
                 replace=False))].copy()
             if min_std != 0:
                 # Such noise makes contacts seem to be none!
-                for track_id, track in T_tracks.groupby('Track_ID'):
-                    T_tracks.loc[T_tracks['Track_ID'] == track_id, ['X', 'Y', 'Z']] += \
+                for track_id, track in t_tracks.groupby('Track_ID'):
+                    t_tracks.loc[t_tracks['Track_ID'] == track_id, ['X', 'Y', 'Z']] += \
                         np.random.randn(3)*min_std
 
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
             ratio = (min_dist/tcz_radius)**3
-            r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(nDC))**(1/3)
-            theta = np.random.rand(nDC)*2*np.pi
-            phi = np.arccos(2*np.random.rand(nDC) - 1)
-            DCs = pd.DataFrame({
+            r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(ndc))**(1/3)
+            theta = np.random.rand(ndc)*2*np.pi
+            phi = np.arccos(2*np.random.rand(ndc) - 1)
+            dcs = pd.DataFrame({
                 'X': r*np.sin(theta)*np.sin(phi),
                 'Y': r*np.cos(theta)*np.sin(phi),
                 'Z': r*np.cos(phi)})
 
-            run_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
+            run_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
             run_pairs['Run'] = n_run
             run_pairs['Cell Numbers'] = \
-                '{} T cells, {} DCs'.format(nT, nDC)
+                '{} T cells, {} DCs'.format(nt, ndc)
             run_pairs['T Cell Condition'] = cond
             run_pairs['Contact Radius'] = cr
             run_pairs['Minimal Initial Distance'] = min_dist
             run_pairs['Std. of Initial Position'] = min_std
             description = []
-            if len(T_cell_ns) > 1 or len(conditions) > 1:
-                description.append('{} {} T cells'.format(nT, cond)
+            if len(t_cell_ns) > 1 or len(conditions) > 1:
+                description.append('{} {} T cells'.format(nt, cond)
                     .replace('Default ', ''))
-            if len(DC_ns) > 1:
-                description.append('{} DCs'.format(nDC))
+            if len(dc_ns) > 1:
+                description.append('{} DCs'.format(ndc))
             if len(min_distances) > 1 or len(min_dist_stds) > 1:
                 description.append('Min. Distance {} +/- {}'.format(min_dist, min_std))
             if len(contact_radii) > 1:
@@ -135,35 +135,35 @@ def simulate_priming(tracks, T_cell_ns=(10, 20), DC_ns=(10, 50), min_distances=(
     return pairs
 
 
-def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
-    DC_ns=(50,), CD8_delays=(0,), contact_radii=(10,), focusing_factors=(1, 2, 4),
+def simulate_clustering(cd4_tracks, cd8_tracks, cd4_ns=(10,), cd8_ns=(10,),
+    dc_ns=(50,), cd8_delays=(0,), contact_radii=(10,), focusing_factors=(1, 2, 4),
     tcz_volume=0.125e9/100, n_iter=10):
     """Simulate stable contacts among CD4/CD8/DCs w/ CD4 focusing CD8 on DC"""
     print('\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times'
         .format(n_iter))
-    assert max(CD4_ns) < CD4_tracks['Track_ID'].unique().__len__(),\
-        'Max. CD4_ns is larger than # of given CD4+ tracks.'
-    assert max(CD8_ns) < CD8_tracks['Track_ID'].unique().__len__(),\
-        'Max. CD8_ns is larger than # of given CD8+ tracks.'
+    assert max(cd4_ns) < cd4_tracks['Track_ID'].unique().__len__(),\
+        'Max. cd4_ns is larger than # of given CD4+ tracks.'
+    assert max(cd8_ns) < cd8_tracks['Track_ID'].unique().__len__(),\
+        'Max. cd8_ns is larger than # of given CD8+ tracks.'
 
-    CD4_pairs = pd.DataFrame()
-    CD8_pairs = pd.DataFrame()
+    cd4_pairs = pd.DataFrame()
+    cd8_pairs = pd.DataFrame()
     triples = pd.DataFrame()
     max_index = 0
     for n_run in range(n_iter):
-        for cr, foc_fac, n4, n8, nDC, delay in itertools.product(contact_radii,
-            focusing_factors, CD4_ns, CD8_ns, DC_ns, CD8_delays):
+        for cr, foc_fac, n4, n8, ndc, delay in itertools.product(contact_radii,
+            focusing_factors, cd4_ns, cd8_ns, dc_ns, cd8_delays):
             assert foc_fac >= 1, 'Focusing Factor must be >= 1'
 
             description = []
-            if len(CD4_ns) > 1:
+            if len(cd4_ns) > 1:
                 description.append('{} CD4'.format(n4))
-            if len(CD8_delays) > 1:
+            if len(cd8_delays) > 1:
                 description.append('{} CD8 {} min. later'.format(n8, delay))
-            elif len(CD8_ns) > 1:
+            elif len(cd8_ns) > 1:
                 description.append('{} CD8'.format(n8, delay))
-            if len(DC_ns) > 1:
-                description.append('{} DCs'.format(nDC))
+            if len(dc_ns) > 1:
+                description.append('{} DCs'.format(ndc))
             if len(contact_radii) > 1:
                 description.append('{} Contact Rad.'.format(cr))
             if len(focusing_factors) > 1:
@@ -171,94 +171,94 @@ def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
 
             # Create DCs
             tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
-            r = tcz_radius*np.random.rand(nDC)**(1/3)
-            theta = np.random.rand(nDC)*2*np.pi
-            phi = np.arccos(2*np.random.rand(nDC) - 1)
-            DCs = pd.DataFrame({
+            r = tcz_radius*np.random.rand(ndc)**(1/3)
+            theta = np.random.rand(ndc)*2*np.pi
+            phi = np.arccos(2*np.random.rand(ndc) - 1)
+            dcs = pd.DataFrame({
                 'X': r*np.sin(theta)*np.sin(phi),
                 'Y': r*np.cos(theta)*np.sin(phi),
                 'Z': r*np.cos(phi)})
 
             # Find CD4-DC-Pairs
-            T_tracks = CD4_tracks[CD4_tracks['Track_ID'].isin(
-                np.random.choice(CD4_tracks['Track_ID'].unique(), n4,
+            t_tracks = cd4_tracks[cd4_tracks['Track_ID'].isin(
+                np.random.choice(cd4_tracks['Track_ID'].unique(), n4,
                 replace=False))]
-            run_CD4_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
-            run_CD4_pairs['Run'] = n_run
-            run_CD4_pairs['Cell Numbers'] = \
-                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
-            run_CD4_pairs['Contact Radius'] = cr
-            run_CD4_pairs['Focusing Factor'] = foc_fac
-            run_CD4_pairs['CD8 Delay'] = delay
-            run_CD4_pairs['Description'] = ', '.join(description)
-            CD4_pairs = CD4_pairs.append(run_CD4_pairs)
+            run_cd4_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
+            run_cd4_pairs['Run'] = n_run
+            run_cd4_pairs['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, ndc)
+            run_cd4_pairs['Contact Radius'] = cr
+            run_cd4_pairs['Focusing Factor'] = foc_fac
+            run_cd4_pairs['CD8 Delay'] = delay
+            run_cd4_pairs['Description'] = ', '.join(description)
+            cd4_pairs = cd4_pairs.append(run_cd4_pairs)
 
             # Find CD8-DC-Pairs
-            T_tracks = CD8_tracks[CD8_tracks['Track_ID'].isin(
-                np.random.choice(CD8_tracks['Track_ID'].unique(), n8,
+            t_tracks = cd8_tracks[cd8_tracks['Track_ID'].isin(
+                np.random.choice(cd8_tracks['Track_ID'].unique(), n8,
                 replace=False))].copy()
-            T_tracks['Time'] = T_tracks['Time'] + delay
-            run_CD8_pairs = _find_by_distance(T_tracks, DCs, cr, tcz_radius)
-            run_CD8_pairs['Run'] = n_run
-            run_CD8_pairs['Cell Numbers'] = \
-                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
-            run_CD8_pairs['Contact Radius'] = cr
-            run_CD8_pairs['Focusing Factor'] = foc_fac
-            run_CD8_pairs['CD8 Delay'] = delay
-            run_CD8_pairs['Description'] = ', '.join(description)
-            CD8_pairs = CD8_pairs.append(run_CD8_pairs)
+            t_tracks['Time'] = t_tracks['Time'] + delay
+            run_cd8_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
+            run_cd8_pairs['Run'] = n_run
+            run_cd8_pairs['Cell Numbers'] = \
+                '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, ndc)
+            run_cd8_pairs['Contact Radius'] = cr
+            run_cd8_pairs['Focusing Factor'] = foc_fac
+            run_cd8_pairs['CD8 Delay'] = delay
+            run_cd8_pairs['Description'] = ', '.join(description)
+            cd8_pairs = cd8_pairs.append(run_cd8_pairs)
 
             # Find pairs among CD8s and DCs licensed by CD4s
             if foc_fac != 1:
-                for idx, DC in DCs.iterrows():
+                for idx, dc in dcs.iterrows():
                     try:
-                        DC_contacts = run_CD4_pairs[
-                            np.isclose(run_CD4_pairs['X'], DC['X']) &
-                            np.isclose(run_CD4_pairs['Y'], DC['Y']) &
-                            np.isclose(run_CD4_pairs['Z'], DC['Z'])]
-                        DCs.loc[idx, 'Appearance Time'] = DC_contacts['Time'].min()
+                        dc_contacts = run_cd4_pairs[
+                            np.isclose(run_cd4_pairs['X'], dc['X']) &
+                            np.isclose(run_cd4_pairs['Y'], dc['Y']) &
+                            np.isclose(run_cd4_pairs['Z'], dc['Z'])]
+                        dcs.loc[idx, 'Appearance Time'] = dc_contacts['Time'].min()
                     except KeyError:
                         continue
-                DCs = DCs.dropna().reset_index(drop=True)
-                lic_CD8_pairs = _find_by_distance(T_tracks, DCs, cr*foc_fac,
+                dcs = dcs.dropna().reset_index(drop=True)
+                lic_cd8_pairs = _find_by_distance(t_tracks, dcs, cr*foc_fac,
                     tcz_radius)
-                lic_CD8_pairs['Run'] = n_run
-                lic_CD8_pairs['Cell Numbers'] = \
-                    '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
-                lic_CD8_pairs['Contact Radius'] = cr
-                lic_CD8_pairs['CD8 Delay'] = delay
-                run_CD8_pairs = run_CD8_pairs.append(lic_CD8_pairs)
+                lic_cd8_pairs['Run'] = n_run
+                lic_cd8_pairs['Cell Numbers'] = \
+                    '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, ndc)
+                lic_cd8_pairs['Contact Radius'] = cr
+                lic_cd8_pairs['CD8 Delay'] = delay
+                run_cd8_pairs = run_cd8_pairs.append(lic_cd8_pairs)
                 try:
-                    run_CD8_pairs = run_CD8_pairs.sort_values('Time').drop_duplicates(
+                    run_cd8_pairs = run_cd8_pairs.sort_values('Time').drop_duplicates(
                         'Track_ID')
                 except KeyError:
                     pass
 
             # Check for triples
             run_triples = pd.DataFrame() # For assertion (and evlt. performance)
-            for _, pair in run_CD8_pairs.iterrows():
+            for _, pair in run_cd8_pairs.iterrows():
                 try:
-                    pair_triples = run_CD4_pairs[
-                        np.isclose(run_CD4_pairs['X'], pair['X']) &
-                        np.isclose(run_CD4_pairs['Y'], pair['Y']) &
-                        np.isclose(run_CD4_pairs['Z'], pair['Z'])]
-                    closest_CD4_pair = pair_triples.loc[
+                    pair_triples = run_cd4_pairs[
+                        np.isclose(run_cd4_pairs['X'], pair['X']) &
+                        np.isclose(run_cd4_pairs['Y'], pair['Y']) &
+                        np.isclose(run_cd4_pairs['Z'], pair['Z'])]
+                    closest_cd4_pair = pair_triples.loc[
                         (pair_triples['Time'] - pair['Time']).abs().idxmin(), :]
                 except (KeyError, ValueError):
                     continue
                 run_triples.loc[max_index, 'Track_ID'] = pair['Track_ID']
                 run_triples.loc[max_index, 'CD8 Track_ID'] = pair['Track_ID']
-                run_triples.loc[max_index, 'CD4 Track_ID'] = closest_CD4_pair['Track_ID']
+                run_triples.loc[max_index, 'CD4 Track_ID'] = closest_cd4_pair['Track_ID']
                 run_triples.loc[max_index, 'Time'] = pair['Time']
                 # run_triples.loc[max_index, ['X', 'Y', 'Z']] = pair[['X', 'Y', 'Z']]
                 run_triples.loc[max_index, 'X'] = pair['X']
                 run_triples.loc[max_index, 'Y'] = pair['Y']
                 run_triples.loc[max_index, 'Z'] = pair['Z']
                 run_triples.loc[max_index, 'Time Between Contacts'] = pair['Time']\
-                    - closest_CD4_pair['Time']
+                    - closest_cd4_pair['Time']
                 run_triples.loc[max_index, 'Run'] = n_run
                 run_triples.loc[max_index, 'Cell Numbers'] = \
-                    '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, nDC)
+                    '{} CD4+ T cells, {} CD8+ T cells, {} DCs'.format(n4, n8, ndc)
                 run_triples.loc[max_index, 'Contact Radius'] = cr
                 run_triples.loc[max_index, 'Focusing Factor'] = foc_fac
                 run_triples.loc[max_index, 'CD8 Delay'] = \
@@ -269,20 +269,20 @@ def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
             except KeyError:
                 n_triples_of_run = 0
             try:
-                n_DC8_pairs_of_run = len(run_CD8_pairs)
+                n_cd8_pairs_of_run = len(run_cd8_pairs)
             except KeyError:
-                n_DC8_pairs_of_run = 0
-            assert n_triples_of_run <= n_DC8_pairs_of_run, \
+                n_cd8_pairs_of_run = 0
+            assert n_triples_of_run <= n_cd8_pairs_of_run, \
                 'More triples found than possible.'
             for _, triple in run_triples.iterrows():
-                CD8_position = CD8_tracks[
-                    (CD8_tracks['Track_ID'] == triple['CD8 Track_ID']) &
-                    (CD8_tracks['Time'] == triple['Time'])][['X', 'Y', 'Z']]
-                CD4_contact_time = triple['Time'] - triple['Time Between Contacts']
-                CD4_position = CD4_tracks[
-                    (CD4_tracks['Track_ID'] == triple['CD4 Track_ID']) &
-                    np.isclose(CD4_tracks['Time'], CD4_contact_time)][['X', 'Y', 'Z']]
-                distance = np.linalg.norm(CD4_position.values - CD8_position.values)
+                cd8_position = cd8_tracks[
+                    (cd8_tracks['Track_ID'] == triple['CD8 Track_ID']) &
+                    (cd8_tracks['Time'] == triple['Time'])][['X', 'Y', 'Z']]
+                cd4_contact_time = triple['Time'] - triple['Time Between Contacts']
+                cd4_position = cd4_tracks[
+                    (cd4_tracks['Track_ID'] == triple['CD4 Track_ID']) &
+                    np.isclose(cd4_tracks['Time'], cd4_contact_time)][['X', 'Y', 'Z']]
+                distance = np.linalg.norm(cd4_position.values - cd8_position.values)
                 assert  distance <= cr*(1 + foc_fac), 'Triple too far apart.'
             run_triples['Description'] = ', '.join(description)
             triples = triples.append(run_triples)
@@ -290,14 +290,14 @@ def simulate_clustering(CD4_tracks, CD8_tracks, CD4_ns=(10,), CD8_ns=(10,),
         print('  Run {} done.'.format(n_run+1))
 
     # Save duration and number of runs for analysis
-    for df, tracks in zip([CD4_pairs, CD8_pairs, triples],
-        [CD4_tracks, CD8_tracks, CD4_tracks]):
+    for df, tracks in zip([cd4_pairs, cd8_pairs, triples],
+        [cd4_tracks, cd8_tracks, cd4_tracks]):
         df.reset_index(drop=True, inplace=True)
         max_index = df.index.max()
         df.loc[max_index + 1, 'Time'] = tracks['Time'].max()
         df.loc[max_index + 1, 'Run'] = n_iter - 1
 
-    return pd.Panel({'CD4-DC-Pairs': CD4_pairs, 'CD8-DC-Pairs': CD8_pairs,
+    return pd.Panel({'CD4-DC-Pairs': cd4_pairs, 'CD8-DC-Pairs': cd8_pairs,
         'Triples': triples})
 
 
@@ -368,26 +368,26 @@ def plot_details(contacts, tracks=None, parameters='Description'):
 
 def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep'):
     """Plot accumulation and final number of T cells in contact with DC"""
-    T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
+    t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
     sns.set(style='ticks', palette=palette)
 
-    n_parameter_sets = len(T_cells_in_contact[parameters].unique()) - 1 # nan for t_end
+    n_parameter_sets = len(t_cells_in_contact[parameters].unique()) - 1 # nan for t_end
     gs = gridspec.GridSpec(n_parameter_sets,2)
     detail_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
 
-    t_max = T_cells_in_contact['Time'].max()
+    t_max = t_cells_in_contact['Time'].max()
     if t_detail > t_max:
         t_detail = t_max
     detail_ax.set_ylabel('Percentage of T Cells in Contact at {}h'.format(t_detail))
 
-    final_sum = T_cells_in_contact.groupby(parameters).count()['Time']
+    final_sum = t_cells_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.sort_values().index.values)
 
-    for label, _contacts in T_cells_in_contact.groupby(parameters):
+    for label, _contacts in t_cells_in_contact.groupby(parameters):
         i = order.index(label)
-        n_runs = T_cells_in_contact['Run'].max() + 1
+        n_runs = t_cells_in_contact['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         detail_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -453,8 +453,8 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
 def plot_percentage(contacts, parameters='Description', t_detail=1, palette='deep'):
     """Plot final percentage of T cells in contact with DC"""
     n = contacts['Run'].max()
-    T_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
-    contacts_at_t_detail = T_cells_in_contact[T_cells_in_contact['Time'] <= t_detail*60]
+    t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
+    contacts_at_t_detail = t_cells_in_contact[t_cells_in_contact['Time'] <= t_detail*60]
 
     sns.set(style='ticks', palette=palette)
 
@@ -472,12 +472,12 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, palette='dee
 
 def plot_triples(pairs_and_triples, parameters='Description'):
     """Plot # of CD8+ T cells in triples and times between 1st and 2nd contact"""
-    CD8_in_triples = pairs_and_triples['Triples'].drop_duplicates(
+    cd8_in_triples = pairs_and_triples['Triples'].drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
-    CD8_in_pairs = pairs_and_triples['CD8-DC-Pairs'].drop_duplicates(
+    cd8_in_pairs = pairs_and_triples['CD8-DC-Pairs'].drop_duplicates(
         ['Track_ID', 'Run', parameters]).copy()
-    CD8_in_pairs['CD8 Track_ID'] = CD8_in_pairs['Track_ID']
-    CD8_activated = CD8_in_pairs.append(CD8_in_triples).drop_duplicates(
+    cd8_in_pairs['CD8 Track_ID'] = cd8_in_pairs['Track_ID']
+    cd8_activated = cd8_in_pairs.append(cd8_in_triples).drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
 
     sns.set(style='ticks')
@@ -489,12 +489,12 @@ def plot_triples(pairs_and_triples, parameters='Description'):
     timing_ax.set_ylabel('Time Between Contacts')
     timing_ax.set_yticks([])
 
-    final_sum = CD8_activated.groupby(parameters).count()['Time']
+    final_sum = cd8_activated.groupby(parameters).count()['Time']
     order = list(final_sum.sort_values().index.values)
 
-    for label, _triples in CD8_activated.groupby(parameters):
+    for label, _triples in cd8_activated.groupby(parameters):
         i = order.index(label)
-        n_runs = CD8_in_triples['Run'].max() + 1
+        n_runs = cd8_in_triples['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         activ_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -505,7 +505,7 @@ def plot_triples(pairs_and_triples, parameters='Description'):
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[CD8_in_triples['Time'].max(), :] = \
+        runs_with_geq_n_contacts.loc[cd8_in_triples['Time'].max(), :] = \
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
@@ -525,9 +525,9 @@ def plot_triples(pairs_and_triples, parameters='Description'):
                 activ_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-    for label, _triples in CD8_in_triples.groupby(parameters):
+    for label, _triples in cd8_in_triples.groupby(parameters):
         i = order.index(label)
-        n_runs = CD8_in_triples['Run'].max() + 1
+        n_runs = cd8_in_triples['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
         triples_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
 
@@ -538,7 +538,7 @@ def plot_triples(pairs_and_triples, parameters='Description'):
         runs_with_n_contacts = accumulation.apply(lambda x: x.value_counts(), axis=1).fillna(0)
         runs_with_n_contacts = runs_with_n_contacts[runs_with_n_contacts.columns[::-1]]
         runs_with_geq_n_contacts = runs_with_n_contacts.cumsum(axis=1)
-        runs_with_geq_n_contacts.loc[CD8_in_triples['Time'].max(), :] = \
+        runs_with_geq_n_contacts.loc[cd8_in_triples['Time'].max(), :] = \
             runs_with_geq_n_contacts.iloc[-1]
 
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
@@ -558,8 +558,8 @@ def plot_triples(pairs_and_triples, parameters='Description'):
                 triples_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
                     int(n_contacts), ha='center', va='center')
 
-        bins = np.arange(CD8_in_triples['Time Between Contacts'].min(),
-            CD8_in_triples['Time Between Contacts'].max(), 15)/60
+        bins = np.arange(cd8_in_triples['Time Between Contacts'].min(),
+            cd8_in_triples['Time Between Contacts'].max(), 15)/60
         sns.distplot(_triples['Time Between Contacts']/60, kde=False, bins=bins,
             norm_hist=True, color=color, ax=timing_ax, axlabel='Time [h]')
 
@@ -589,14 +589,14 @@ def plot_triples_vs_pairs(triples, parameters='Description'):
         pairs[parameters].dropna().unique()):
         contact_numbers.loc[max_index, 'Run'] = run
         contact_numbers.loc[max_index, 'Parameter'] = par
-        CD8_in_triples = set(triples[(triples['Run'] == run) &
+        cd8_in_triples = set(triples[(triples['Run'] == run) &
             (triples[parameters] == par)]['CD8 Track_ID'])
         contact_numbers.loc[max_index, '# CD8 in Triples'] = \
-            len(CD8_in_triples)
-        CD8_in_pairs = set(pairs[(pairs['Run'] == run) &
+            len(cd8_in_triples)
+        cd8_in_pairs = set(pairs[(pairs['Run'] == run) &
             (pairs[parameters] == par)]['Track_ID'])
         contact_numbers.loc[max_index, '# CD8 in Pairs'] = \
-            len(CD8_in_pairs.difference(CD8_in_triples))
+            len(cd8_in_pairs.difference(cd8_in_triples))
         max_index += 1
 
     sns.set(style='ticks')
@@ -637,29 +637,29 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
         _licensed = licensed[(licensed['Run'] == run) & (licensed[parameters] == par)]
         _triples = triples[(triples['Run'] == run) & (triples[parameters] == par)]
         # More triples than pairs possible if foc_fac > 1! Thus sets ...
-        CD8_in_triples = set(_triples['CD8 Track_ID'])
-        n_CD8_in_pairs_or_triples = len(CD8_in_triples.union(set(_pairs['Track_ID'])))
-        n_CD8_in_triples = len(CD8_in_triples)
-        n_lic_DCs = len(_licensed['X'].unique())
-        if n_CD8_in_pairs_or_triples > 0 and n_lic_DCs > 0:
+        cd8_in_triples = set(_triples['CD8 Track_ID'])
+        n_cd8_in_pairs_or_triples = len(cd8_in_triples.union(set(_pairs['Track_ID'])))
+        n_cd8_in_triples = len(cd8_in_triples)
+        n_lic_dcs = len(_licensed['X'].unique())
+        if n_cd8_in_pairs_or_triples > 0 and n_lic_dcs > 0:
             try:
                 cell_numbers = _triples['Cell Numbers'].iloc[0]
             except IndexError:
                 cell_numbers = _pairs['Cell Numbers'].iloc[0]
-            n_DCs = int(next(sub for sub in cell_numbers.split()[::-1]
+            n_dcs = int(next(sub for sub in cell_numbers.split()[::-1]
                 if sub.isdigit()))
             ratios.loc[max_index, 'Triple Ratio'] = \
-                (n_CD8_in_triples/n_CD8_in_pairs_or_triples)/(n_lic_DCs/n_DCs)
+                (n_cd8_in_triples/n_cd8_in_pairs_or_triples)/(n_lic_dcs/n_dcs)
             ratios.loc[max_index, 'Run'] = run
             ratios.loc[max_index, parameters] = par
             max_index += 1
-        if n_CD8_in_pairs_or_triples > 0:
+        if n_cd8_in_pairs_or_triples > 0:
             try:
                 cell_numbers = _triples['Cell Numbers'].iloc[0]
             except IndexError:
                 cell_numbers = _pairs['Cell Numbers'].iloc[0]
             n_CD8 = int(cell_numbers.split()[4])
-            ratios.loc[max_index, 'CD8 Ratio'] = n_CD8_in_pairs_or_triples/n_CD8
+            ratios.loc[max_index, 'CD8 Ratio'] = n_cd8_in_pairs_or_triples/n_CD8
         else:
             ratios.loc[max_index, 'CD8 Ratio'] = 0
         ratios.loc[max_index, 'Run'] = run
@@ -688,7 +688,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
     plt.show()
 
 
-def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.524e9/400,
+def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
     min_distance=0, min_distance_std=200/10, zoom=1):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
@@ -698,7 +698,7 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.524e9/400,
     time_ax = plt.subplot(gs[0,-1])
     reach_ax = plt.subplot(gs[1,-1])
 
-    space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_DCs))
+    space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_dcs))
 
     n_conditions = len(tracks['Condition'].unique())
     palette = itertools.cycle(sns.color_palette())
@@ -725,14 +725,14 @@ def plot_situation(tracks, n_tracks=6*3, n_DCs=50, tcz_volume=0.524e9/400,
 
     tcz_radius = (3*tcz_volume/(4*np.pi))**(1/3)
     ratio = (min_distance/tcz_radius)**3
-    r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(n_DCs))**(1/3)
-    theta = np.random.rand(n_DCs)*2*np.pi
-    phi = np.arccos(2*np.random.rand(n_DCs) - 1)
-    DCs = pd.DataFrame({
+    r = tcz_radius*(ratio + (1 - ratio)*np.random.rand(n_dcs))**(1/3)
+    theta = np.random.rand(n_dcs)*2*np.pi
+    phi = np.arccos(2*np.random.rand(n_dcs) - 1)
+    dcs = pd.DataFrame({
         'X': r*np.sin(theta)*np.sin(phi),
         'Y': r*np.cos(theta)*np.sin(phi),
         'Z': r*np.cos(phi)})
-    space_ax.scatter(DCs['X'], DCs['Y'], DCs['Z'], c='y')
+    space_ax.scatter(dcs['X'], dcs['Y'], dcs['Z'], c='y')
 
     r = (3*tcz_volume/(4*np.pi))**(1/3)
     for i in ['x', 'y', 'z']:
@@ -777,19 +777,19 @@ if __name__ == '__main__':
     from lana.remix import silly_tracks
 
     tracks = silly_tracks(25, 180)
-    # tracks['Time'] = tracks['Time']/3
-    # plot_situation(tracks, n_tracks=10, n_DCs=200, min_distance=60)
+    tracks['Time'] = tracks['Time']/3
+    plot_situation(tracks, n_tracks=10, n_dcs=200, min_distance=60)
 
     pairs = simulate_priming(tracks, min_dist_stds=(60,))
-    # plot_details(pairs, tracks)
+    plot_details(pairs, tracks)
     plot_numbers(pairs)
     plot_percentage(pairs)
 
-    # pairs_and_triples = simulate_clustering(tracks, tracks)
-    # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
-    # plot_details(pairs_and_triples['Triples'])
-    # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
-    # plot_numbers(pairs_and_triples['Triples'])
-    # plot_triples(pairs_and_triples)
-    # plot_triples_vs_pairs(pairs_and_triples)
-    # plot_triples_ratio(pairs_and_triples)
+    pairs_and_triples = simulate_clustering(tracks, tracks)
+    plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
+    plot_details(pairs_and_triples['Triples'])
+    plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
+    plot_numbers(pairs_and_triples['Triples'])
+    plot_triples(pairs_and_triples)
+    plot_triples_vs_pairs(pairs_and_triples)
+    plot_triples_ratio(pairs_and_triples)
