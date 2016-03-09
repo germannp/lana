@@ -8,10 +8,9 @@ A toolbox to analyze lymphocyte tracks within lymphnodes from microscopy or simu
 
 Modules
 -------
-  * **motility.py**: Tools to analyze cell motility from positions within lymph nodes. Handles data from experiments or simulations and plots the analaysis.
+  * **motility.py**: Tools to analyze cell motility from positions within lymph nodes.
   * **remix.py**: Statistical models to generate tracks based on data.
-  * **contacts.py**: Identify contacts between T cells and dendritic cells.
-  * **excalib2.py**: Wrapper to configure, run and analyze excalib2 cellular Potts model simulations. Includes functions to run parameter sweeps or compare different commands.
+  * **contacts.py**: Simulate contacts between T cells and dendritic cells.
   * **imaris.py**: Loads cell tracks from excel spreadsheets exported from [Imaris](http://www.bitplane.com/imaris/imaris).
   * **volocity.py**: Loads [Volocity](http://www.perkinelmer.co.uk/volocity) cell tracks.
   * **spim.py**: Displays and finds cells in SPIM (Single Plane Illumination Microscopy) data.
