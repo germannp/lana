@@ -689,7 +689,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
 
 
 def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
-    min_distance=0, min_distance_std=200/10, zoom=1):
+    min_distance=0, min_distance_std=200/10, zoom=1, t_detail=None):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
 
@@ -716,6 +716,8 @@ def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
             n_tracks/n_conditions)
         chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
         for _, track in chosen_tracks.groupby(track_identifiers(chosen_tracks)):
+            if t_detail:
+                track = track[track['Time'] <= t_detail*60]
             if n_conditions > 1:
                 color = sns.color_palette(n_colors=i+1)[-1]
             else:
