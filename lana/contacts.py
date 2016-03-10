@@ -69,7 +69,7 @@ def _find_by_distance(tracks, dcs, contact_radius, tcz_radius):
 
 
 def simulate_priming(tracks, t_cell_ns=(10, 20), dc_ns=(10, 50), min_distances=(0,),
-    min_dist_stds=(0,), contact_radii=(10,), tcz_volume=0.125e9/100, n_iter=10):
+    min_dist_stds=(200*0,), contact_radii=(10,), tcz_volume=0.125e9/100, n_iter=10):
     """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
     print('\nSimulating pair-wise contacts {} times'.format(n_iter))
     assert max(t_cell_ns) < tracks['Track_ID'].unique().__len__(),\
