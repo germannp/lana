@@ -450,9 +450,9 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     plt.show()
 
 
-def plot_percentage(contacts, parameters='Description', t_detail=1, palette='deep'):
+def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=100,
+    palette='deep'):
     """Plot final percentage of T cells in contact with DC"""
-    n = contacts['Run'].max()
     t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
     contacts_at_t_detail = t_cells_in_contact[t_cells_in_contact['Time'] <= t_detail*60]
 
@@ -461,7 +461,7 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, palette='dee
     total_contacts = contacts_at_t_detail[['Run', parameters]].pivot_table(
         columns=parameters, index='Run', aggfunc=len, fill_value=0)
 
-    ax = sns.violinplot(data=total_contacts/n*100, cut=0, inner=None)
+    ax = sns.violinplot(data=total_contacts/n_t_cells*100, cut=0, inner=None)
     ax.set_xlabel('')
     ax.set_ylabel('% T cells in contact')
 
@@ -780,18 +780,18 @@ if __name__ == '__main__':
 
     tracks = silly_tracks(25, 180)
     tracks['Time'] = tracks['Time']/3
-    plot_situation(tracks, n_tracks=10, n_dcs=200, min_distance=60)
+    # plot_situation(tracks, n_tracks=10, n_dcs=200, min_distance=60)
 
     pairs = simulate_priming(tracks, min_dist_stds=(60,))
-    plot_details(pairs, tracks)
+    # plot_details(pairs, tracks)
     plot_numbers(pairs)
-    plot_percentage(pairs)
+    plot_percentage(pairs, n_t_cells=[10, 10, 20, 20])
 
-    pairs_and_triples = simulate_clustering(tracks, tracks)
-    plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
-    plot_details(pairs_and_triples['Triples'])
-    plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
-    plot_numbers(pairs_and_triples['Triples'])
-    plot_triples(pairs_and_triples)
-    plot_triples_vs_pairs(pairs_and_triples)
-    plot_triples_ratio(pairs_and_triples)
+    # pairs_and_triples = simulate_clustering(tracks, tracks)
+    # plot_details(pairs_and_triples['CD8-DC-Pairs'], tracks)
+    # plot_details(pairs_and_triples['Triples'])
+    # plot_numbers(pairs_and_triples['CD8-DC-Pairs'])
+    # plot_numbers(pairs_and_triples['Triples'])
+    # plot_triples(pairs_and_triples)
+    # plot_triples_vs_pairs(pairs_and_triples)
+    # plot_triples_ratio(pairs_and_triples)
