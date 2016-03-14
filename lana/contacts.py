@@ -464,7 +464,7 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
     normalized_contacts = total_contacts/n_t_cells*100
 
     sorted_contacts = normalized_contacts.reindex_axis(sorted(
-        total_contacts.columns, key=lambda col: total_contacts[col].sum()), axis=1)
+        total_contacts.columns, key=lambda col: total_contacts[col].median()), axis=1)
 
     ax = sns.violinplot(data=sorted_contacts, cut=0, inner=None, bw=0.75)
     ax.set_xlabel('')
