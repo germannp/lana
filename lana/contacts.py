@@ -380,7 +380,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     t_max = t_cells_in_contact['Time'].max()
     if t_detail > t_max:
         t_detail = t_max
-    detail_ax.set_ylabel('Percentage of T Cells in Contact at {}h'.format(t_detail))
+    detail_ax.set_ylabel('Distribution of T Cells in Contact at {}h'.format(t_detail))
 
     final_sum = t_cells_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.sort_values().index.values)
@@ -465,6 +465,7 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
         data=total_contacts/n_t_cells*100, cut=0, inner=None, bw=0.75)
     ax.set_xlabel('')
     ax.set_ylabel('% T cells in contact')
+    plt.xticks(rotation=45, horizontalalignment='right')
 
     sns.despine()
     plt.tight_layout()
