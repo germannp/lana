@@ -461,8 +461,12 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
     total_contacts = contacts_at_t_detail[['Run', parameters]].pivot_table(
         columns=parameters, index='Run', aggfunc=len, fill_value=0)
 
-    ax = sns.violinplot(
-        data=total_contacts/n_t_cells*100, cut=0, inner=None, bw=0.75)
+    normalized_contacts = total_contacts/n_t_cells*100
+
+    sorted_contacts = normalized_contacts.reindex_axis(sorted(
+        total_contacts.columns, key=lambda col: total_contacts[col].sum()), axis=1)
+
+    ax = sns.violinplot(data=sorted_contacts, cut=0, inner=None, bw=0.75)
     ax.set_xlabel('')
     ax.set_ylabel('% T cells in contact')
     plt.xticks(rotation=45, horizontalalignment='right')
