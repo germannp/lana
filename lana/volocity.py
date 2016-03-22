@@ -2,10 +2,10 @@
 import pandas as pd
 
 
-def read_tracks_excel(path, condition=None, sample=None, time_step=20,
-    min_track_length=5):
+def read_tracks_excel(path, condition=None, sheetname=0, sample=None,
+    time_step=20, min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
-    tracks = pd.read_excel(path).reset_index()
+    tracks = pd.read_excel(path, sheetname).reset_index()
 
     tracks['Track_ID'] = tracks['Track ID']
     tracks['Time'] = (tracks['Timepoint'] - 1)/60*time_step
