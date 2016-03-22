@@ -112,7 +112,8 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
             if 'Z' in track.columns:
                 positions = track[['X', 'Y', 'Z']]
             else:
-                positions = track[['X', 'Y']]
+                positions = track[['X', 'Y']].copy()
+                positions['Z'] = 0
 
             tracks.loc[track.index, 'Displacement'] = \
                 np.linalg.norm(positions - positions.iloc[0], axis=1)
@@ -128,21 +129,20 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
             tracks.loc[track.index, 'Turning Angle'] = \
                 np.arccos(dot_products[:-1]/norm_products)
 
-            if 'Z' in track.columns:
-                tracks.loc[track.index, 'Plane Angle'] = np.nan
+            tracks.loc[track.index, 'Plane Angle'] = np.nan
 
-                n_vectors = np.cross(dr, dr.shift())
-                n_norms = np.linalg.norm(n_vectors, axis=1)
-                dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
-                norm_products = n_norms[1:]*n_norms[:-1]
-                angles = np.arccos(dot_products/norm_products)
-                cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-                cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
-                    axis=1)
-                cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-                signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
+            n_vectors = np.cross(dr, dr.shift())
+            n_norms = np.linalg.norm(n_vectors, axis=1)
+            dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
+            norm_products = n_norms[1:]*n_norms[:-1]
+            angles = np.arccos(dot_products/norm_products)
+            cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+            cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
+                axis=1)
+            cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+            signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
 
-                tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
+            tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
 
 
 def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
@@ -222,7 +222,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
 
     sns.set(style="ticks", palette=sns.color_palette(
         palette, len(tracks[condition].unique())))
-    if 'Plane Angle' in tracks.columns:
+    if 'Z' in tracks.columns:
         figure, axes = plt.subplots(ncols=4, figsize=(16,5.5))
     else:
         figure, axes = plt.subplots(ncols=3, figsize=(12,5.5))
@@ -247,7 +247,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
-    if 'Plane Angle' in tracks.columns:
+    if 'Z' in tracks.columns:
         axes[3].set_xlabel('Plane Angle')
         axes[3].set_ylabel('Density')
         axes[3].set_xlim([-np.pi, np.pi])
@@ -300,7 +300,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
                 color=color, shade=not plot_each_sample, ax=axes[2])
 
         # Plot Plane Angles
-        if 'Plane Angle' in tracks.columns:
+        if 'Z' in tracks.columns:
             plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
             plane_angles = np.concatenate(( # Mirror at boundaries.
                 -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
