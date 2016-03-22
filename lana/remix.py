@@ -202,7 +202,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     time_step = int(np.round(
         next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0)*60))
     print('Generating {} steps from {} steps {}s apart, preserving lag.'.format(
-        n_tracks*n_steps, time_step, len(remix)))
+        n_tracks*n_steps, len(remix), time_step))
     remix = remix.ix[np.random.choice(remix.index.values, n_tracks*n_steps)]
     remix['Track_ID'] = 0
 
