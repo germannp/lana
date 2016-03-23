@@ -142,7 +142,10 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
             cross_norms = np.linalg.norm(cross_products[2:], axis=1)
             signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
 
-            tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
+            if 'Z' in track.columns:
+                tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
+            else:
+                tracks.loc[track.index[2:-1], 'Plane Angle'] = angles[2:]
 
 
 def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
@@ -165,9 +168,12 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
         tracks[condition] = 'Default'
     n_conditions = len(tracks[condition].unique())
 
-    sns.set_style('white')
+    sns.set_style('ticks')
     fig = plt.figure(figsize=(12,12))
-    ax = fig.add_subplot(1,1,1, projection='3d')
+    if 'Z' in tracks.columns:
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        ax = fig.add_subplot(111, aspect='equal')
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         if summary is not None:
             cond_summary = summary[summary[condition] == cond]
@@ -186,16 +192,23 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
         color = sns.color_palette(n_colors=i+1)[-1]
         for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
             track_id = track['Track_ID'].iloc[0]
-            ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
-                color=color, alpha=alpha, label=track_id, picker=5)
+            if 'Z' in tracks.columns:
+                ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
+                    color=color, alpha=alpha, label=track_id, picker=5)
+            else:
+                ax.plot(track['X'].values, track['Y'].values,
+                    color=color, alpha=alpha, label=track_id, picker=5)
             if summary is not None and draw_turns:
                 turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
                 turn_loc = track.index.get_loc(
                     track[np.isclose(track['Time'], turn_time.values[0])].index.values[0])
                 turn_times = track['Time'][turn_loc - 1:turn_loc + skip_steps]
                 turn = track[track['Time'].isin(turn_times)]
-                ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
-                    color=color)
+                if 'Z' in tracks.columns:
+                    ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
+                        color=color)
+                else:
+                    ax.plot(turn['X'].values, turn['Y'].values, color=color)
 
     def on_pick(event):
         track_id = event.artist.get_label()
@@ -207,7 +220,10 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
 
     fig.canvas.mpl_connect('pick_event', on_pick)
 
-    equalize_axis3d(ax)
+    if 'Z' in tracks.columns:
+        equalize_axis3d(ax)
+    else:
+        sns.despine()
     plt.tight_layout()
     plt.show()
 
@@ -791,6 +807,7 @@ if __name__ == "__main__":
     tracks.loc[:, 'Time'] = tracks['Time']/3
     # plot_dr(tracks)
 
+    tracks = tracks.drop('Z', axis=1)
     plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)

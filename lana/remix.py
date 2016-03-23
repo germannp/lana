@@ -5,7 +5,7 @@ import pandas as pd
 from lana.utils import track_identifiers
 
 
-def silly_steps(track_data, time_step=60):
+def silly_steps(track_data, time_step=60, dim=3):
     """Generate a walk from velocity, turning and plane angle data"""
     steps = track_data['Velocity'].dropna().values/60*time_step
     turning_angles = track_data['Turning Angle'].dropna().values
@@ -36,7 +36,10 @@ def silly_steps(track_data, time_step=60):
             cost = np.cos(t)
             sint = np.sin(t)
             theta = np.random.rand()*2*np.pi
-            phi = np.arccos(2*np.random.rand() - 1)
+            if dim == 3:
+                phi = np.arccos(2*np.random.rand() - 1)
+            else:
+                phi = np.pi
             n_vec[0] = np.sin(theta)*np.sin(phi)
             n_vec[1] = np.cos(theta)*np.sin(phi)
             n_vec[2] = np.cos(phi)
@@ -51,9 +54,14 @@ def silly_steps(track_data, time_step=60):
 
     r = r[0, :] - r
 
-    return pd.DataFrame({'Time': np.arange(n_steps+1)/60*time_step,
+    track = pd.DataFrame({'Time': np.arange(n_steps+1)/60*time_step,
         'X': r[:,0], 'Y': r[:,1], 'Z': r[:,2], 'Source': 'Silly 3D walk',
         'Condition': condition})
+
+    if dim == 3:
+        return track
+    else:
+        return track.drop('Z', axis=1)
 
 
 def silly_tracks(n_tracks=100, n_steps=60):
@@ -248,7 +256,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     for i in range(n_tracks):
         track_data = remix.iloc[n_steps*i:n_steps*(i+1)].copy()
         track_data.loc[n_steps*i, 'Plane Angle'] = np.nan
-        new_track = silly_steps(track_data, time_step)
+        new_track = silly_steps(track_data, time_step, 2 + ('Z' in tracks.columns))
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
 
