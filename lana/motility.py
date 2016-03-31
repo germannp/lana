@@ -415,7 +415,7 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
             stat_func=None, xlim=[0, np.pi], space=0, color=color,
             ylim=[0, y_upper_lim], joint_kws={'shade': False})
         if save:
-            plt.savefig('Joint-Motility_' + cond.replace('= ', '')  + '.png')
+            plt.savefig('Joint-Motility_' + cond.replace('= ', '') + '.png')
         else:
             plt.show()
 
