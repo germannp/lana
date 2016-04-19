@@ -73,7 +73,7 @@ def _split_at_skip(tracks):
 
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
         timesteps = track['Time'].diff()
-        skips = np.round((timesteps - timesteps.min())/timesteps.min())
+        skips = ((timesteps - timesteps.min())/timesteps.min()).round()
         if skips.max() > 0:
             index = track.index
             if 'Track_ID' in track.columns:
