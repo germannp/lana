@@ -451,7 +451,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
 
 
 def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=100,
-    palette='deep'):
+    save=False, palette='deep'):
     """Plot final percentage of T cells in contact with DC"""
     t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
     contacts_at_t_detail = t_cells_in_contact[t_cells_in_contact['Time'] <= t_detail*60]
@@ -474,6 +474,9 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
     sns.despine()
     plt.tight_layout()
     plt.show()
+
+    if save:
+        sorted_contacts.to_csv('raw_violins.csv')
 
 
 def plot_triples(pairs_and_triples, parameters='Description'):
