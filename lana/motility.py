@@ -107,7 +107,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
             tracks.drop(track.index, inplace=True)
         else:
             tracks.loc[track.index, 'Track Time'] = \
-                np.round(track['Time'] - track['Time'].iloc[0], 4)
+                (track['Time'] - track['Time'].iloc[0]).round(4)
 
             if 'Z' in track.columns:
                 positions = track[['X', 'Y', 'Z']]
@@ -483,7 +483,7 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False):
                 for segment in arrested_segments
                 if sum(segment) > 0])
 
-        velocities.index = np.round(velocities.index, 5) # Handle non-integer 'Times'
+        velocities.index = np.round(velocities.index, 5)  # Handle non-integer 'Times'
         arrestats = velocities.groupby(velocities.index).describe().unstack()
 
         color = sns.color_palette(n_colors=i+1)[-1]
@@ -811,6 +811,7 @@ if __name__ == "__main__":
     plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
+    plot_arrest(tracks)
     # lag_plot(tracks, skip_color=1)
 
     # summary = summarize(tracks)

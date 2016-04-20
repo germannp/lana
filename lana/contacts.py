@@ -340,7 +340,7 @@ def plot_details(contacts, tracks=None, parameters='Description'):
                 distances = distances.append(distance)
                 durations.append(distance[distance <= radius].size*time_step)
 
-            distances.index = np.round(distances.index, 5) # Handle non-integer 'Times'
+            distances.index = np.round(distances.index, 5)  # Handle non-integer 'Times'
             distats = distances.groupby(distances.index).describe().unstack()
             axes[0].plot(distats.index, distats['50%'], color=color)
             axes[0].fill_between(distats.index, distats['25%'], distats['75%'],
