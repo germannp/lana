@@ -82,7 +82,7 @@ def simulate_priming(tracks, t_cell_ns=(10, 20), dc_ns=(10, 50), min_distances=(
     pairs = pd.DataFrame()
     for n_run in range(n_iter):
         for min_dist, min_std, cr, nt, ndc, cond in itertools.product(min_distances,
-            min_dist_stds, contact_radii, t_cell_ns, dc_ns, conditions):
+                min_dist_stds, contact_radii, t_cell_ns, dc_ns, conditions):
             cond_tracks = tracks[tracks['Condition'] == cond]
             t_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
                 np.random.choice(cond_tracks['Track_ID'].unique(), nt,
@@ -152,7 +152,7 @@ def simulate_clustering(cd4_tracks, cd8_tracks, cd4_ns=(10,), cd8_ns=(10,),
     max_index = 0
     for n_run in range(n_iter):
         for cr, foc_fac, n4, n8, ndc, delay in itertools.product(contact_radii,
-            focusing_factors, cd4_ns, cd8_ns, dc_ns, cd8_delays):
+                focusing_factors, cd4_ns, cd8_ns, dc_ns, cd8_delays):
             assert foc_fac >= 1, 'Focusing Factor must be >= 1'
 
             description = []
