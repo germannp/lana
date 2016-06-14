@@ -475,8 +475,11 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
     plt.tight_layout()
     plt.show()
 
+    if save == True:
+        save = 'raw_violins.csv'
+
     if save:
-        sorted_contacts.to_csv('raw_violins.csv')
+        sorted_contacts.to_csv(save)
 
 
 def plot_triples(pairs_and_triples, parameters='Description'):
