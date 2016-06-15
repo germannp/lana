@@ -383,7 +383,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     detail_ax.set_ylabel('Distribution of T Cells in Contact at {}h'.format(t_detail))
 
     final_sum = t_cells_in_contact.groupby(parameters).count()['Time']
-    order = list(final_sum.sort_values().index.values)
+    order = list(final_sum.sort_values().index.values)[::-1]
 
     for label, _contacts in t_cells_in_contact.groupby(parameters):
         i = order.index(label)
