@@ -366,7 +366,8 @@ def plot_details(contacts, tracks=None, parameters='Description'):
     plt.show()
 
 
-def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep'):
+def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
+    save=False):
     """Plot accumulation and final number of T cells in contact with DC"""
     t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
@@ -396,6 +397,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
             dynamic_ax.set_yticks([0, 50, 100])
         else:
             dynamic_ax = plt.subplot(gs[2*i+1], sharex=ax0, sharey=ax0)
+        dynamic_ax.set_rasterization_zorder(0)
 
         if (t_max % (4*60) == 0) and (t_max//(4*60) > 1):
             dynamic_ax.set_xticks([4*i for i in range(int(t_max//4) + 1)])
@@ -421,11 +423,11 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             dynamic_ax.fill_between(runs_with_geq_n_contacts[n_contacts].index/60, 0,
                 runs_with_geq_n_contacts[n_contacts].values/n_runs*100,
-                color=color, alpha=1/runs_with_n_contacts.columns.max())
+                color=color, alpha=1/runs_with_n_contacts.columns.max(), zorder=-1)
 
             percentage = detail_runs[n_contacts].iloc[-1]/n_runs*100
             detail_ax.bar(i*2, percentage, color=color,
-                alpha=1/runs_with_n_contacts.columns.max())
+                alpha=1/runs_with_n_contacts.columns.max(), zorder=-1)
 
             if n_contacts == detail_runs.columns.max():
                 next_percentage = 0
@@ -444,10 +446,18 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep')
     detail_ax.set_yticks([0, 25, 50, 75, 100])
     detail_ax.set_ylim([0,100])
     dynamic_ax.set_ylim([0,100])
+    detail_ax.set_rasterization_zorder(0)
 
     sns.despine()
     plt.tight_layout()
-    plt.show()
+
+    if save == True:
+        save = 'numbers.svg'
+
+    if save:
+        plt.savefig(save, dpi=1200)
+    else:
+        plt.show()
 
 
 def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=100,
@@ -701,7 +711,7 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
 
 
 def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
-    min_distance=0, min_distance_std=200/10, zoom=1, t_detail=None):
+    min_distance=0, min_distance_std=200/10, zoom=1, t_detail=None, save=False):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
     sns.set_style('ticks')
 
@@ -784,7 +794,14 @@ def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
     sns.despine(ax=reach_ax)
     equalize_axis3d(space_ax, zoom)
     plt.tight_layout()
-    plt.show()
+
+    if save == True:
+        save = 'situation.svg'
+
+    if save:
+        plt.savefig(save)
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
