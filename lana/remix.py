@@ -274,6 +274,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
 
 if __name__ == '__main__':
     """Test & illustrate rebuilding and remixing tracks"""
+    import seaborn as sns
     from lana import motility
 
     tracks = pd.read_csv('Examples/ctrl.csv')
@@ -307,7 +308,8 @@ if __name__ == '__main__':
     tracks = tracks.append(remix_dr)
     tracks = tracks.append(remix)
     tracks = tracks.append(remix_lags).reset_index()
-    motility.plot(tracks)
+    palette = [sns.color_palette()[i] for i in [1, 0, 2, 3]]
+    motility.plot(tracks, palette=palette)
     motility.lag_plot(tracks, null_model=False)
 
 
