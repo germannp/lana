@@ -149,7 +149,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
 
 
 def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
-    condition='Condition'):
+    condition='Condition', context='notebook'):
     """Plot tracks"""
     if type(summary) == pd.core.frame.DataFrame:
         skip_steps = int(next(word
@@ -168,7 +168,7 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
         tracks[condition] = 'Default'
     n_conditions = len(tracks[condition].unique())
 
-    sns.set_style('ticks')
+    sns.set(style='ticks', context=context)
     fig = plt.figure(figsize=(12,12))
     if 'Z' in tracks.columns:
         ax = fig.add_subplot(111, projection='3d')
@@ -229,7 +229,7 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
 
 
 def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
-    plot_each_sample=False):
+    plot_each_sample=False, context='notebook'):
     """Plot aspects of motility for different conditions"""
     _analyze(tracks)
 
@@ -237,7 +237,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         tracks[condition] = 'Default'
 
     sns.set(style="ticks", palette=sns.color_palette(
-        palette, len(tracks[condition].unique())))
+        palette, len(tracks[condition].unique())), context=context)
     if 'Plane Angle' in tracks.columns:
         figure, axes = plt.subplots(ncols=4, figsize=(16,5.5))
     else:
@@ -341,7 +341,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         plt.show()
 
 
-def plot_dr(tracks, save=False, condition='Condition'):
+def plot_dr(tracks, save=False, condition='Condition', context='notebook'):
     """Plot the differences in X, Y (and Z) to show biases"""
     _uniquize_tracks(tracks)
     _split_at_skip(tracks)
@@ -357,7 +357,7 @@ def plot_dr(tracks, save=False, condition='Condition'):
         else:
             differences['Track_ID'] = track['Track_ID'].iloc[0]
 
-    sns.set(style="ticks", palette='deep')
+    sns.set(style="ticks", palette='deep', context=context)
     fig, axes = plt.subplots(ncols=3, figsize=(15.5,5.5))
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
@@ -397,7 +397,7 @@ def plot_dr(tracks, save=False, condition='Condition'):
 
 
 def joint_plot(tracks, condition='Condition', save=False, palette='deep',
-    skip_color=0):
+    skip_color=0, context='notebook'):
     """Plot the joint distribution of the velocities and turning angles."""
     _analyze(tracks)
 
@@ -405,7 +405,7 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
         tracks[condition] = 'Default'
 
     sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color))
+        palette, tracks[condition].unique().__len__() + skip_color), context=context)
 
     y_upper_lim = np.percentile(tracks['Velocity'].dropna(), 99.5)
 
@@ -421,7 +421,7 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
 
 
 def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
-    save=False, palette='deep', skip_color=0):
+    save=False, palette='deep', skip_color=0, context='notebook'):
     """Plot tracks in velocities-turning-angles-space"""
     _analyze(tracks)
 
@@ -429,7 +429,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
         tracks[condition] = 'Default'
 
     sns.set(style="ticks", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color))
+        palette, tracks[condition].unique().__len__() + skip_color), context=context)
     fig, ax = plt.subplots(figsize=(5.5,5.5))
     ax.set_xlabel('Turning Angle')
     ax.set_xlim([0,np.pi])
@@ -456,14 +456,16 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
         plt.show()
 
 
-def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False):
+def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
+    context='notebook'):
     """Plot velocity aligned to minimum and distribution of arrested steps"""
     _analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    fig, axes = plt.subplots(1, 2)
+    sns.set(style='ticks', context=context)
+    fig, axes = plt.subplots(1, 2, figsize=(8, 5.5))
     axes[0].set_xlabel('Time to minimum')
     axes[0].set_ylabel('Velocity')
     axes[1].set_xlabel(r'Consecutive steps below {} $\mu$m/min'.format(arrest_velocity))
@@ -510,7 +512,7 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False):
 
 
 def lag_plot(tracks, condition='Condition', save=False, palette='deep',
-    skip_color=0, null_model=True):
+    skip_color=0, null_model=True, context='notebook'):
     """Lag plot for velocities and turning angles"""
     _analyze(tracks)
 
@@ -518,7 +520,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
         tracks[condition] = 'Default'
 
     sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color))
+        palette, tracks[condition].unique().__len__() + skip_color), context=context)
     if 'Plane Angle' in tracks.columns:
         fig, ax = plt.subplots(1,3, figsize=(12,4.25))
     else:
@@ -665,7 +667,7 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
     return summary
 
 
-def plot_summary(summary, save=False, condition='Condition'):
+def plot_summary(summary, save=False, condition='Condition', context='notebook'):
     """Plot distributions and joint distributions of the track summary"""
     to_drop = [column
         for column in summary.columns
@@ -678,7 +680,7 @@ def plot_summary(summary, save=False, condition='Condition'):
             'Mean Surface Area (µm2)', 'Mean Volume (µm3)']
         if column in summary.columns])
 
-    sns.set(style='white')
+    sns.set(style='white', context=context)
     sns.pairplot(summary.drop(to_drop, axis=1), hue=condition,
         diag_kind='kde')
     plt.tight_layout()
@@ -691,7 +693,8 @@ def plot_summary(summary, save=False, condition='Condition'):
         plt.show()
 
 
-def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
+def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition',
+    context='notebook'):
     """Plot and print steepest turns over more than critical_rad"""
     turn_column = next(col for col in summary.columns
         if col.startswith('Max. Turn Over'))
@@ -710,7 +713,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
         print('  {} tracks in {} with {} U-Turns ({:2.2f} %).'.format(
             n_tracks, cond, n_turns, n_turns/n_tracks*100))
 
-    sns.set(style='white')
+    sns.set(style='white', context=context)
     sns.pairplot(uturns[columns_of_interest], hue=condition, diag_kind='kde')
     plt.tight_layout()
 
@@ -723,13 +726,13 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition'):
         plt.show()
 
 
-def plot_shapes(summary, save=False, condition='Condition'):
+def plot_shapes(summary, save=False, condition='Condition', context='notebook'):
     """Plot and print area and volume of all steps and averaged over track"""
     columns_of_interest = ['Scan. Area/Step', 'Scan. Vol./Step',
         'Mean Surface Area (µm2)', 'Mean Volume (µm3)', 'Mean Sphericity',
         condition]
 
-    sns.set(style='white')
+    sns.set(style='white', context=context)
     sns.pairplot(summary[columns_of_interest], hue=condition, diag_kind='kde')
     plt.tight_layout()
 

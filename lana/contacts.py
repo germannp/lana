@@ -301,9 +301,9 @@ def simulate_clustering(cd4_tracks, cd8_tracks, cd4_ns=(10,), cd8_ns=(10,),
         'Triples': triples})
 
 
-def plot_details(contacts, tracks=None, parameters='Description'):
+def plot_details(contacts, tracks=None, parameters='Description', context='notebook'):
     """Plot distances over time, time in contact and time vs. distance to 0"""
-    sns.set(style='ticks')
+    sns.set(style='ticks', context=context)
     if tracks is not None:
         figure, axes = plt.subplots(ncols=3, figsize=(12,6))
         axes[0].set_xlabel('Time [min]')
@@ -367,14 +367,15 @@ def plot_details(contacts, tracks=None, parameters='Description'):
 
 
 def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
-    save=False):
+    save=False, context='notebook'):
     """Plot accumulation and final number of T cells in contact with DC"""
     t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
 
-    sns.set(style='ticks', palette=palette)
+    sns.set(style='ticks', palette=palette, context=context)
 
+    _ = plt.figure(figsize=(8, 5.5))
     n_parameter_sets = len(t_cells_in_contact[parameters].unique()) - 1 # nan for t_end
-    gs = gridspec.GridSpec(n_parameter_sets,2)
+    gs = gridspec.GridSpec(n_parameter_sets, 2)
     detail_ax = plt.subplot(gs[:,0])
     ax0 = plt.subplot(gs[1])
 
@@ -386,11 +387,16 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
     final_sum = t_cells_in_contact.groupby(parameters).count()['Time']
     order = list(final_sum.sort_values().index.values)[::-1]
 
+    if context == 'talk':
+        size = 'small'
+    else:
+        size = 'medium'
+
     for label, _contacts in t_cells_in_contact.groupby(parameters):
         i = order.index(label)
         n_runs = t_cells_in_contact['Run'].max() + 1
         label = '  ' + str(label) + ' (n = {:.0f})'.format(n_runs)
-        detail_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom')
+        detail_ax.text(i*2 - 0.5, 0, label, rotation=90, va='bottom', fontsize=size)
 
         if i == 0:
             dynamic_ax = ax0
@@ -439,7 +445,7 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
             percentage_diff = percentage - next_percentage
             if percentage_diff > 3:
                 detail_ax.text(i*2 + 0.38, percentage - percentage_diff/2 - 0.5,
-                    int(n_contacts), ha='center', va='center')
+                    int(n_contacts), ha='center', va='center', fontsize=size)
 
     detail_ax.set_xlim(left=-0.8)
     detail_ax.set_xticks([])
@@ -461,12 +467,12 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
 
 
 def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=100,
-    save=False, palette='deep'):
+    save=False, palette='deep', context='notebook'):
     """Plot final percentage of T cells in contact with DC"""
     t_cells_in_contact = contacts.drop_duplicates(['Track_ID', 'Run', parameters])
     contacts_at_t_detail = t_cells_in_contact[t_cells_in_contact['Time'] <= t_detail*60]
 
-    sns.set(style='ticks', palette=palette)
+    sns.set(style='ticks', palette=palette, context=context)
 
     total_contacts = contacts_at_t_detail[['Run', parameters]].pivot_table(
         columns=parameters, index='Run', aggfunc=len, fill_value=0)
@@ -492,7 +498,7 @@ def plot_percentage(contacts, parameters='Description', t_detail=1, n_t_cells=10
         sorted_contacts.to_csv(save)
 
 
-def plot_triples(pairs_and_triples, parameters='Description'):
+def plot_triples(pairs_and_triples, parameters='Description', context='notebook'):
     """Plot # of CD8+ T cells in triples and times between 1st and 2nd contact"""
     cd8_in_triples = pairs_and_triples['Triples'].drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
@@ -502,7 +508,7 @@ def plot_triples(pairs_and_triples, parameters='Description'):
     cd8_activated = cd8_in_pairs.append(cd8_in_triples).drop_duplicates(
         ['CD8 Track_ID', 'Run', parameters])
 
-    sns.set(style='ticks')
+    sns.set(style='ticks', context=context)
 
     _, (activ_ax, triples_ax, timing_ax) = plt.subplots(ncols=3, figsize=(12,5.5))
 
@@ -600,7 +606,7 @@ def plot_triples(pairs_and_triples, parameters='Description'):
     plt.show()
 
 
-def plot_triples_vs_pairs(triples, parameters='Description'):
+def plot_triples_vs_pairs(triples, parameters='Description', context='notebook'):
     """Scatter plot pure CD8-DC-Pairs vs Triples per run"""
     pairs = triples['CD8-DC-Pairs']
     triples = triples['Triples']
@@ -621,7 +627,7 @@ def plot_triples_vs_pairs(triples, parameters='Description'):
             len(cd8_in_pairs.difference(cd8_in_triples))
         max_index += 1
 
-    sns.set(style='ticks')
+    sns.set(style='ticks', context=context)
     # sns.set_style({"xtick.direction": "in","ytick.direction": "in"})
     igure, axes = plt.subplots(ncols=2, figsize=(11,5.5))
     axes[0].set_xlabel('# CD8 in Triples')
@@ -645,7 +651,7 @@ def plot_triples_vs_pairs(triples, parameters='Description'):
     plt.show()
 
 
-def plot_triples_ratio(triples, parameters='Description', order=None):
+def plot_triples_ratio(triples, parameters='Description', order=None, context='notebook'):
     """Plot #triples/(#triples + #doublets)/(#licensedDCs/#DCs)"""
     pairs = triples['CD8-DC-Pairs']
     licensed = triples['CD4-DC-Pairs']
@@ -688,8 +694,8 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
         ratios.loc[max_index, parameters] = par
         max_index += 1
 
-    sns.set(style='ticks')
-    _, axes = plt.subplots(1, 2)
+    sns.set(style='ticks', context=context)
+    _, axes = plt.subplots(1, 2, figsize=(8, 5.5))
     sns.boxplot(x='Triple Ratio', y=parameters, data=ratios, notch=False, order=order, ax=axes[0])
     sns.stripplot(x='Triple Ratio', y=parameters, data=ratios, jitter=True, color='0.3',
         size=1, order=order, ax=axes[0])
@@ -711,14 +717,17 @@ def plot_triples_ratio(triples, parameters='Description', order=None):
 
 
 def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
-    min_distance=0, min_distance_std=200/10, zoom=1, t_detail=None, save=False):
+    min_distance=0, min_distance_std=200/10, zoom=1, t_detail=None, save=False,
+    context='notebook'):
     """Plot some T cell tracks, DC positions and T cell zone volume"""
-    sns.set_style('ticks')
+    sns.set(style='ticks', context=context)
 
+    _ = plt.figure(figsize=(8, 5.5))
     gs = gridspec.GridSpec(2,3)
     space_ax = plt.subplot(gs[:,:-1], projection='3d')
     time_ax = plt.subplot(gs[0,-1])
     reach_ax = plt.subplot(gs[1,-1])
+    plt.locator_params(nbins=6)
 
     space_ax.set_title('{} T Cell Tracks & {} DCs'.format(n_tracks, n_dcs))
 
