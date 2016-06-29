@@ -259,7 +259,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
 
     axes[2].set_xlabel('Turning Angle')
     axes[2].set_ylabel('Density')
-    axes[2].set_xlim([0,np.pi])
+    axes[2].set_xlim([0, np.pi])
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
@@ -336,7 +336,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
         plt.savefig('Motility_' + '-'.join(conditions) +
-            '_all-samples'*plot_each_sample + '.png')
+            '_all-samples'*plot_each_sample + '.png', dpi=300)
     else:
         plt.show()
 
@@ -391,7 +391,7 @@ def plot_dr(tracks, save=False, condition='Condition', context='notebook'):
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
-        plt.savefig('dr_' + '-'.join(conditions) + '.png')
+        plt.savefig('dr_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
@@ -415,7 +415,7 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
             stat_func=None, xlim=[0, np.pi], space=0, color=color,
             ylim=[0, y_upper_lim], joint_kws={'shade': False})
         if save:
-            plt.savefig('Joint-Motility_' + cond.replace('= ', '') + '.png')
+            plt.savefig('Joint-Motility_' + cond.replace('= ', '') + '.png', dpi=300)
         else:
             plt.show()
 
@@ -451,7 +451,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
         plt.savefig('Motility-TracksInParameterSpace_' + '-'.join(conditions)
-            + '.png')
+            + '.png', dpi=300)
     else:
         plt.show()
 
@@ -506,7 +506,7 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
-        plt.savefig('Arrest_' + '-'.join(conditions) + '.png')
+        plt.savefig('Arrest_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
@@ -567,7 +567,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     if save:
         conditions = [cond.replace('= ', '')
             for cond in tracks[condition].unique()]
-        plt.savefig('Motility-LagPlot_' + '-'.join(conditions) + '.png')
+        plt.savefig('Motility-LagPlot_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
@@ -688,7 +688,7 @@ def plot_summary(summary, save=False, condition='Condition', context='notebook')
     if save:
         conditions = [cond.replace('= ', '')
             for cond in summary[condition].unique()]
-        plt.savefig('Summary_' + '-'.join(conditions) + '.png')
+        plt.savefig('Summary_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
@@ -721,7 +721,7 @@ def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition',
         conditions = [cond.replace('= ', '')
             for cond in summary[condition].unique()]
         plt.savefig('U-Turns_' + '-'.join(conditions) +
-            '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps))
+            '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps), dpi=300)
     else:
         plt.show()
 
@@ -739,7 +739,7 @@ def plot_shapes(summary, save=False, condition='Condition', context='notebook'):
     if save:
         conditions = [cond.replace('= ', '')
             for cond in summary[condition].unique()]
-        plt.savefig('Shapes_' + '-'.join(conditions))
+        plt.savefig('Shapes_' + '-'.join(conditions), dpi=300)
     else:
         plt.show()
 

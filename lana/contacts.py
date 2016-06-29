@@ -458,10 +458,10 @@ def plot_numbers(contacts, parameters='Description', t_detail=1, palette='deep',
     plt.tight_layout()
 
     if save == True:
-        save = 'numbers.svg'
+        save = 'numbers.png'
 
     if save:
-        plt.savefig(save, dpi=1200)
+        plt.savefig(save, dpi=300)
     else:
         plt.show()
 
@@ -805,10 +805,10 @@ def plot_situation(tracks, n_tracks=6*3, n_dcs=50, tcz_volume=0.524e9/400,
     plt.tight_layout()
 
     if save == True:
-        save = 'situation.svg'
+        save = 'situation.png'
 
     if save:
-        plt.savefig(save)
+        plt.savefig(save, dpi=300)
     else:
         plt.show()
 
