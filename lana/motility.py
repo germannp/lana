@@ -148,7 +148,7 @@ def _analyze(tracks, uniform_timesteps=True, min_length=6):
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = angles[2:]
 
 
-def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
+def plot_tracks(tracks, save=False, summary=None, draw_turns=True, n_tracks=25,
     condition='Condition', context='notebook'):
     """Plot tracks"""
     if type(summary) == pd.core.frame.DataFrame:
@@ -190,14 +190,14 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
 
         color = sns.color_palette(n_colors=i+1)[-1]
-        for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
+        for j, (_, track) in enumerate(cond_tracks.groupby(track_identifiers(cond_tracks))):
             track_id = track['Track_ID'].iloc[0]
             if 'Z' in tracks.columns:
                 ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
-                    color=color, alpha=alpha, label=track_id, picker=5)
+                    color=color, alpha=alpha, label=cond*(j == 0), picker=5)
             else:
                 ax.plot(track['X'].values, track['Y'].values,
-                    color=color, alpha=alpha, label=track_id, picker=5)
+                    color=color, alpha=alpha, label=cond*(j == 0), picker=5)
             if summary is not None and draw_turns:
                 turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
                 turn_loc = track.index.get_loc(
@@ -224,8 +224,15 @@ def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
         equalize_axis3d(ax)
     else:
         sns.despine()
+    ax.legend()
     plt.tight_layout()
-    plt.show()
+
+    if save:
+        conditions = [cond.replace('= ', '')
+            for cond in tracks[condition].unique()]
+        plt.savefig('Tracks' + '-'.join(conditions) + '.png', dpi=300)
+    else:
+        plt.show()
 
 
 def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
