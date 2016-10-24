@@ -7,16 +7,23 @@ def read_tracks_excel(path, condition=None, sheetname=0, sample=None,
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname).reset_index()
 
+    if [col for col in tracks.columns if col.startswith('Position')] != []:
+        position_string = 'Position {}'
+    else:
+        position_string = 'Centroid {} (µm)'
+
     tracks['Track_ID'] = tracks['Track ID']
     tracks['Time'] = (tracks['Timepoint'] - 1)/60*time_step
-    tracks['X'] = tracks['Centroid X (µm)']
-    tracks['Y'] = tracks['Centroid Y (µm)']
-    tracks['Z'] = tracks['Centroid Z (µm)']
+    tracks['X'] = tracks[position_string.format('X')]
+    tracks['Y'] = tracks[position_string.format('Y')]
+    tracks['Z'] = tracks[position_string.format('Z')]
 
     to_drop = [col
-        for col in ['Name', 'Track ID', 'Timepoint', 'index',
-            'Centroid X (µm)', 'Centroid Y (µm)', 'Centroid Z (µm)']
+        for col in ['Name', 'Track ID', 'Timepoint', 'index', 'Speed', 'Unit',
+            'Centroid X (µm)', 'Centroid Y (µm)', 'Centroid Z (µm)',
+            'Position X', 'Position Y', 'Position Z']
         if col in tracks.columns]
+    to_drop += [col for col in tracks.columns if col.startswith('Unnamed')]
     tracks = tracks.drop(to_drop, 1)
 
     tracks['Source'] = 'Volocity'
