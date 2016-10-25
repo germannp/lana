@@ -149,18 +149,18 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6):
     return tracks
 
 
-def plot_tracks(tracks, summary=None, draw_turns=True, n_tracks=25,
+def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     condition='Condition', context='notebook', save=False):
     """Plot tracks"""
+    tracks = raw_tracks.copy()
+    _uniquize_tracks(tracks)
+
     if type(summary) == pd.core.frame.DataFrame:
         skip_steps = int(next(word
             for column in summary.columns
             for word in column.split() if word.isdigit()))
-    else:
-        _uniquize_tracks(tracks)
-        _split_at_skip(tracks)
 
-    if summary is not None and draw_turns:
+    if summary and draw_turns:
         alpha = 0.33
     else:
         alpha = 1
