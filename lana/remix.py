@@ -277,8 +277,8 @@ if __name__ == '__main__':
     import seaborn as sns
     from lana import motility
 
-    tracks = pd.read_csv('Examples/ctrl.csv')
-    ctrl = tracks[tracks.Track_ID == 1015.0]
+    raw_tracks = pd.read_csv('Examples/ctrl.csv')
+    ctrl = raw_tracks[raw_tracks.Track_ID == 1015.0]
 
 
     """Rebuild a single track"""
@@ -302,12 +302,13 @@ if __name__ == '__main__':
 
 
     """Compare Algorithms"""
-    remix_dr = remix_dr(tracks)
-    remix = remix(tracks)
-    remix_lags = remix_preserving_lags(tracks)
-    tracks = tracks.append(remix_dr)
-    tracks = tracks.append(remix)
-    tracks = tracks.append(remix_lags).reset_index()
+    remix_dr = remix_dr(raw_tracks)
+    remix = remix(raw_tracks)
+    remix_lags = remix_preserving_lags(raw_tracks)
+    raw_tracks = raw_tracks.append(remix_dr)
+    raw_tracks = raw_tracks.append(remix)
+    raw_tracks = raw_tracks.append(remix_lags).reset_index()
+    tracks = motility.analyze(raw_tracks)
     palette = [sns.color_palette()[i] for i in [1, 0, 2, 3]]
     motility.plot(tracks, palette=palette)
     motility.lag_plot(tracks, null_model=False)
