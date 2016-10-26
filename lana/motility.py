@@ -237,7 +237,7 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
 
 
 def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
-    plot_each_sample=False, context='notebook'):
+    plot_each_sample=False, context='notebook', plot_plane_angle=True):
     """Plot aspects of motility for different conditions"""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -247,7 +247,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
 
     sns.set(style="ticks", palette=sns.color_palette(
         palette, len(tracks[condition].unique())), context=context)
-    if 'Plane Angle' in tracks.columns:
+    if 'Plane Angle' in tracks.columns and plot_plane_angle:
         figure, axes = plt.subplots(ncols=4, figsize=(16,5.5))
     else:
         figure, axes = plt.subplots(ncols=3, figsize=(12,5.5))
@@ -272,7 +272,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     axes[2].set_xticks([0, np.pi/2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
-    if 'Plane Angle' in tracks.columns:
+    if 'Plane Angle' in tracks.columns and plot_plane_angle:
         axes[3].set_xlabel('Plane Angle')
         axes[3].set_ylabel('Density')
         axes[3].set_xlim([-np.pi, np.pi])
@@ -325,7 +325,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
                 color=color, shade=not plot_each_sample, ax=axes[2])
 
         # Plot Plane Angles
-        if 'Plane Angle' in tracks.columns:
+        if 'Plane Angle' in tracks.columns and plot_plane_angle:
             plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
             plane_angles = np.concatenate(( # Mirror at boundaries.
                 -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
