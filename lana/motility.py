@@ -175,30 +175,31 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
         ax = fig.add_subplot(111, projection='3d')
     else:
         ax = fig.add_subplot(111, aspect='equal')
+    labels = []
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         if summary is not None and draw_turns:
             cond_summary = summary[summary[condition] == cond]
             max_turn_column = next(column for column in summary.columns
                 if column.startswith('Max. Turn'))
-            choice = cond_summary.sort_values(max_turn_column, ascending=False)\
-                ['Track_ID'][:int(n_tracks/n_conditions)]
-            cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
-        elif cond_tracks['Track_ID'].unique().__len__() < n_tracks/n_conditions:
-            pass
-        else:
+            if len(cond_tracks['Track_ID'].unique()) > n_tracks/n_conditions:
+                choice = cond_summary.sort_values(max_turn_column, ascending=False)\
+                    ['Track_ID'][:int(n_tracks/n_conditions)]
+                cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
+        elif len(cond_tracks['Track_ID'].unique()) > n_tracks/n_conditions:
             choice = np.random.choice(cond_tracks['Track_ID'].unique(),
-                n_tracks, replace=False)
+                n_tracks/n_conditions, replace=False)
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
 
         color = sns.color_palette(n_colors=i+1)[-1]
         for j, (_, track) in enumerate(cond_tracks.groupby(track_identifiers(cond_tracks))):
+            labels.append(cond)
             track_id = track['Track_ID'].iloc[0]
             if 'Z' in tracks.columns:
                 ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
-                    color=color, alpha=alpha, label=cond*(j == 0), picker=5)
+                    color=color, alpha=alpha, label=track_id, picker=5)
             else:
                 ax.plot(track['X'].values, track['Y'].values,
-                    color=color, alpha=alpha, label=cond*(j == 0), picker=5)
+                    color=color, alpha=alpha, label=track_id, picker=5)
             if summary is not None and draw_turns:
                 turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
                 turn_loc = track.index.get_loc(
@@ -225,7 +226,9 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
         equalize_axis3d(ax)
     else:
         sns.despine()
-    ax.legend()
+    handles, _ = ax.get_legend_handles_labels()
+    unique_entries = OrderedDict(zip(labels, handles))
+    ax.legend(unique_entries.values(), unique_entries.keys())
     plt.tight_layout()
 
     if save:
