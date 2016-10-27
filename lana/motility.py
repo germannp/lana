@@ -160,7 +160,7 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
             for column in summary.columns
             for word in column.split() if word.isdigit()))
 
-    if summary and draw_turns:
+    if summary is not None and draw_turns:
         alpha = 0.33
     else:
         alpha = 1
@@ -176,7 +176,7 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     else:
         ax = fig.add_subplot(111, aspect='equal')
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
-        if summary is not None:
+        if summary is not None and draw_turns:
             cond_summary = summary[summary[condition] == cond]
             max_turn_column = next(column for column in summary.columns
                 if column.startswith('Max. Turn'))
@@ -806,34 +806,34 @@ if __name__ == "__main__":
 
 
     """Find steepest turn in single track"""
-    # track = pd.DataFrame({
-    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-    #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Plane Angle': np.random.rand(7)/100})
-    # track.loc[2, 'Turning Angle'] = np.pi/2
-    # track.loc[3, 'Turning Angle'] = np.pi/2
+    track = pd.DataFrame({
+        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+        'Turning Angle': np.sort(np.random.rand(7))/100,
+        'Plane Angle': np.random.rand(7)/100})
+    track.loc[2, 'Turning Angle'] = np.pi/2
+    track.loc[3, 'Turning Angle'] = np.pi/2
 
-    # tracks = remix.silly_steps(track)
-    # tracks['Track_ID'] = 0
-    # tracks['Time'] = np.arange(8)
-    # summary = summarize(tracks, skip_steps=2)
-    # plot_tracks(tracks, summary)
+    tracks = remix.silly_steps(track)
+    tracks['Track_ID'] = 0
+    tracks['Time'] = np.arange(8)
+    summary = summarize(tracks, skip_steps=2)
+    plot_tracks(tracks, summary)
 
 
     """Analyze several tracks"""
-    raw_tracks = remix.silly_tracks()
-    raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
+    # raw_tracks = remix.silly_tracks()
+    # raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
     # plot_dr(raw_tracks)
 
-    tracks = analyze(raw_tracks)
+    # tracks = analyze(raw_tracks)
     # tracks = tracks.drop('Z', axis=1)
-    plot(tracks)
+    # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # plot_arrest(tracks)
     # lag_plot(tracks, skip_color=1)
 
-    summary = summarize(tracks)
-    plot_summary(summary)
-    plot_uturns(summary)
-    plot_tracks(tracks, summary)
+    # summary = summarize(tracks)
+    # plot_summary(summary)
+    # plot_uturns(summary)
+    # plot_tracks(tracks, summary)
