@@ -101,9 +101,11 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6):
         if uniform_timesteps:
             _split_at_skip(tracks)
 
-    for _, track in tracks.groupby(track_identifiers(tracks)):
-        if track.__len__() < min_length:
+    for criterium, track in tracks.groupby(track_identifiers(tracks)):
+        if len(track) < min_length:
             tracks.drop(track.index, inplace=True)
+            print('  Warning: Delete track {} with {} timesteps.'
+                .format(criterium, len(track)))
         else:
             tracks.loc[track.index, 'Track Time'] = \
                 (track['Time'] - track['Time'].iloc[0]).round(4)
