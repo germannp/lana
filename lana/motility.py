@@ -58,7 +58,7 @@ def _uniquize_tracks(tracks):
                     .format(identifiers))
 
 
-def _split_at_skip(tracks, jump_threshold=33):
+def _split_at_skip(tracks, jump_threshold):
     """Split track if timestep is missing or too long"""
     if 'Time' not in tracks.columns:
         return
@@ -100,7 +100,7 @@ def _split_at_skip(tracks, jump_threshold=33):
                 .format(criterium, jump_threshold))
 
 
-def analyze(raw_tracks, uniform_timesteps=True, min_length=6):
+def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=50):
     """Return dataframe with velocity, turning angle & plane angle"""
     print('\nAnalyzing tracks')
 
@@ -114,7 +114,7 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6):
     else:
         _uniquize_tracks(tracks)
         if uniform_timesteps:
-            _split_at_skip(tracks)
+            _split_at_skip(tracks, jump_threshold)
 
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
         if len(track) < min_length:
