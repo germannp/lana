@@ -58,8 +58,8 @@ def _uniquize_tracks(tracks):
                     .format(identifiers))
 
 
-def _split_at_skip(tracks):
-    """Split tracks if timestep is missing in the original DataFrame"""
+def _split_at_skip(tracks, jump_threshold=33):
+    """Split track if timestep is missing or too long"""
     if 'Time' not in tracks.columns:
         return
 
@@ -83,6 +83,21 @@ def _split_at_skip(tracks):
             max_track_id += max(skip_sum) + 1
             print('  Warning: Split track {} with non-uniform timesteps.'
                 .format(criterium))
+
+    for criterium, track in tracks.groupby(track_identifiers(tracks)):
+        positions = track[['X', 'Y', 'Z']]
+        dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
+        skips = dr_norms > jump_threshold
+        if skips.max() > 0:
+            index = track.index
+            if 'Track_ID' in track.columns:
+                tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
+            skip_sum = skips.cumsum()
+            tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
+            max_track_id += max(skip_sum) + 1
+            print('  Warning: Split track {} with jump > {}um.'
+                .format(criterium, jump_threshold))
 
 
 def analyze(raw_tracks, uniform_timesteps=True, min_length=6):
