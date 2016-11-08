@@ -202,7 +202,9 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
         """Calculate mean lag in velocity and turning angle of track(s)"""
         means = []
         for _, track in tracks.groupby(track_identifiers(tracks)):
-            means.append(np.mean(track[['Velocity', 'Turning Angle']].diff()**2))
+            lags = np.mean(track[['Velocity', 'Turning Angle']].diff()**2)
+            if not np.isnan(lags).any():
+                means.append(lags)
         return np.mean(means, axis=0)
 
     # Generate initial remix
