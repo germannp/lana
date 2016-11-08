@@ -84,6 +84,9 @@ def _split_at_skip(tracks, jump_threshold):
             print('  Warning: Split track {} with non-uniform timesteps.'
                 .format(criterium))
 
+    if jump_threshold is None:
+        return
+
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
         positions = track[['X', 'Y', 'Z']]
         dr = positions.diff()
@@ -100,7 +103,7 @@ def _split_at_skip(tracks, jump_threshold):
                 .format(criterium, jump_threshold))
 
 
-def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=50):
+def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None):
     """Return dataframe with velocity, turning angle & plane angle"""
     print('\nAnalyzing tracks')
 
