@@ -15,7 +15,7 @@ from lana.utils import equalize_axis3d
 from lana.utils import track_identifiers
 
 
-def _uniquize_tracks(tracks):
+def _uniquize_tracks(tracks, verbose):
     """Cluster tracks, if not unique"""
     if 'Time' not in tracks.columns:
         return
@@ -50,15 +50,17 @@ def _uniquize_tracks(tracks):
                 tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
                 max_track_id += n_clusters
                 pd.set_option('display.max_rows', 1000)
-                print('  Warning: Split non-unique track {} by clustering.'
-                    .format(identifiers))
+                if verbose:
+                    print('  Warning: Split non-unique track {} by clustering.'
+                        .format(identifiers))
             else:
                 tracks.drop(index, inplace=True)
-                print('  Warning: Delete non-unique track {}.'
-                    .format(identifiers))
+                if verbose:
+                    print('  Warning: Delete non-unique track {}.'
+                        .format(identifiers))
 
 
-def _split_at_skip(tracks, jump_threshold):
+def _split_at_skip(tracks, jump_threshold, verbose):
     """Split track if timestep is missing or too long"""
     if 'Time' not in tracks.columns:
         return
@@ -81,8 +83,9 @@ def _split_at_skip(tracks, jump_threshold):
             skip_sum = skips.fillna(0).cumsum()
             tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
             max_track_id += max(skip_sum) + 1
-            print('  Warning: Split track {} with non-uniform timesteps.'
-                .format(criterium))
+            if verbose:
+                print('  Warning: Split track {} with non-uniform timesteps.'
+                    .format(criterium))
 
     if jump_threshold is None:
         return
@@ -99,11 +102,13 @@ def _split_at_skip(tracks, jump_threshold):
             skip_sum = skips.cumsum()
             tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
             max_track_id += max(skip_sum) + 1
-            print('  Warning: Split track {} with jump > {}um.'
-                .format(criterium, jump_threshold))
+            if verbose:
+                print('  Warning: Split track {} with jump > {}um.'
+                    .format(criterium, jump_threshold))
 
 
-def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None):
+def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
+    verbose=True):
     """Return dataframe with velocity, turning angle & plane angle"""
     print('\nAnalyzing tracks')
 
@@ -115,15 +120,20 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
         if not tracks.index.is_unique: # For inplace analysis!
             tracks.reset_index(drop=True, inplace=True)
     else:
-        _uniquize_tracks(tracks)
+        _uniquize_tracks(tracks, verbose)
         if uniform_timesteps:
-            _split_at_skip(tracks, jump_threshold)
+            _split_at_skip(tracks, jump_threshold, verbose)
 
+    if not verbose and 'Orig. Track_ID' in tracks.columns:
+        print('  Warning: Some tracks were split, use verbose=True for more info.')
+
+    n_i = tracks.Track_ID.unique().size
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
         if len(track) < min_length:
             tracks.drop(track.index, inplace=True)
-            print('  Warning: Delete track {} with {} timesteps.'
-                .format(criterium, len(track)))
+            if verbose:
+                print('  Warning: Delete track {} with {} timesteps.'
+                    .format(criterium, len(track)))
         else:
             tracks.loc[track.index, 'Track Time'] = \
                 (track['Time'] - track['Time'].iloc[0]).round(4)
@@ -165,6 +175,10 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
             else:
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = angles[2:]
+
+    n_f = tracks.Track_ID.unique().size
+    if not verbose and n_f != n_i:
+        print('  Warning: Some tracks were deleted, use verbose=True for more info.')
 
     return tracks
 
