@@ -94,7 +94,7 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
         timesteps = track['Time'].diff()
         return ((timesteps - timesteps.min())/timesteps.min()).round().fillna(0)
 
-    _split(tracks, non_uniform_timestep, 'Split track {} with non-uniform timesteps.')
+    _split(tracks, non_uniform_timestep, 'Split track {} with non-uniform timesteps.'*verbose)
 
     if jump_threshold is None:
         return
@@ -105,7 +105,7 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
         dr_norms = np.linalg.norm(dr, axis=1)
         return dr_norms > jump_threshold
 
-    _split(tracks, jump, 'Split track {} with jump > {}um.'.format({}, jump_threshold))
+    _split(tracks, jump, 'Split track {} with jump > {}um.'.format({}, jump_threshold)*verbose)
 
 
 def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
@@ -841,7 +841,7 @@ if __name__ == "__main__":
     to_split = pd.DataFrame({
         'Track_ID': 0, 'Time': np.arange(10)/3, 'X': 0, 'Y': 0, 'Z': 0}).drop(4)
     to_split.iloc[-2:]['X'] = 666
-    _split_at_skip(to_split, 1)
+    _split_at_skip(to_split, 1, verbose=True)
     print(to_split)
 
 
