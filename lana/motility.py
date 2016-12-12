@@ -15,7 +15,7 @@ from lana.utils import equalize_axis3d
 from lana.utils import track_identifiers
 
 
-def _uniquize_tracks(tracks, verbose):
+def _uniquize_tracks(tracks, verbose=False):
     """Cluster tracks, if not unique"""
     if 'Time' not in tracks.columns:
         return
@@ -60,7 +60,7 @@ def _uniquize_tracks(tracks, verbose):
                         .format(identifiers))
 
 
-def _split_at_skip(tracks, jump_threshold, verbose):
+def _split_at_skip(tracks, jump_threshold, verbose, verbose=False):
     """Split track if timestep is missing or too long"""
     if 'Time' not in tracks.columns:
         return
@@ -834,7 +834,7 @@ if __name__ == "__main__":
     # track_2 = pd.DataFrame({
     #     'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
     # to_uniquize = to_uniquize.append(track_2)
-    # _uniquize_tracks(to_uniquize)
+    # _uniquize_tracks(to_uniquize, verbose=True)
     # print(to_uniquize, '\n', track_2, '\n')
 
     # to_split = pd.DataFrame({'Track_ID': 0, 'Time': np.arange(10)/3}).drop(4)
