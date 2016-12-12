@@ -60,41 +60,15 @@ def _uniquize_tracks(tracks, verbose=False):
                         .format(identifiers))
 
 
-def _split_at_skip(tracks, jump_threshold, verbose, verbose=False):
-    """Split track if timestep is missing or too long"""
-    if 'Time' not in tracks.columns:
-        return
-
-    if not tracks.index.is_unique:
-        tracks.reset_index(drop=True, inplace=True)
-
+def _split(tracks, skip, warning=None):
+    """Split a track where skip(track) > 0"""
     if 'Track_ID' in tracks.columns:
         max_track_id = tracks['Track_ID'].max()
     else:
         max_track_id = 0
 
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
-        timesteps = track['Time'].diff()
-        skips = ((timesteps - timesteps.min())/timesteps.min()).round()
-        if skips.max() > 0:
-            index = track.index
-            if 'Track_ID' in track.columns:
-                tracks.loc[index, 'Orig. Track_ID'] = track['Track_ID']
-            skip_sum = skips.fillna(0).cumsum()
-            tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
-            max_track_id += max(skip_sum) + 1
-            if verbose:
-                print('  Warning: Split track {} with non-uniform timesteps.'
-                    .format(criterium))
-
-    if jump_threshold is None:
-        return
-
-    for criterium, track in tracks.groupby(track_identifiers(tracks)):
-        positions = track[['X', 'Y', 'Z']]
-        dr = positions.diff()
-        dr_norms = np.linalg.norm(dr, axis=1)
-        skips = dr_norms > jump_threshold
+        skips = skip(track)
         if skips.max() > 0:
             index = track.index
             if 'Track_ID' in track.columns:
@@ -102,9 +76,36 @@ def _split_at_skip(tracks, jump_threshold, verbose, verbose=False):
             skip_sum = skips.cumsum()
             tracks.loc[index, 'Track_ID'] = max_track_id + 1 + skip_sum
             max_track_id += max(skip_sum) + 1
-            if verbose:
-                print('  Warning: Split track {} with jump > {}um.'
-                    .format(criterium, jump_threshold))
+            if warning:
+                print('  Warning: ' + warning.format(criterium))
+
+
+def _split_at_skip(tracks, jump_threshold=None, verbose=False):
+    """Split track if timestep is missing or a step too long"""
+    if 'Time' not in tracks.columns:
+        print('  Warning: No times given.')
+        return
+
+    if not tracks.index.is_unique:
+        tracks.reset_index(drop=True, inplace=True)
+        print('  Warning: Non-unique index, resetting it.')
+
+    def non_uniform_timestep(track):
+        timesteps = track['Time'].diff()
+        return ((timesteps - timesteps.min())/timesteps.min()).round().fillna(0)
+
+    _split(tracks, non_uniform_timestep, 'Split track {} with non-uniform timesteps.')
+
+    if jump_threshold is None:
+        return
+
+    def jump(track):
+        positions = track[['X', 'Y', 'Z']]
+        dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
+        return dr_norms > jump_threshold
+
+    _split(tracks, jump, 'Split track {} with jump > {}um.'.format({}, jump_threshold))
 
 
 def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
@@ -827,34 +828,36 @@ if __name__ == "__main__":
 
 
     """Uniquize & split single track"""
-    # to_uniquize = pd.DataFrame({
-    #     'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
-    # to_uniquize = to_uniquize.append(pd.DataFrame({
-    #     'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
-    # track_2 = pd.DataFrame({
-    #     'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
-    # to_uniquize = to_uniquize.append(track_2)
-    # _uniquize_tracks(to_uniquize, verbose=True)
-    # print(to_uniquize, '\n', track_2, '\n')
+    to_uniquize = pd.DataFrame({
+        'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
+    to_uniquize = to_uniquize.append(pd.DataFrame({
+        'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
+    track_2 = pd.DataFrame({
+        'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
+    to_uniquize = to_uniquize.append(track_2)
+    _uniquize_tracks(to_uniquize, verbose=True)
+    print(to_uniquize, '\n\n', track_2, '\n')
 
-    # to_split = pd.DataFrame({'Track_ID': 0, 'Time': np.arange(10)/3}).drop(4)
-    # _split_at_skip(to_split)
-    # print(to_split)
+    to_split = pd.DataFrame({
+        'Track_ID': 0, 'Time': np.arange(10)/3, 'X': 0, 'Y': 0, 'Z': 0}).drop(4)
+    to_split.iloc[-2:]['X'] = 666
+    _split_at_skip(to_split, 1)
+    print(to_split)
 
 
     """Find steepest turn in single track"""
-    track = pd.DataFrame({
-        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-        'Turning Angle': np.sort(np.random.rand(7))/100,
-        'Plane Angle': np.random.rand(7)/100})
-    track.loc[2, 'Turning Angle'] = np.pi/2
-    track.loc[3, 'Turning Angle'] = np.pi/2
-
-    tracks = remix.silly_steps(track)
-    tracks['Track_ID'] = 0
-    tracks['Time'] = np.arange(8)
-    summary = summarize(tracks, skip_steps=2)
-    plot_tracks(tracks, summary)
+    # track = pd.DataFrame({
+    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+    #     'Turning Angle': np.sort(np.random.rand(7))/100,
+    #     'Plane Angle': np.random.rand(7)/100})
+    # track.loc[2, 'Turning Angle'] = np.pi/2
+    # track.loc[3, 'Turning Angle'] = np.pi/2
+    #
+    # tracks = remix.silly_steps(track)
+    # tracks['Track_ID'] = 0
+    # tracks['Time'] = np.arange(8)
+    # summary = summarize(tracks, skip_steps=2)
+    # plot_tracks(tracks, summary)
 
 
     """Analyze several tracks"""
