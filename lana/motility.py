@@ -327,36 +327,32 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         axes[3].set_xticks([-np.pi, 0, np.pi])
         axes[3].set_xticklabels([r'$-\pi$', r'$0$', r'$\pi$'])
 
-    colors = {cond: sns.color_palette(n_colors=i+1)[-1]
-        for i, cond in enumerate(tracks[condition].dropna().unique())}
     if plot_each_sample:
         groups = [condition, 'Sample']
     else:
         groups = condition
 
-    for _, cond_tracks in tracks.groupby(groups):
+    for i, (_, cond_tracks) in enumerate(tracks.groupby(groups)):
         # Plot displacements, inspired by http://stackoverflow.com/questions/
         # 22795348/plotting-time-series-data-with-seaborn
         label = cond_tracks[condition].iloc[0]
-        color = colors[label]
+        color = sns.color_palette()[i]
         displacements = cond_tracks[['Track Time', 'Displacement']].groupby(
             'Track Time').describe().unstack()['Displacement']
         if max_time:
             displacements = displacements[displacements.index <= max_time]
         axes[0].plot(np.sqrt(displacements.index), displacements['50%'],
-            color=color, label=label)
+            label=label, color=color)
         if not plot_each_sample:
             axes[0].fill_between(np.sqrt(displacements.index),
-                displacements['25%'], displacements['75%'],
-                alpha=.2, color=color)
+                displacements['25%'], displacements['75%'], alpha=.2, color=color)
         if not plot_each_sample and len(tracks[condition].unique()) == 1:
             axes[0].fill_between(np.sqrt(displacements.index),
-                displacements['min'], displacements['max'],
-                alpha=.2, color=color)
+                displacements['min'], displacements['max'], alpha=.2, color=color)
 
         # Plot velocities
-        sns.kdeplot(cond_tracks['Velocity'].dropna(), clip=(0,np.inf), color=color,
-            shade=not plot_each_sample, ax=axes[1], gridsize=500, label='')
+        sns.kdeplot(cond_tracks['Velocity'].dropna(), clip=(0,np.inf),
+            shade=not plot_each_sample, ax=axes[1], gridsize=500, label='', color=color)
 
         # Plot turning angles
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
@@ -379,8 +375,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
                 -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
             axes[3].plot([-np.pi, np.pi], [1/(6*np.pi), 1/(6*np.pi)], '--k')
             # sns.distplot(plane_angles, ax=axes[3])
-            sns.kdeplot(plane_angles, color=color, shade=not plot_each_sample,
-                ax=axes[3])
+            sns.kdeplot(plane_angles, color=color, shade=not plot_each_sample, ax=axes[3])
 
     handles, labels = axes[0].get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
@@ -856,28 +851,28 @@ if __name__ == "__main__":
 
 
     """Find steepest turn in single track"""
-    track = pd.DataFrame({
-        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-        'Turning Angle': np.sort(np.random.rand(7))/100,
-        'Plane Angle': np.random.rand(7)/100})
-    track.loc[2, 'Turning Angle'] = np.pi/2
-    track.loc[3, 'Turning Angle'] = np.pi/2
-
-    tracks = remix.silly_steps(track)
-    tracks['Track_ID'] = 0
-    tracks['Time'] = np.arange(8)
-    summary = summarize(tracks, skip_steps=2)
-    plot_tracks(tracks, summary)
+    # track = pd.DataFrame({
+    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+    #     'Turning Angle': np.sort(np.random.rand(7))/100,
+    #     'Plane Angle': np.random.rand(7)/100})
+    # track.loc[2, 'Turning Angle'] = np.pi/2
+    # track.loc[3, 'Turning Angle'] = np.pi/2
+    #
+    # tracks = remix.silly_steps(track)
+    # tracks['Track_ID'] = 0
+    # tracks['Time'] = np.arange(8)
+    # summary = summarize(tracks, skip_steps=2)
+    # plot_tracks(tracks, summary)
 
 
     """Analyze several tracks"""
-    # raw_tracks = remix.silly_tracks()
-    # raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
+    raw_tracks = remix.silly_tracks()
+    raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
     # plot_dr(raw_tracks)
 
-    # tracks = analyze(raw_tracks)
-    # tracks = tracks.drop('Z', axis=1)
-    # plot(tracks)
+    tracks = analyze(raw_tracks)
+    tracks = tracks.drop('Z', axis=1)
+    plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # plot_arrest(tracks)
