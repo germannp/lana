@@ -189,6 +189,16 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     """Plot tracks"""
     tracks = raw_tracks.copy()
     _uniquize_tracks(tracks)
+    _split_at_skip(tracks)
+
+    def condition_changes(track):
+        changes = np.diff(track[condition].factorize()[0])
+        return np.hstack((0, changes))
+
+    n_tracks = len(tracks['Track_ID'].unique())
+    _split(tracks, condition_changes, '')
+    if len(tracks['Track_ID'].unique()) != n_tracks:
+        print('  Warning: Split tracks with mote than one {}'.format(condition))
 
     if type(summary) == pd.core.frame.DataFrame:
         skip_steps = int(next(word
@@ -828,36 +838,36 @@ if __name__ == "__main__":
 
 
     """Uniquize & split single track"""
-    to_uniquize = pd.DataFrame({
-        'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
-    to_uniquize = to_uniquize.append(pd.DataFrame({
-        'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
-    track_2 = pd.DataFrame({
-        'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
-    to_uniquize = to_uniquize.append(track_2)
-    _uniquize_tracks(to_uniquize, verbose=True)
-    print(to_uniquize, '\n\n', track_2, '\n')
-
-    to_split = pd.DataFrame({
-        'Track_ID': 0, 'Time': np.arange(10)/3, 'X': 0, 'Y': 0, 'Z': 0}).drop(4)
-    to_split.iloc[-2:]['X'] = 666
-    _split_at_skip(to_split, 1, verbose=True)
-    print(to_split)
+    # to_uniquize = pd.DataFrame({
+    #     'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
+    # to_uniquize = to_uniquize.append(pd.DataFrame({
+    #     'Track_ID': 1, 'Time': (0,1,1,0,2), 'X': (0,1,0,1,0), 'Y': 0, 'Z': 0}))
+    # track_2 = pd.DataFrame({
+    #     'Track_ID': 2, 'Time': (0,1,1,1,2), 'X': 0, 'Y': 0, 'Z': 0})
+    # to_uniquize = to_uniquize.append(track_2)
+    # _uniquize_tracks(to_uniquize, verbose=True)
+    # print(to_uniquize, '\n\n', track_2, '\n')
+    #
+    # to_split = pd.DataFrame({
+    #     'Track_ID': 0, 'Time': np.arange(10)/3, 'X': 0, 'Y': 0, 'Z': 0}).drop(4)
+    # to_split.iloc[-2:]['X'] = 666
+    # _split_at_skip(to_split, 1, verbose=True)
+    # print(to_split)
 
 
     """Find steepest turn in single track"""
-    # track = pd.DataFrame({
-    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-    #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Plane Angle': np.random.rand(7)/100})
-    # track.loc[2, 'Turning Angle'] = np.pi/2
-    # track.loc[3, 'Turning Angle'] = np.pi/2
-    #
-    # tracks = remix.silly_steps(track)
-    # tracks['Track_ID'] = 0
-    # tracks['Time'] = np.arange(8)
-    # summary = summarize(tracks, skip_steps=2)
-    # plot_tracks(tracks, summary)
+    track = pd.DataFrame({
+        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+        'Turning Angle': np.sort(np.random.rand(7))/100,
+        'Plane Angle': np.random.rand(7)/100})
+    track.loc[2, 'Turning Angle'] = np.pi/2
+    track.loc[3, 'Turning Angle'] = np.pi/2
+
+    tracks = remix.silly_steps(track)
+    tracks['Track_ID'] = 0
+    tracks['Time'] = np.arange(8)
+    summary = summarize(tracks, skip_steps=2)
+    plot_tracks(tracks, summary)
 
 
     """Analyze several tracks"""
