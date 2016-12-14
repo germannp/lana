@@ -198,7 +198,7 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     n_tracks = len(tracks['Track_ID'].unique())
     _split(tracks, condition_changes, '')
     if len(tracks['Track_ID'].unique()) != n_tracks:
-        print('  Warning: Split tracks with mote than one {}'.format(condition))
+        print('  Warning: Split tracks with more than one {}'.format(condition))
 
     if type(summary) == pd.core.frame.DataFrame:
         skip_steps = int(next(word
