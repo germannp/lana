@@ -288,7 +288,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     plot_each_sample=False, context='notebook', plot_plane_angle=True):
     """Plot aspects of motility for different conditions"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks)
+        tracks = analyze(tracks, verbose=False)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
