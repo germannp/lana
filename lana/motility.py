@@ -109,7 +109,7 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
 
 
 def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
-    verbose=True):
+    verbose=False):
     """Return dataframe with velocity, turning angle & plane angle"""
     print('\nAnalyzing tracks')
 
@@ -288,7 +288,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     plot_each_sample=False, context='notebook', plot_plane_angle=True):
     """Plot aspects of motility for different conditions"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -453,7 +453,7 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, context='notebook'):
     """Plot the joint distribution of the velocities and turning angles."""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -478,7 +478,7 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
     save=False, palette='deep', skip_color=0, context='notebook'):
     """Plot tracks in velocities-turning-angles-space"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -515,7 +515,7 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
     context='notebook'):
     """Plot velocity aligned to minimum and distribution of arrested steps"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -571,7 +571,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     skip_color=0, null_model=True, context='notebook'):
     """Lag plot for velocities and turning angles"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
@@ -632,7 +632,7 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 def summarize(tracks, arrest_velocity=3, skip_steps=4):
     """Summarize track statistics, e.g. mean velocity per track"""
     if 'Displacement' not in tracks.columns:
-        tracks = analyze(tracks, verbose=False)
+        tracks = analyze(tracks)
 
     print('\nSummarizing track statistics')
 
