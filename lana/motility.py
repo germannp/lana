@@ -751,19 +751,21 @@ def plot_summary(summary, save=False, condition='Condition', context='notebook')
         plt.show()
 
 
-def plot_uturns(summary, critical_rad=2.9, save=False, condition='Condition',
-    context='notebook'):
+def plot_uturns(summary, critical_rad=2.9, time_step=20, save=False,
+    condition='Condition', context='notebook'):
     """Plot and print steepest turns over more than critical_rad"""
     turn_column = next(col for col in summary.columns
         if col.startswith('Max. Turn Over'))
     columns_of_interest = ['Skew Lines Distance', 'Mean Velocity',
         'Arrest Coefficient', condition, turn_column]
 
-    uturns = summary[summary[turn_column] > critical_rad]
+    big_turns = summary[summary[turn_column] > critical_rad]
+    mean_steps = big_turns['Mean Velocity']*time_step/60
+    uturns = big_turns[big_turns['Skew Lines Distance'] < mean_steps]
 
     skip_steps = int(next(word
         for word in turn_column.split() if word.isdigit()))
-    print('\nPlotting turns with more than {} rad over {} steps'.format(
+    print('\nPlotting turns with more than {} rad over {} steps narrower than a mean step'.format(
         critical_rad, skip_steps))
     for cond, cond_uturns in uturns.groupby(condition):
         n_tracks = len(summary[summary[condition] == cond])
@@ -851,28 +853,28 @@ if __name__ == "__main__":
 
 
     """Find steepest turn in single track"""
-    # track = pd.DataFrame({
-    #     'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-    #     'Turning Angle': np.sort(np.random.rand(7))/100,
-    #     'Plane Angle': np.random.rand(7)/100})
-    # track.loc[2, 'Turning Angle'] = np.pi/2
-    # track.loc[3, 'Turning Angle'] = np.pi/2
-    #
-    # tracks = remix.silly_steps(track)
-    # tracks['Track_ID'] = 0
-    # tracks['Time'] = np.arange(8)
-    # summary = summarize(tracks, skip_steps=2)
-    # plot_tracks(tracks, summary)
+    track = pd.DataFrame({
+        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
+        'Turning Angle': np.sort(np.random.rand(7))/100,
+        'Plane Angle': np.random.rand(7)/100})
+    track.loc[2, 'Turning Angle'] = np.pi/2
+    track.loc[3, 'Turning Angle'] = np.pi/2
+
+    tracks = remix.silly_steps(track)
+    tracks['Track_ID'] = 0
+    tracks['Time'] = np.arange(8)
+    summary = summarize(tracks, skip_steps=2)
+    plot_tracks(tracks, summary)
 
 
     """Analyze several tracks"""
-    raw_tracks = remix.silly_tracks()
-    raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
+    # raw_tracks = remix.silly_tracks()
+    # raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
     # plot_dr(raw_tracks)
 
-    tracks = analyze(raw_tracks)
-    tracks = tracks.drop('Z', axis=1)
-    plot(tracks)
+    # tracks = analyze(raw_tracks)
+    # tracks = tracks.drop('Z', axis=1)
+    # plot(tracks)
     # joint_plot(tracks, skip_color=1)
     # plot_tracks_parameter_space(tracks)
     # plot_arrest(tracks)
