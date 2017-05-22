@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 def track_identifiers(tracks):
     """List criteria that identify a track"""
     return [identifier
-        for identifier in ['Condition', 'Sample', 'Track_ID', 'Source']
+        for identifier in ['Condition', 'Sample', 'Tissue', 'Track_ID', 'Source']
         if identifier in tracks.dropna(axis=1).columns]
 
 

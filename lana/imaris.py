@@ -2,7 +2,7 @@
 import pandas as pd
 
 
-def read_tracks(path, condition=None, sample=None, time_step=20,
+def read_tracks(path, condition=None, sample=None, tissue=None, time_step=20,
     min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
@@ -23,6 +23,9 @@ def read_tracks(path, condition=None, sample=None, time_step=20,
 
     if sample != None:
         tracks['Sample'] = sample
+
+    if tissue != None:
+        tracks['Tissue'] = tissue
 
     for track_id, track in tracks.groupby('Track_ID'):
         if track.__len__() < min_track_length:

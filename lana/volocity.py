@@ -2,7 +2,7 @@
 import pandas as pd
 
 
-def read_tracks_excel(path, condition=None, sheetname=0, sample=None,
+def read_tracks_excel(path, condition=None, sheetname=0, sample=None, tissue=None,
     time_step=20, min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname).reset_index()
@@ -34,6 +34,9 @@ def read_tracks_excel(path, condition=None, sheetname=0, sample=None,
     if sample != None:
         tracks['Sample'] = sample
 
+    if tissue != None:
+        tracks['Tissue'] = tissue
+
     for track_id, track in tracks.groupby('Track_ID'):
         if track.__len__() < min_track_length:
             tracks = tracks[tracks['Track_ID'] != track_id]
@@ -44,7 +47,7 @@ def read_tracks_excel(path, condition=None, sheetname=0, sample=None,
     return tracks.sort_values('Time')
 
 
-def read_tracks_txt(path, condition=None, sample=None, time_step=20,
+def read_tracks_txt(path, condition=None, sample=None, tissue=None, time_step=20,
     min_track_length=5):
     """Reads a Pandas DataFrame from Volocity files"""
     with open(path, 'r') as volocity_file:
@@ -83,6 +86,9 @@ def read_tracks_txt(path, condition=None, sample=None, time_step=20,
 
     if sample != None:
         tracks['Sample'] = sample
+
+    if tissue != None:
+        tracks['Tissue'] = tissue
 
     for track_id, track in tracks.groupby('Track_ID'):
         if track.__len__() < min_track_length:

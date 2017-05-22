@@ -647,6 +647,8 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
             summary.loc[i, 'Condition'] = 'Default'
         if 'Sample' in track.columns:
             summary.loc[i, 'Sample'] = track.iloc[0]['Sample']
+        if 'Tissue' in track.columns:
+            summary.loc[i, 'Tissue'] = track.iloc[0]['Tissue']
 
         summary.loc[i, 'Mean Velocity'] = track['Velocity'].mean()
         summary.loc[i, 'Mean Turning Angle'] = track['Turning Angle'].mean()
