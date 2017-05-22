@@ -10,6 +10,7 @@ import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import AgglomerativeClustering
 from scipy.spatial import ConvexHull
+from statsmodels.stats.proportion import proportion_confint
 
 from lana.utils import equalize_axis3d
 from lana.utils import track_identifiers
@@ -772,8 +773,11 @@ def plot_uturns(summary, critical_rad=2.9, time_step=20, save=False,
     for cond, cond_uturns in uturns.groupby(condition):
         n_tracks = len(summary[summary[condition] == cond])
         n_turns = len(cond_uturns)
-        print('  {} tracks in {} with {} U-Turns ({:2.2f} %).'.format(
-            n_tracks, cond, n_turns, n_turns/n_tracks*100))
+        ci_low, ci_upp = proportion_confint(n_turns, n_tracks, method='wilson')
+        print('  {:5.2f}% [{:5.2f}, {:5.2f}] tracks in {} with U-Turns ({} of {}).'.format(
+            n_turns/n_tracks*100, ci_low*100, ci_upp*100, cond, n_turns, n_tracks))
+
+    print('Binomial proportion 95% CIs are Wilson Score intervals.')
 
     sns.set(style='white', context=context)
     sns.pairplot(uturns[columns_of_interest], hue=condition, diag_kind='kde')
