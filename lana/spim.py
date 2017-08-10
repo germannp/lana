@@ -11,17 +11,17 @@ from skimage import data, filters, measure
 
 def read_stack(path):
     """Load and return stack as normalized unsigned 8bit ints"""
-    assert psutil.phymem_usage()[1] > 1000*1024*1024, \
+    assert psutil.virtual_memory()[1] > 1000*1024*1024, \
         'Less than 1GiB of memory available'
     stack = data.imread(path)
     stack -= stack.min()
-    stack /= stack.max() / 255
+    np.true_divide(stack, stack.max() / 255, out=stack, casting='unsafe')
     return stack.astype(np.uint8)
 
 
 def adjust_gamma(stack, gamma=0.5):
     """Return normalized stack**gamma"""
-    assert psutil.phymem_usage()[1] > 1.5*stack.nbytes, \
+    assert psutil.virtual_memory()[1] > 1.5*stack.nbytes, \
         'Not enough memory available'
     scale = 255 / stack.max()**gamma
     for i, slice in enumerate(stack):
@@ -32,7 +32,7 @@ def adjust_gamma(stack, gamma=0.5):
 
 def stacks2rgb(stack1, stack2, stack3=None):
     """Shape stacks for channels into RGB stack"""
-    assert psutil.phymem_usage()[1] > 3*stack1.nbytes, \
+    assert psutil.virtual_memory()[1] > 3*stack1.nbytes, \
         'Not enough memory for the RGB stack available'
     rgb_stack = np.zeros(stack1.shape + (3,), dtype=np.uint8)
     rgb_stack[:, :, :, 0] = stack1
@@ -44,7 +44,7 @@ def stacks2rgb(stack1, stack2, stack3=None):
 
 def plot_stack(stack, cells=None):
     """Display stack with a slider to select the slice"""
-    assert psutil.phymem_usage()[1] > stack.nbytes, \
+    assert psutil.virtual_memory()[1] > stack.nbytes, \
         'Not enough memory available'
     img_height = 8
     width = img_height * stack.shape[2] / stack.shape[1]
@@ -70,7 +70,7 @@ def plot_stack(stack, cells=None):
 
 def find_cells(stack):
     """Label spots"""
-    assert psutil.phymem_usage()[1] > 8*stack.nbytes, \
+    assert psutil.virtual_memory()[1] > 8*stack.nbytes, \
         'Less than 1GiB of memory available'
     threshold = stack.max() / 5
     thresholded_stack = stack > threshold
