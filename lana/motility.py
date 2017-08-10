@@ -396,8 +396,8 @@ def plot(
                 turning_angles, clip=(0, np.inf), color=color,
                 shade=not plot_each_sample, ax=axes[2])
         else:
-            turning_angles = np.concatenate(( # Mirror at boundaries.
-                -turning_angles, turning_angles, 2*np.pi-turning_angles))
+            turning_angles = np.concatenate((  # Mirror at boundaries.
+                -turning_angles, turning_angles, 2 * np.pi - turning_angles))
             axes[2].plot([0, np.pi], [1 / (3 * np.pi), 1 / (3 * np.pi)], '--k')
             sns.kdeplot(
                 turning_angles, color=color, shade=not plot_each_sample,
@@ -407,7 +407,8 @@ def plot(
         if 'Plane Angle' in tracks.columns and plot_plane_angle:
             plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
             plane_angles = np.concatenate((  # Mirror at boundaries.
-                -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
+                -2 * np.pi + plane_angles, plane_angles,
+                2 * np.pi + plane_angles))
             axes[3].plot([-np.pi, np.pi], [1 / (6 * np.pi), 1 / (6 * np.pi)],
                          '--k')
             # sns.distplot(plane_angles, ax=axes[3])
