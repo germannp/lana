@@ -48,16 +48,19 @@ def _uniquize_tracks(tracks, verbose=False):
                 track.loc[:, 'Cluster'] = clusters.labels_
 
             if sum(track[['Cluster', 'Time']].duplicated()) == 0:
-                tracks.loc[index, 'Track_ID'] = max_track_id+1+clusters.labels_
+                tracks.loc[index,
+                           'Track_ID'] = max_track_id + 1 + clusters.labels_
                 max_track_id += n_clusters
                 pd.set_option('display.max_rows', 1000)
                 if verbose:
-                    print('  Warning: Split non-unique track {} by clustering.'
+                    print(
+                        '  Warning: Split non-unique track {} by clustering.'
                         .format(identifiers))
             else:
                 tracks.drop(index, inplace=True)
                 if verbose:
-                    print('  Warning: Delete non-unique track {}.'
+                    print(
+                        '  Warning: Delete non-unique track {}.'
                         .format(identifiers))
 
 
@@ -93,9 +96,12 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
 
     def non_uniform_timestep(track):
         timesteps = track['Time'].diff()
-        return ((timesteps - timesteps.min())/timesteps.min()).round().fillna(0)
+        return ((
+            timesteps - timesteps.min()) / timesteps.min()).round().fillna(0)
 
-    _split(tracks, non_uniform_timestep, 'Split track {} with non-uniform timesteps.'*verbose)
+    _split(
+        tracks, non_uniform_timestep,
+        'Split track {} with non-uniform timesteps.' * verbose)
 
     if jump_threshold is None:
         return
@@ -106,11 +112,14 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
         dr_norms = np.linalg.norm(dr, axis=1)
         return dr_norms > jump_threshold
 
-    _split(tracks, jump, 'Split track {} with jump > {}um.'.format({}, jump_threshold)*verbose)
+    _split(
+        tracks, jump, 'Split track {} with jump > {}um.'.format(
+            {}, jump_threshold) * verbose)
 
 
-def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
-    verbose=False):
+def analyze(
+        raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None,
+        verbose=False):
     """Return dataframe with velocity, turning angle & plane angle"""
     print('\nAnalyzing tracks')
 
@@ -119,7 +128,7 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
     if 'Time' not in tracks.columns:
         print('  Warning: no time given, using index!')
         tracks['Time'] = tracks.index
-        if not tracks.index.is_unique: # For inplace analysis!
+        if not tracks.index.is_unique:  # For inplace analysis!
             tracks.reset_index(drop=True, inplace=True)
     else:
         _uniquize_tracks(tracks, verbose)
@@ -127,14 +136,15 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
             _split_at_skip(tracks, jump_threshold, verbose)
 
     if not verbose and 'Orig. Track_ID' in tracks.columns:
-        print('  Warning: Some tracks were split, use verbose=True for more info.')
+        print('  Warning: Some tracks were split, verbose=True for more info.')
 
     n_i = tracks.Track_ID.unique().size
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
         if len(track) < min_length:
             tracks.drop(track.index, inplace=True)
             if verbose:
-                print('  Warning: Delete track {} with {} timesteps.'
+                print(
+                    '  Warning: Delete track {} with {} timesteps.'
                     .format(criterium, len(track)))
         else:
             tracks.loc[track.index, 'Track Time'] = \
@@ -152,10 +162,11 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
             dr = positions.diff()
             dr_norms = np.linalg.norm(dr, axis=1)
 
-            tracks.loc[track.index, 'Velocity'] = dr_norms/track['Time'].diff()
+            tracks.loc[track.index, 'Velocity'] = dr_norms / track[
+                'Time'].diff()
 
-            dot_products = np.sum(dr.shift(-1)*dr, axis=1)
-            norm_products = dr_norms[1:]*dr_norms[:-1]
+            dot_products = np.sum(dr.shift(-1) * dr, axis=1)
+            norm_products = dr_norms[1:] * dr_norms[:-1]
 
             tracks.loc[track.index, 'Turning Angle'] = \
                 np.arccos(dot_products[:-1]/norm_products)
@@ -164,29 +175,32 @@ def analyze(raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=Non
 
             n_vectors = np.cross(dr, dr.shift())
             n_norms = np.linalg.norm(n_vectors, axis=1)
-            dot_products = np.sum(n_vectors[1:]*n_vectors[:-1], axis=1)
-            norm_products = n_norms[1:]*n_norms[:-1]
-            angles = np.arccos(dot_products/norm_products)
+            dot_products = np.sum(n_vectors[1:] * n_vectors[:-1], axis=1)
+            norm_products = n_norms[1:] * n_norms[:-1]
+            angles = np.arccos(dot_products / norm_products)
             cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-            cross_dot_dr = np.sum(cross_products[2:]*dr.as_matrix()[2:-1],
-                axis=1)
+            cross_dot_dr = np.sum(
+                cross_products[2:] * dr.as_matrix()[2:-1], axis=1)
             cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-            signs = cross_dot_dr/cross_norms/dr_norms[2:-1]
+            signs = cross_dot_dr / cross_norms / dr_norms[2:-1]
 
             if 'Z' in track.columns:
-                tracks.loc[track.index[2:-1], 'Plane Angle'] = signs*angles[2:]
+                tracks.loc[track.index[2:-1], 'Plane Angle'] = signs * angles[
+                    2:]
             else:
                 tracks.loc[track.index[2:-1], 'Plane Angle'] = angles[2:]
 
     n_f = tracks.Track_ID.unique().size
     if not verbose and n_f != n_i:
-        print('  Warning: Some tracks were deleted, use verbose=True for more info.')
+        print(
+            '  Warning: Some tracks were deleted, verbose=True for more info.')
 
     return tracks
 
 
-def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
-    condition='Condition', context='notebook', save=False):
+def plot_tracks(
+        raw_tracks, summary=None, draw_turns=True, n_tracks=25,
+        condition='Condition', context='notebook', save=False):
     """Plot tracks"""
     tracks = raw_tracks.copy()
     _uniquize_tracks(tracks)
@@ -199,12 +213,13 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     n_tracks = len(tracks['Track_ID'].unique())
     _split(tracks, condition_changes, '')
     if len(tracks['Track_ID'].unique()) != n_tracks:
-        print('  Warning: Split tracks with more than one {}'.format(condition))
+        print('  Warning: Split tracks with several {}'.format(condition))
 
     if type(summary) == pd.core.frame.DataFrame:
-        skip_steps = int(next(word
-            for column in summary.columns
-            for word in column.split() if word.isdigit()))
+        skip_steps = int(
+            next(
+                word for column in summary.columns for word in column.split()
+                if word.isdigit()))
 
     if summary is not None and draw_turns:
         alpha = 0.33
@@ -216,7 +231,7 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     n_conditions = len(tracks[condition].unique())
 
     sns.set(style='ticks', context=context)
-    fig = plt.figure(figsize=(12,12))
+    fig = plt.figure(figsize=(12, 12))
     if 'Z' in tracks.columns:
         ax = fig.add_subplot(111, projection='3d')
     else:
@@ -225,35 +240,43 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         if summary is not None and draw_turns:
             cond_summary = summary[summary[condition] == cond]
-            max_turn_column = next(column for column in summary.columns
+            max_turn_column = next(
+                column for column in summary.columns
                 if column.startswith('Max. Turn'))
-            if len(cond_tracks['Track_ID'].unique()) > n_tracks/n_conditions:
+            if len(cond_tracks['Track_ID'].unique()) > n_tracks / n_conditions:
                 choice = cond_summary.sort_values(max_turn_column, ascending=False)\
                     ['Track_ID'][:int(n_tracks/n_conditions)]
                 cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
-        elif len(cond_tracks['Track_ID'].unique()) > n_tracks/n_conditions:
-            choice = np.random.choice(cond_tracks['Track_ID'].unique(),
-                n_tracks/n_conditions, replace=False)
+        elif len(cond_tracks['Track_ID'].unique()) > n_tracks / n_conditions:
+            choice = np.random.choice(
+                cond_tracks['Track_ID'].unique(), n_tracks / n_conditions,
+                replace=False)
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
 
-        color = sns.color_palette(n_colors=i+1)[-1]
-        for j, (_, track) in enumerate(cond_tracks.groupby(track_identifiers(cond_tracks))):
+        color = sns.color_palette(n_colors=i + 1)[-1]
+        for j, (_, track) in enumerate(
+                cond_tracks.groupby(track_identifiers(cond_tracks))):
             labels.append(cond)
             track_id = track['Track_ID'].iloc[0]
             if 'Z' in tracks.columns:
-                ax.plot(track['X'].values, track['Y'].values, track['Z'].values,
+                ax.plot(
+                    track['X'].values, track['Y'].values, track['Z'].values,
                     color=color, alpha=alpha, label=track_id, picker=5)
             else:
-                ax.plot(track['X'].values, track['Y'].values,
-                    color=color, alpha=alpha, label=track_id, picker=5)
+                ax.plot(
+                    track['X'].values, track['Y'].values, color=color,
+                    alpha=alpha, label=track_id, picker=5)
             if summary is not None and draw_turns:
-                turn_time = cond_summary[cond_summary['Track_ID'] == track_id]['Turn Time']
+                turn_time = cond_summary[cond_summary['Track_ID'] == track_id][
+                    'Turn Time']
                 turn_loc = track.index.get_loc(
-                    track[np.isclose(track['Time'], turn_time.values[0])].index.values[0])
+                    track[np.isclose(track['Time'], turn_time.values[0])]
+                    .index.values[0])
                 turn_times = track['Time'][turn_loc - 1:turn_loc + skip_steps]
                 turn = track[track['Time'].isin(turn_times)]
                 if 'Z' in tracks.columns:
-                    ax.plot(turn['X'].values, turn['Y'].values, turn['Z'].values,
+                    ax.plot(
+                        turn['X'].values, turn['Y'].values, turn['Z'].values,
                         color=color)
                 else:
                     ax.plot(turn['X'].values, turn['Y'].values, color=color)
@@ -261,7 +284,8 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     def on_pick(event):
         track_id = event.artist.get_label()
         if summary is not None:
-            print(summary[summary['Track_ID'] == float(track_id)]
+            print(
+                summary[summary['Track_ID'] == float(track_id)]
                 [['Track_ID', 'Condition', 'Mean Velocity', 'Track Duration']])
         else:
             print('Track_ID: ' + track_id)
@@ -278,15 +302,16 @@ def plot_tracks(raw_tracks, summary=None, draw_turns=True, n_tracks=25,
     plt.tight_layout()
 
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
         plt.savefig('Tracks' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
 
-def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
-    plot_each_sample=False, context='notebook', plot_plane_angle=True):
+def plot(
+        tracks, save=False, palette='deep', max_time=9, condition='Condition',
+        plot_each_sample=False, context='notebook', plot_plane_angle=True):
     """Plot aspects of motility for different conditions"""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -294,12 +319,13 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="ticks", palette=sns.color_palette(
-        palette, len(tracks[condition].unique())), context=context)
+    sns.set(
+        style="ticks", palette=sns.color_palette(
+            palette, len(tracks[condition].unique())), context=context)
     if 'Plane Angle' in tracks.columns and plot_plane_angle:
-        figure, axes = plt.subplots(ncols=4, figsize=(16,5.5))
+        figure, axes = plt.subplots(ncols=4, figsize=(16, 5.5))
     else:
-        figure, axes = plt.subplots(ncols=3, figsize=(12,5.5))
+        figure, axes = plt.subplots(ncols=3, figsize=(12, 5.5))
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
@@ -318,7 +344,7 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
     axes[2].set_xlabel('Turning Angle')
     axes[2].set_ylabel('Density')
     axes[2].set_xlim([0, np.pi])
-    axes[2].set_xticks([0, np.pi/2, np.pi])
+    axes[2].set_xticks([0, np.pi / 2, np.pi])
     axes[2].set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
 
     if 'Plane Angle' in tracks.columns and plot_plane_angle:
@@ -338,58 +364,70 @@ def plot(tracks, save=False, palette='deep', max_time=9, condition='Condition',
         # 22795348/plotting-time-series-data-with-seaborn
         label = cond_tracks[condition].iloc[0]
         color = sns.color_palette()[i]
-        displacements = cond_tracks[['Track Time', 'Displacement']].groupby(
-            'Track Time').describe().unstack()['Displacement']
+        displacements = cond_tracks[[
+            'Track Time', 'Displacement'
+        ]].groupby('Track Time').describe().unstack()['Displacement']
         if max_time:
             displacements = displacements[displacements.index <= max_time]
-        axes[0].plot(np.sqrt(displacements.index), displacements['50%'],
-            label=label, color=color)
+        axes[0].plot(
+            np.sqrt(displacements.index), displacements['50%'], label=label,
+            color=color)
         if not plot_each_sample:
-            axes[0].fill_between(np.sqrt(displacements.index),
-                displacements['25%'], displacements['75%'], alpha=.2, color=color)
+            axes[0].fill_between(
+                np.sqrt(displacements.index), displacements['25%'],
+                displacements['75%'], alpha=.2, color=color)
         if not plot_each_sample and len(tracks[condition].unique()) == 1:
-            axes[0].fill_between(np.sqrt(displacements.index),
-                displacements['min'], displacements['max'], alpha=.2, color=color)
+            axes[0].fill_between(
+                np.sqrt(displacements.index), displacements['min'],
+                displacements['max'], alpha=.2, color=color)
 
         # Plot velocities
-        sns.kdeplot(cond_tracks['Velocity'].dropna(), clip=(0,np.inf),
-            shade=not plot_each_sample, ax=axes[1], gridsize=500, label='', color=color)
+        sns.kdeplot(
+            cond_tracks['Velocity'].dropna(), clip=(0, np.inf),
+            shade=not plot_each_sample, ax=axes[1], gridsize=500, label='',
+            color=color)
 
         # Plot turning angles
         turning_angles = cond_tracks['Turning Angle'].dropna().as_matrix()
         if 'Z' in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
-            axes[2].plot(x, np.sin(x)/2, '--k')
-            sns.kdeplot(turning_angles, clip=(0,np.inf),
-                color=color, shade=not plot_each_sample, ax=axes[2])
+            axes[2].plot(x, np.sin(x) / 2, '--k')
+            sns.kdeplot(
+                turning_angles, clip=(0, np.inf), color=color,
+                shade=not plot_each_sample, ax=axes[2])
         else:
             turning_angles = np.concatenate(( # Mirror at boundaries.
                 -turning_angles, turning_angles, 2*np.pi-turning_angles))
-            axes[2].plot([0, np.pi], [1/(3*np.pi), 1/(3*np.pi)], '--k')
-            sns.kdeplot(turning_angles,
-                color=color, shade=not plot_each_sample, ax=axes[2])
+            axes[2].plot([0, np.pi], [1 / (3 * np.pi), 1 / (3 * np.pi)], '--k')
+            sns.kdeplot(
+                turning_angles, color=color, shade=not plot_each_sample,
+                ax=axes[2])
 
         # Plot Plane Angles
         if 'Plane Angle' in tracks.columns and plot_plane_angle:
             plane_angles = cond_tracks['Plane Angle'].dropna().as_matrix()
-            plane_angles = np.concatenate(( # Mirror at boundaries.
+            plane_angles = np.concatenate((  # Mirror at boundaries.
                 -2*np.pi+plane_angles, plane_angles, 2*np.pi+plane_angles))
-            axes[3].plot([-np.pi, np.pi], [1/(6*np.pi), 1/(6*np.pi)], '--k')
+            axes[3].plot([-np.pi, np.pi], [1 / (6 * np.pi), 1 / (6 * np.pi)],
+                         '--k')
             # sns.distplot(plane_angles, ax=axes[3])
-            sns.kdeplot(plane_angles, color=color, shade=not plot_each_sample, ax=axes[3])
+            sns.kdeplot(
+                plane_angles, color=color, shade=not plot_each_sample,
+                ax=axes[3])
 
     handles, labels = axes[0].get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
-    axes[0].legend(unique_entries.values(), unique_entries.keys(),
-        loc='upper left')
+    axes[0].legend(
+        unique_entries.values(), unique_entries.keys(), loc='upper left')
 
     sns.despine()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
-        plt.savefig('Motility_' + '-'.join(conditions) +
-            '_all-samples'*plot_each_sample + '.png', dpi=300)
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
+        plt.savefig(
+            'Motility_' + '-'.join(conditions) +
+            '_all-samples' * plot_each_sample + '.png', dpi=300)
     else:
         plt.show()
 
@@ -412,7 +450,7 @@ def plot_dr(raw_tracks, save=False, condition='Condition', context='notebook'):
             differences['Track_ID'] = track['Track_ID'].iloc[0]
 
     sns.set(style="ticks", palette='deep', context=context)
-    fig, axes = plt.subplots(ncols=3, figsize=(15.5,5.5))
+    fig, axes = plt.subplots(ncols=3, figsize=(15.5, 5.5))
     plt.setp(axes, yticks=[])
     plt.setp(axes, xticks=[])
 
@@ -427,8 +465,10 @@ def plot_dr(raw_tracks, save=False, condition='Condition', context='notebook'):
     axes[1].set_xlabel(r'$\Delta x$')
     axes[1].set_ylabel(r'$\Delta y$')
     axes[1].axis('equal')
-    axes[1].set_xlim([differences['X'].quantile(0.1), differences['X'].quantile(0.9)])
-    axes[1].set_ylim([differences['Y'].quantile(0.1), differences['Y'].quantile(0.9)])
+    axes[1].set_xlim([
+        differences['X'].quantile(0.1), differences['X'].quantile(0.9)])
+    axes[1].set_ylim([
+        differences['Y'].quantile(0.1), differences['Y'].quantile(0.9)])
     sns.kdeplot(differences[['X', 'Y']], shade=False, cmap='Greys', ax=axes[1])
 
     axes[2].set_title(r'$\Delta \vec r$ Lag Plot')
@@ -443,15 +483,16 @@ def plot_dr(raw_tracks, save=False, condition='Condition', context='notebook'):
     sns.despine()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
         plt.savefig('dr_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
 
-def joint_plot(tracks, condition='Condition', save=False, palette='deep',
-    skip_color=0, context='notebook'):
+def joint_plot(
+        tracks, condition='Condition', save=False, palette='deep',
+        skip_color=0, context='notebook'):
     """Plot the joint distribution of the velocities and turning angles."""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -459,24 +500,29 @@ def joint_plot(tracks, condition='Condition', save=False, palette='deep',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color), context=context)
+    sns.set(
+        style="white", palette=sns.color_palette(
+            palette, tracks[condition].unique().__len__() + skip_color),
+        context=context)
 
     y_upper_lim = np.percentile(tracks['Velocity'].dropna(), 99.5)
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
-        sns.jointplot(cond_tracks['Turning Angle'], cond_tracks['Velocity'], kind='kde',
-            stat_func=None, xlim=[0, np.pi], space=0, color=color,
-            ylim=[0, y_upper_lim], joint_kws={'shade': False})
+        sns.jointplot(
+            cond_tracks['Turning Angle'], cond_tracks['Velocity'], kind='kde',
+            stat_func=None, xlim=[0, np.pi], space=0, color=color, ylim=[
+                0, y_upper_lim], joint_kws={'shade': False})
         if save:
-            plt.savefig('Joint-Motility_' + cond.replace('= ', '') + '.png', dpi=300)
+            plt.savefig(
+                'Joint-Motility_' + cond.replace('= ', '') + '.png', dpi=300)
         else:
             plt.show()
 
 
-def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
-    save=False, palette='deep', skip_color=0, context='notebook'):
+def plot_tracks_parameter_space(
+        tracks, n_tracks=None, condition='Condition', save=False,
+        palette='deep', skip_color=0, context='notebook'):
     """Plot tracks in velocities-turning-angles-space"""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -484,12 +530,14 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="ticks", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color), context=context)
-    fig, ax = plt.subplots(figsize=(5.5,5.5))
+    sns.set(
+        style="ticks", palette=sns.color_palette(
+            palette, tracks[condition].unique().__len__() + skip_color),
+        context=context)
+    fig, ax = plt.subplots(figsize=(5.5, 5.5))
     ax.set_xlabel('Turning Angle')
-    ax.set_xlim([0,np.pi])
-    ax.set_xticks([0, np.pi/2, np.pi])
+    ax.set_xlim([0, np.pi])
+    ax.set_xticks([0, np.pi / 2, np.pi])
     ax.set_xticklabels([r'$0$', r'$\pi/2$', r'$\pi$'])
     ax.set_ylabel('Velocity')
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
@@ -498,22 +546,25 @@ def plot_tracks_parameter_space(tracks, n_tracks=None, condition='Condition',
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(
                 np.random.choice(cond_tracks['Track_ID'], n_tracks))]
         for _, track in cond_tracks.groupby('Track_ID'):
-            ax.plot(track['Turning Angle'], track['Velocity'],
-                color=color, alpha=0.5)
+            ax.plot(
+                track['Turning Angle'], track['Velocity'], color=color,
+                alpha=0.5)
 
     sns.despine()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
-        plt.savefig('Motility-TracksInParameterSpace_' + '-'.join(conditions)
-            + '.png', dpi=300)
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
+        plt.savefig(
+            'Motility-TracksInParameterSpace_' + '-'.join(conditions) + '.png',
+            dpi=300)
     else:
         plt.show()
 
 
-def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
-    context='notebook'):
+def plot_arrest(
+        tracks, condition='Condition', arrest_velocity=3, save=False,
+        context='notebook'):
     """Plot velocity aligned to minimum and distribution of arrested steps"""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -525,7 +576,8 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
     fig, axes = plt.subplots(1, 2, figsize=(8, 5.5))
     axes[0].set_xlabel('Time to minimum')
     axes[0].set_ylabel('Velocity')
-    axes[1].set_xlabel(r'Consecutive steps below {} $\mu$m/min'.format(arrest_velocity))
+    axes[1].set_xlabel(
+        r'Consecutive steps below {} $\mu$m/min'.format(arrest_velocity))
     axes[1].set_ylabel('Proportion')
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
@@ -534,26 +586,32 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
         for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
             min_index = track['Velocity'].argmin()
             track_velocities = pd.Series(
-                track['Velocity'].values, track['Time'] - track.loc[min_index, 'Time'])
+                track['Velocity'].values,
+                track['Time'] - track.loc[min_index, 'Time'])
             velocities = velocities.append(track_velocities.dropna())
             arrested = track['Velocity'] < arrest_velocity
-            arrested_segments = np.split(arrested, np.where(np.diff(arrested))[0] + 1)
-            arrested_segment_lengths.extend([sum(segment)
-                for segment in arrested_segments
+            arrested_segments = np.split(
+                arrested, np.where(np.diff(arrested))[0] + 1)
+            arrested_segment_lengths.extend([
+                sum(segment) for segment in arrested_segments
                 if sum(segment) > 0])
 
-        velocities.index = np.round(velocities.index, 5)  # Handle non-integer 'Times'
+        velocities.index = np.round(
+            velocities.index, 5)  # Handle non-integer 'Times'
         arrestats = velocities.groupby(velocities.index).describe().unstack()
 
-        color = sns.color_palette(n_colors=i+1)[-1]
+        color = sns.color_palette(n_colors=i + 1)[-1]
         axes[0].plot(arrestats.index, arrestats['50%'], color=color)
-        axes[0].fill_between(arrestats.index, arrestats['25%'], arrestats['75%'],
-            color=color, alpha=0.2)
-        axes[0].fill_between(arrestats.index, arrestats['min'], arrestats['max'],
-            color=color, alpha=0.2)
+        axes[0].fill_between(
+            arrestats.index, arrestats['25%'], arrestats['75%'], color=color,
+            alpha=0.2)
+        axes[0].fill_between(
+            arrestats.index, arrestats['min'], arrestats['max'], color=color,
+            alpha=0.2)
 
-        sns.distplot(arrested_segment_lengths, bins=np.arange(1,
-            max(arrested_segment_lengths) + 1) - 0.5,
+        sns.distplot(
+            arrested_segment_lengths,
+            bins=np.arange(1, max(arrested_segment_lengths) + 1) - 0.5,
             norm_hist=True, kde=False, color=color, ax=axes[1])
 
     axes[0].set_xlim([-3, 3])
@@ -561,15 +619,16 @@ def plot_arrest(tracks, condition='Condition', arrest_velocity=3, save=False,
     sns.despine()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
         plt.savefig('Arrest_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
 
-def lag_plot(tracks, condition='Condition', save=False, palette='deep',
-    skip_color=0, null_model=True, context='notebook'):
+def lag_plot(
+        tracks, condition='Condition', save=False, palette='deep',
+        skip_color=0, null_model=True, context='notebook'):
     """Lag plot for velocities and turning angles"""
     if 'Displacement' not in tracks.columns:
         tracks = analyze(tracks)
@@ -577,12 +636,14 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
     if condition not in tracks.columns:
         tracks[condition] = 'Default'
 
-    sns.set(style="white", palette=sns.color_palette(
-        palette, tracks[condition].unique().__len__() + skip_color), context=context)
+    sns.set(
+        style="white", palette=sns.color_palette(
+            palette, tracks[condition].unique().__len__() + skip_color),
+        context=context)
     if 'Plane Angle' in tracks.columns:
-        fig, ax = plt.subplots(1,3, figsize=(12,4.25))
+        fig, ax = plt.subplots(1, 3, figsize=(12, 4.25))
     else:
-        fig, ax = plt.subplots(1,2, figsize=(8,4.25))
+        fig, ax = plt.subplots(1, 2, figsize=(8, 4.25))
     plt.setp(ax, yticks=[])
     plt.setp(ax, xticks=[])
     ax[0].set_title('Velocity')
@@ -601,31 +662,37 @@ def lag_plot(tracks, condition='Condition', save=False, palette='deep',
 
     if null_model:
         null_model = tracks.ix[np.random.choice(tracks.index, tracks.shape[0])]
-        ax[0].scatter(null_model['Velocity'], null_model['Velocity'].shift(),
+        ax[0].scatter(
+            null_model['Velocity'], null_model['Velocity'].shift(),
             facecolors='0.8')
-        ax[1].scatter(null_model['Turning Angle'], null_model['Turning Angle'].shift(),
+        ax[1].scatter(
+            null_model['Turning Angle'], null_model['Turning Angle'].shift(),
             facecolors='0.8')
         if 'Plane Angle' in tracks.columns:
-            ax[2].scatter(null_model['Plane Angle'], null_model['Plane Angle'].shift(),
+            ax[2].scatter(
+                null_model['Plane Angle'], null_model['Plane Angle'].shift(),
                 facecolors='0.8')
 
     for i, (_, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
         for _, track in cond_tracks.groupby('Track_ID'):
-            ax[0].scatter(track['Velocity'], track['Velocity'].shift(),
-                facecolors=color)
-            ax[1].scatter(track['Turning Angle'], track['Turning Angle'].shift(),
+            ax[0].scatter(
+                track['Velocity'], track['Velocity'].shift(), facecolors=color)
+            ax[1].scatter(
+                track['Turning Angle'], track['Turning Angle'].shift(),
                 facecolors=color)
             if 'Plane Angle' in tracks.columns:
-                ax[2].scatter(track['Plane Angle'], track['Plane Angle'].shift(),
+                ax[2].scatter(
+                    track['Plane Angle'], track['Plane Angle'].shift(),
                     facecolors=color)
 
     sns.despine()
     plt.tight_layout()
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in tracks[condition].unique()]
-        plt.savefig('Motility-LagPlot_' + '-'.join(conditions) + '.png', dpi=300)
+        conditions = [
+            cond.replace('= ', '') for cond in tracks[condition].unique()]
+        plt.savefig(
+            'Motility-LagPlot_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
@@ -689,29 +756,32 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
             track['Turning Angle'].diff()**2)
 
         if len(track) > skip_steps + 1:
-            dot_products = np.sum(dr.shift(-skip_steps)*dr, axis=1)
-            norm_products = dr_norms[skip_steps:]*dr_norms[:-skip_steps]
-            turns = np.arccos(dot_products.iloc[1:-skip_steps]/norm_products[1:])
+            dot_products = np.sum(dr.shift(-skip_steps) * dr, axis=1)
+            norm_products = dr_norms[skip_steps:] * dr_norms[:-skip_steps]
+            turns = np.arccos(
+                dot_products.iloc[1:-skip_steps] / norm_products[1:])
 
             summary.loc[i, 'Max. Turn Over {} Steps'.format(skip_steps + 1)] = \
                 max(turns)
 
             summary.loc[i, 'Turn Time'] = track.loc[turns.idxmax(), 'Time']
 
-            cross_product = np.cross(dr.shift(-skip_steps).loc[turns.idxmax()],
+            cross_product = np.cross(
+                dr.shift(-skip_steps).loc[turns.idxmax()],
                 dr.loc[turns.idxmax()])
-            normal_vec = cross_product/np.linalg.norm(cross_product)
+            normal_vec = cross_product / np.linalg.norm(cross_product)
 
             summary.loc[i, 'Skew Lines Distance'] = abs(np.sum(
                 (positions.shift(-skip_steps).loc[turns.idxmax()] - \
                 positions.loc[turns.idxmax()])*normal_vec))
 
         hull = ConvexHull(track[['X', 'Y', 'Z']])
-        summary.loc[i, 'Scan. Area/Step'] = hull.area/len(track)
-        summary.loc[i, 'Scan. Vol./Step'] = hull.volume/len(track)
+        summary.loc[i, 'Scan. Area/Step'] = hull.area / len(track)
+        summary.loc[i, 'Scan. Vol./Step'] = hull.volume / len(track)
 
         if 'Surface Area (µm2)' in track.columns:
-            summary.loc[i, 'Mean Surface Area (µm2)'] = track['Surface Area (µm2)'].mean()
+            summary.loc[i, 'Mean Surface Area (µm2)'] = track[
+                'Surface Area (µm2)'].mean()
 
         if 'Volume (µm3)' in track.columns:
             summary.loc[i, 'Mean Volume (µm3)'] = track['Volume (µm3)'].mean()
@@ -721,61 +791,70 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
                 *(6*track['Volume (µm3)'])**(2/3)/track['Surface Area (µm2)']).mean()
 
     for cond, cond_summary in summary.groupby('Condition'):
-        print('  {} tracks in {} with {} timesteps in total.'.format(
-            cond_summary.__len__(), cond,
-            tracks[tracks['Condition'] == cond].__len__()))
+        print(
+            '  {} tracks in {} with {} timesteps in total.'.format(
+                cond_summary.__len__(), cond, tracks[tracks['Condition'] ==
+                                                     cond].__len__()))
 
     return summary
 
 
-def plot_summary(summary, save=False, condition='Condition', context='notebook'):
+def plot_summary(
+        summary, save=False, condition='Condition', context='notebook'):
     """Plot distributions and joint distributions of the track summary"""
-    to_drop = [column
-        for column in summary.columns
-        if (column not in [condition, 'Sample'] and summary[column].var() == 0
+    to_drop = [
+        column for column in summary.columns
+        if (
+            column not in [condition, 'Sample'] and summary[column].var() == 0
             or 'Turn ' in column)]
-    to_drop.extend([column for column
-        in ['Track_ID', 'Skew Lines Distance',
-            'Mean Sq. Turn. Angle Lag', 'Mean Sq. Velocity Lag',
-            'Scan. Area/Step', 'Scan. Vol./Step',
+    to_drop.extend([
+        column
+        for column in [
+            'Track_ID', 'Skew Lines Distance', 'Mean Sq. Turn. Angle Lag',
+            'Mean Sq. Velocity Lag', 'Scan. Area/Step', 'Scan. Vol./Step',
             'Mean Surface Area (µm2)', 'Mean Volume (µm3)']
         if column in summary.columns])
 
     sns.set(style='white', context=context)
-    sns.pairplot(summary.drop(to_drop, axis=1), hue=condition,
-        diag_kind='kde')
+    sns.pairplot(summary.drop(to_drop, axis=1), hue=condition, diag_kind='kde')
     plt.tight_layout()
 
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in summary[condition].unique()]
+        conditions = [
+            cond.replace('= ', '') for cond in summary[condition].unique()]
         plt.savefig('Summary_' + '-'.join(conditions) + '.png', dpi=300)
     else:
         plt.show()
 
 
-def plot_uturns(summary, critical_rad=2.9, time_step=20, save=False,
-    condition='Condition', context='notebook'):
+def plot_uturns(
+        summary, critical_rad=2.9, time_step=20, save=False,
+        condition='Condition', context='notebook'):
     """Plot and print steepest turns over more than critical_rad"""
-    turn_column = next(col for col in summary.columns
-        if col.startswith('Max. Turn Over'))
-    columns_of_interest = ['Skew Lines Distance', 'Mean Velocity',
-        'Arrest Coefficient', condition, turn_column]
+    turn_column = next(
+        col for col in summary.columns if col.startswith('Max. Turn Over'))
+    columns_of_interest = [
+        'Skew Lines Distance', 'Mean Velocity', 'Arrest Coefficient',
+        condition, turn_column]
 
     big_turns = summary[summary[turn_column] > critical_rad]
-    mean_steps = big_turns['Mean Velocity']*time_step/60
+    mean_steps = big_turns['Mean Velocity'] * time_step / 60
     uturns = big_turns[big_turns['Skew Lines Distance'] < mean_steps]
 
-    skip_steps = int(next(word
-        for word in turn_column.split() if word.isdigit()))
-    print('\nPlotting turns with more than {} rad over {} steps narrower than a mean step'.format(
-        critical_rad, skip_steps))
+    skip_steps = int(
+        next(word for word in turn_column.split() if word.isdigit()))
+    print(
+        '\nPlotting turns with more than {} rad over {} steps narrower than a mean step'.
+        format(critical_rad, skip_steps))
     for cond, cond_uturns in uturns.groupby(condition):
         n_tracks = len(summary[summary[condition] == cond])
         n_turns = len(cond_uturns)
         ci_low, ci_upp = proportion_confint(n_turns, n_tracks, method='wilson')
-        print('  {:5.2f}% [{:5.2f}, {:5.2f}] tracks in {} with U-Turns ({} of {}).'.format(
-            n_turns/n_tracks*100, ci_low*100, ci_upp*100, cond, n_turns, n_tracks))
+        print(
+            '  {:5.2f}% [{:5.2f}, {:5.2f}] tracks in {} with U-Turns ({} of {}).'.
+            format(
+                n_turns / n_tracks * 100, ci_low * 100, ci_upp * 100, cond,
+                n_turns, n_tracks))
 
     print('Binomial proportion 95% CIs are Wilson Score intervals.')
 
@@ -784,27 +863,30 @@ def plot_uturns(summary, critical_rad=2.9, time_step=20, save=False,
     plt.tight_layout()
 
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in summary[condition].unique()]
-        plt.savefig('U-Turns_' + '-'.join(conditions) +
-            '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps), dpi=300)
+        conditions = [
+            cond.replace('= ', '') for cond in summary[condition].unique()]
+        plt.savefig(
+            'U-Turns_' + '-'.join(conditions) +
+            '_{:1.1f}over{}steps.png'.format(critical_rad, skip_steps),
+            dpi=300)
     else:
         plt.show()
 
 
-def plot_shapes(summary, save=False, condition='Condition', context='notebook'):
+def plot_shapes(
+        summary, save=False, condition='Condition', context='notebook'):
     """Plot and print area and volume of all steps and averaged over track"""
-    columns_of_interest = ['Scan. Area/Step', 'Scan. Vol./Step',
-        'Mean Surface Area (µm2)', 'Mean Volume (µm3)', 'Mean Sphericity',
-        condition]
+    columns_of_interest = [
+        'Scan. Area/Step', 'Scan. Vol./Step', 'Mean Surface Area (µm2)',
+        'Mean Volume (µm3)', 'Mean Sphericity', condition]
 
     sns.set(style='white', context=context)
     sns.pairplot(summary[columns_of_interest], hue=condition, diag_kind='kde')
     plt.tight_layout()
 
     if save:
-        conditions = [cond.replace('= ', '')
-            for cond in summary[condition].unique()]
+        conditions = [
+            cond.replace('= ', '') for cond in summary[condition].unique()]
         plt.savefig('Shapes_' + '-'.join(conditions), dpi=300)
     else:
         plt.show()
@@ -826,8 +908,8 @@ def all_out(tracks, condition='Condition', return_summary=False):
     plot_uturns(summary, save=True)
     plot_shapes(summary, save=True)
 
-    conditions = [cond.replace('= ', '')
-        for cond in summary[condition].unique()]
+    conditions = [
+        cond.replace('= ', '') for cond in summary[condition].unique()]
     tracks.to_csv('Tracks_' + '-'.join(conditions) + '.csv')
     summary.to_csv('Summary_' + '-'.join(conditions) + '.csv')
 
@@ -839,8 +921,7 @@ if __name__ == "__main__":
     """Demostrate motility analysis of simulated data."""
     from lana import remix
 
-
-    """Uniquize & split single track"""
+    # # Uniquize & split single track
     # to_uniquize = pd.DataFrame({
     #     'Track_ID': 0, 'Time': (0,1,1,0,2), 'X': 0, 'Y': 0, 'Z': 0})
     # to_uniquize = to_uniquize.append(pd.DataFrame({
@@ -857,14 +938,14 @@ if __name__ == "__main__":
     # _split_at_skip(to_split, 1, verbose=True)
     # print(to_split)
 
-
-    """Find steepest turn in single track"""
+    # Find steepest turn in single track
     track = pd.DataFrame({
-        'Velocity':np.ones(7) + np.sort(np.random.rand(7)/100),
-        'Turning Angle': np.sort(np.random.rand(7))/100,
-        'Plane Angle': np.random.rand(7)/100})
-    track.loc[2, 'Turning Angle'] = np.pi/2
-    track.loc[3, 'Turning Angle'] = np.pi/2
+        'Velocity':
+        np.ones(7) + np.sort(np.random.rand(7) / 100), 'Turning Angle':
+        np.sort(np.random.rand(7)) / 100, 'Plane Angle':
+        np.random.rand(7) / 100})
+    track.loc[2, 'Turning Angle'] = np.pi / 2
+    track.loc[3, 'Turning Angle'] = np.pi / 2
 
     tracks = remix.silly_steps(track)
     tracks['Track_ID'] = 0
@@ -872,8 +953,7 @@ if __name__ == "__main__":
     summary = summarize(tracks, skip_steps=2)
     plot_tracks(tracks, summary)
 
-
-    """Analyze several tracks"""
+    # # Analyze several tracks
     # raw_tracks = remix.silly_tracks()
     # raw_tracks.loc[:, 'Time'] = raw_tracks['Time']/3
     # plot_dr(raw_tracks)

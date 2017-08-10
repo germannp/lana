@@ -2,19 +2,21 @@
 import pandas as pd
 
 
-def read_tracks(path, condition=None, sample=None, tissue=None, time_step=20,
-    min_track_length=5):
+def read_tracks(
+        path, condition=None, sample=None, tissue=None, time_step=20,
+        min_track_length=5):
     """Read tracks from excel file into pandas DataFrame"""
     tracks = pd.read_excel(path, sheetname='Position', skiprows=1)
 
     tracks['Track_ID'] = tracks['TrackID']
-    tracks['Time'] = (tracks['Time'] - 1)/60*time_step
+    tracks['Time'] = (tracks['Time'] - 1) / 60 * time_step
     tracks['X'] = tracks['Position X']
     tracks['Y'] = tracks['Position Y']
     tracks['Z'] = tracks['Position Z']
 
-    tracks = tracks.drop(['ID', 'Category', 'Collection', 'TrackID',
-        'Unit', 'Position X', 'Position Y', 'Position Z'], 1)
+    tracks = tracks.drop([
+        'ID', 'Category', 'Collection', 'TrackID', 'Unit', 'Position X',
+        'Position Y', 'Position Z'], 1)
 
     tracks['Source'] = 'Imaris'
 
@@ -31,8 +33,9 @@ def read_tracks(path, condition=None, sample=None, tissue=None, time_step=20,
         if track.__len__() < min_track_length:
             tracks = tracks[tracks['Track_ID'] != track_id]
 
-    print('Read {} tracks with {} seconds time step.'.format(
-        len(tracks['Track_ID'].unique()), time_step))
+    print(
+        'Read {} tracks with {} seconds time step.'.format(
+            len(tracks['Track_ID'].unique()), time_step))
 
     return tracks.sort_values('Time')
 
@@ -53,5 +56,6 @@ if __name__ == '__main__':
     # motility.plot_summary(summary)
 
     # import matplotlib.pyplot as plt
-    # tracks.set_index(['Time', 'Track_ID'])['Turning Angle'].unstack().plot(subplots=True, sharey=True, layout=(-1,6))
+    # tracks.set_index(['Time', 'Track_ID'])['Turning Angle'].unstack().plot(
+    #     subplots=True, sharey=True, layout=(-1, 6))
     # plt.show()

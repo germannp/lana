@@ -7,7 +7,7 @@ from lana.utils import track_identifiers
 
 def silly_steps(track_data, time_step=60, dim=3):
     """Generate a walk from velocity, turning and plane angle data"""
-    steps = track_data['Velocity'].dropna().values/60*time_step
+    steps = track_data['Velocity'].dropna().values / 60 * time_step
     turning_angles = track_data['Turning Angle'].dropna().values
     plane_angles = track_data['Plane Angle'].dropna().values
     if 'Condtion' in track_data.columns:
@@ -17,46 +17,50 @@ def silly_steps(track_data, time_step=60, dim=3):
     n_steps = len(steps)
 
     # Walk in x-y plane w/ given velocity and turning angles
-    dr = np.zeros((n_steps+1, 3))
-    dr[1,0] = steps[0]
-    for i in range(2, n_steps+1):
-        cosa = np.cos(turning_angles[i-2])
-        sina = np.sin(turning_angles[i-2])
-        dr[i,0] = (cosa*dr[i-1,0] - sina*dr[i-1,1])*steps[i-1]/steps[i-2]
-        dr[i,1] = (sina*dr[i-1,0] + cosa*dr[i-1,1])*steps[i-1]/steps[i-2]
+    dr = np.zeros((n_steps + 1, 3))
+    dr[1, 0] = steps[0]
+    for i in range(2, n_steps + 1):
+        cosa = np.cos(turning_angles[i - 2])
+        sina = np.sin(turning_angles[i - 2])
+        dr[i, 0] = (cosa * dr[i - 1, 0] - sina * dr[i - 1, 1]
+                    ) * steps[i - 1] / steps[i - 2]
+        dr[i, 1] = (sina * dr[i - 1, 0] + cosa * dr[i - 1, 1]
+                    ) * steps[i - 1] / steps[i - 2]
 
     # Add up and move 1st turn to origin
-    r = np.cumsum(dr, axis=0) - dr[1,:]
+    r = np.cumsum(dr, axis=0) - dr[1, :]
 
     # Rotate moved positions minus the plane angles around the next step
-    for i in range(2, n_steps+1):
-        r = r - dr[i,:]
+    for i in range(2, n_steps + 1):
+        r = r - dr[i, :]
         if i == n_steps:
-            t = (np.random.rand() - 0.5)*2*np.pi
+            t = (np.random.rand() - 0.5) * 2 * np.pi
             cost = np.cos(t)
             sint = np.sin(t)
-            theta = np.random.rand()*2*np.pi
+            theta = np.random.rand() * 2 * np.pi
             if dim == 3:
-                phi = np.arccos(2*np.random.rand() - 1)
+                phi = np.arccos(2 * np.random.rand() - 1)
             else:
                 phi = np.pi
-            n_vec[0] = np.sin(theta)*np.sin(phi)
-            n_vec[1] = np.cos(theta)*np.sin(phi)
+            n_vec[0] = np.sin(theta) * np.sin(phi)
+            n_vec[1] = np.cos(theta) * np.sin(phi)
             n_vec[2] = np.cos(phi)
         else:
-            cost = np.cos(-plane_angles[i-2])
-            sint = np.sin(-plane_angles[i-2])
-            n_vec = dr[i,:]/np.sqrt(np.sum(dr[i,:]*dr[i,:]))
+            cost = np.cos(-plane_angles[i - 2])
+            sint = np.sin(-plane_angles[i - 2])
+            n_vec = dr[i, :] / np.sqrt(np.sum(dr[i, :] * dr[i, :]))
         for j in range(i):
-            cross_prod = np.cross(n_vec, r[j,:])
-            dot_prod = np.sum(n_vec*r[j,:])
-            r[j,:] = r[j,:]*cost + cross_prod*sint + n_vec*dot_prod*(1 - cost)
+            cross_prod = np.cross(n_vec, r[j, :])
+            dot_prod = np.sum(n_vec * r[j, :])
+            r[j, :] = r[j, :] * cost + cross_prod * sint + n_vec * dot_prod * (
+                1 - cost)
 
     r = r[0, :] - r
 
-    track = pd.DataFrame({'Time': np.arange(n_steps+1)/60*time_step,
-        'X': r[:,0], 'Y': r[:,1], 'Z': r[:,2], 'Source': 'Silly 3D walk',
-        'Condition': condition})
+    track = pd.DataFrame({
+        'Time': np.arange(n_steps + 1) / 60 * time_step, 'X': r[:, 0], 'Y':
+        r[:, 1], 'Z': r[:, 2], 'Source': 'Silly 3D walk', 'Condition':
+        condition})
 
     if dim == 3:
         return track
@@ -76,10 +80,11 @@ def silly_tracks(n_tracks=100, n_steps=60):
         #     'Plane Angle': np.zeros(n_steps),
         #     'Condition': 'Trivial'})
         track_data = pd.DataFrame({
-            'Velocity': np.random.lognormal(0, 0.5, n_steps)*3,
-            'Turning Angle': np.random.lognormal(0, 0.5, n_steps),
-            'Plane Angle': (np.random.rand(n_steps) - 0.5)*2*np.pi,
-            'Condition': 'Random'})
+            'Velocity':
+            np.random.lognormal(0, 0.5, n_steps) * 3, 'Turning Angle':
+            np.random.lognormal(0, 0.5, n_steps), 'Plane Angle':
+            (np.random.rand(n_steps) - 0.5) * 2 * np.pi, 'Condition':
+            'Random'})
         track = silly_steps(track_data)
         track['Track_ID'] = track_id
         tracks = tracks.append(track)
@@ -89,12 +94,15 @@ def silly_tracks(n_tracks=100, n_steps=60):
 
 def remix_dr(tracks, n_tracks=50, n_steps=60):
     """Remix dx, dy & dz to generate new tracks (Gerard et al. 2014)"""
-    time_step = int(np.round(
-        next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0)*60))
-    print('Generating {} steps from {} steps {}s apart Gerard-style.'.format(
-        n_tracks*n_steps, len(tracks), time_step))
+    time_step = int(
+        np.round(
+            next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0) * 60))
+    print(
+        'Generating {} steps from {} steps {}s apart Gerard-style.'.format(
+            n_tracks * n_steps, len(tracks), time_step))
 
-    criteria = [crit for crit in ['Condition', 'Track_ID', 'Sample']
+    criteria = [
+        crit for crit in ['Condition', 'Track_ID', 'Sample']
         if crit in tracks.columns]
 
     dx = pd.DataFrame()
@@ -104,13 +112,14 @@ def remix_dr(tracks, n_tracks=50, n_steps=60):
 
     new_tracks = pd.DataFrame()
     for track_id in range(n_tracks):
-        new_track = dx.ix[np.random.choice(dx.index, n_steps+1)].cumsum()
-        new_track['Time'] = np.arange(n_steps+1)/60*time_step
+        new_track = dx.ix[np.random.choice(dx.index, n_steps + 1)].cumsum()
+        new_track['Time'] = np.arange(n_steps + 1) / 60 * time_step
         new_track['Track_ID'] = track_id
         new_tracks = new_tracks.append(new_track)
 
     if 'Condition' in tracks.columns:
-        new_tracks['Condition'] = tracks['Condition'].iloc[0] + ' Remixed by Gerard et al.'
+        new_tracks['Condition'] = tracks['Condition'].iloc[
+            0] + ' Remixed by Gerard et al.'
     else:
         new_tracks['Condition'] = 'Remixed by Gerard et al.'
 
@@ -122,16 +131,17 @@ def sample_dr(tracks, n_tracks=50, n_steps=60):
     import statsmodels.api as sm
     # Learn KDE
     dep_data = tracks[tracks['Track Time'] != 0]
-    criteria = [crit for crit in ['Condition', 'Sample', 'Track_ID']
+    criteria = [
+        crit for crit in ['Condition', 'Sample', 'Track_ID']
         if crit in tracks.columns]
     indep_data = pd.DataFrame()
     for _, track in tracks.groupby(criteria):
         indep_data = indep_data.append(track.iloc[:-1])
 
     next_step_kde = sm.nonparametric.KDEMultivariateConditional(
-        dep_data[['X', 'Y', 'Z']].diff().stack().values,
-        indep_data[['X', 'Y', 'Z']].diff().stack().values,
-        dep_type='c', indep_type='c', bw='normal_reference')
+        dep_data[['X', 'Y', 'Z']].diff().stack().values, indep_data[[
+            'X', 'Y', 'Z']].diff().stack().values, dep_type='c',
+        indep_type='c', bw='normal_reference')
     max_kde = max(next_step_kde.pdf())
 
     # Generate new tracks
@@ -140,16 +150,19 @@ def sample_dr(tracks, n_tracks=50, n_steps=60):
         track = tracks.ix[np.random.choice(tracks.index.values, 1)] \
             [['X', 'Y', 'Z']]
         max_index = max(track.index)
-        while track.__len__() < n_steps+1:
+        while track.__len__() < n_steps + 1:
             candidate = [
-                np.random.rand()*np.percentile(initial_data['Velocity'], 99.5),
-                np.random.rand()*np.pi]
+                np.random.rand() * np.percentile(
+                    initial_data['Velocity'], 99.5),
+                np.random.rand() * np.pi]
             r = np.random.rand()
-            if next_step_kde.pdf(candidate,
-                track.loc[max_index, ['Velocity', 'Turning Angle']]) > max_kde*r:
-                max_index = max_index+1
-                track = track.append(pd.DataFrame({'Velocity': candidate[0],
-                    'Turning Angle': candidate[1]}, index=[max_index]))
+            if next_step_kde.pdf(candidate, track.loc[max_index, [
+                    'Velocity', 'Turning Angle']]) > max_kde * r:
+                max_index = max_index + 1
+                track = track.append(
+                    pd.DataFrame({
+                        'Velocity': candidate[0], 'Turning Angle': candidate[1]
+                    }, index=[max_index]))
 
     #     new_track = new_track.cumsum()
     #     new_track['Track_ID'] = track_id
@@ -165,24 +178,32 @@ def sample_dr(tracks, n_tracks=50, n_steps=60):
 
 def remix(tracks, n_tracks=50, n_steps=60):
     """Return new tracks generated by remixing given tracks"""
-    time_step = int(np.round(
-        next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0)*60))
-    print('Generating {} steps from {} steps {}s apart.'.format(
-        n_tracks*n_steps, len(tracks), time_step))
+    time_step = int(
+        np.round(
+            next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0) * 60))
+    print(
+        'Generating {} steps from {} steps {}s apart.'.format(
+            n_tracks * n_steps, len(tracks), time_step))
 
     velocities_only = tracks[tracks['Turning Angle'].isnull()] \
         ['Velocity'].dropna()
     velo_and_turn = tracks[tracks['Plane Angle'].isnull()] \
         [['Velocity', 'Turning Angle']].dropna()
-    remaining_data = tracks[['Velocity', 'Turning Angle', 'Plane Angle']].dropna()
+    remaining_data = tracks[['Velocity', 'Turning Angle',
+                             'Plane Angle']].dropna()
 
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
-        track_data = velo_and_turn.ix[np.random.choice(velo_and_turn.index.values, 1)]
+        track_data = velo_and_turn.ix[np.random.choice(
+            velo_and_turn.index.values, 1)]
         track_data = track_data.append(
-            remaining_data.ix[np.random.choice(remaining_data.index.values, n_steps-2)])
-        track_data = track_data.append(pd.DataFrame({'Velocity':
-            velocities_only[np.random.choice(velocities_only.index.values, 1)]}))
+            remaining_data.ix[np.random.choice(
+                remaining_data.index.values, n_steps - 2)])
+        track_data = track_data.append(
+            pd.DataFrame({
+                'Velocity':
+                velocities_only[np.random.choice(
+                    velocities_only.index.values, 1)]}))
         new_track = silly_steps(track_data, time_step)
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
@@ -209,16 +230,18 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
 
     # Generate initial remix
     remix = tracks[['Velocity', 'Turning Angle', 'Plane Angle']].dropna()
-    time_step = int(np.round(
-        next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0)*60))
-    print('Generating {} steps from {} steps {}s apart, preserving lag.'.format(
-        n_tracks*n_steps, len(remix), time_step))
-    remix = remix.ix[np.random.choice(remix.index.values, n_tracks*n_steps)]
+    time_step = int(
+        np.round(
+            next(dt for dt in sorted(tracks['Time'].diff()) if dt > 0) * 60))
+    print(
+        'Generating {} steps from {} steps {}s apart, preserving lag.'.format(
+            n_tracks * n_steps, len(remix), time_step))
+    remix = remix.ix[np.random.choice(remix.index.values, n_tracks * n_steps)]
     remix['Track_ID'] = 0
 
     # Shuffle until mean lag is preserved
-    ctrl_lags = mean_lags(tracks)*(n_tracks*n_steps-1)
-    remix_lags = mean_lags(remix)*(n_tracks*n_steps-1)
+    ctrl_lags = mean_lags(tracks) * (n_tracks * n_steps - 1)
+    remix_lags = mean_lags(remix) * (n_tracks * n_steps - 1)
 
     remix = remix.reset_index(drop=True)
 
@@ -256,9 +279,10 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
     # Generate new tracks
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
-        track_data = remix.iloc[n_steps*i:n_steps*(i+1)].copy()
-        track_data.loc[n_steps*i, 'Plane Angle'] = np.nan
-        new_track = silly_steps(track_data, time_step, 2 + ('Z' in tracks.columns))
+        track_data = remix.iloc[n_steps * i:n_steps * (i + 1)].copy()
+        track_data.loc[n_steps * i, 'Plane Angle'] = np.nan
+        new_track = silly_steps(
+            track_data, time_step, 2 + ('Z' in tracks.columns))
         new_track['Track_ID'] = i
         new_tracks = new_tracks.append(new_track)
 
@@ -282,8 +306,7 @@ if __name__ == '__main__':
     raw_tracks = pd.read_csv('Examples/ctrl.csv')
     ctrl = raw_tracks[raw_tracks.Track_ID == 1015.0]
 
-
-    """Rebuild a single track"""
+    # # Rebuild a single track
     # ctrl[['X', 'Y', 'Z']] = ctrl[['X', 'Y', 'Z']] - ctrl[['X', 'Y', 'Z']].iloc[0]
     # rebuilt = silly_steps(ctrl)
     # motility.plot_tracks(ctrl.append(rebuilt))
@@ -291,19 +314,16 @@ if __name__ == '__main__':
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
     # print(rebuilt[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
 
-
-    """Remix Ctrl"""
+    # # Remix Ctrl
     # remix = remix(ctrl, n_tracks=1, n_steps=5)
     # motility._analyze(remix)
     # print(remix[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
     # print(ctrl[['Time', 'Velocity', 'Turning Angle', 'Plane Angle']])
 
-
-    """Sample dr"""
+    # # Sample dr
     # sample_dr(tracks)
 
-
-    """Compare Algorithms"""
+    # Compare Algorithms
     remix_dr = remix_dr(raw_tracks)
     remix = remix(raw_tracks)
     remix_lags = remix_preserving_lags(raw_tracks)
@@ -315,8 +335,7 @@ if __name__ == '__main__':
     motility.plot(tracks, palette=palette)
     motility.lag_plot(tracks, null_model=False)
 
-
-    """Remix from short vs from long tracks"""
+    # # Remix from short vs from long tracks
     # summary = motility.summarize(tracks)
 
     # # Is not prefect, at least if there are non-unique Track_IDs ...
@@ -325,10 +344,12 @@ if __name__ == '__main__':
     #     if summary['Track Duration'].sort_values().cumsum().ix[index]
     #         < summary['Track Duration'].sum()/2]
 
-    # short_remix = remix_preserving_lags(tracks[tracks['Track_ID'].isin(short_track_ids)],
-    #     n_tracks=25, n_steps=60)
-    # long_remix = remix_preserving_lags(tracks[~tracks['Track_ID'].isin(short_track_ids)],
-    #     n_tracks=25, n_steps=60)
+    # short_remix = remix_preserving_lags(
+    #     tracks[tracks['Track_ID'].isin(short_track_ids)], n_tracks=25,
+    #     n_steps=60)
+    # long_remix = remix_preserving_lags(
+    #     tracks[~tracks['Track_ID'].isin(short_track_ids)], n_tracks=25,
+    #     n_steps=60)
 
     # short_remix['Condition'] = 'Short Tracks Remixed'
     # long_remix['Condition'] = 'Long Tracks Remixed'
@@ -336,8 +357,7 @@ if __name__ == '__main__':
     # tracks = tracks.append(short_remix).append(long_remix)
     # motility.plot(tracks)
 
-
-    """Remix long or short tracks"""
+    # # Remix long or short tracks
     # short_remix = remix_preserving_lags(tracks, n_tracks=50, n_steps=300)
     # long_remix = remix_preserving_lags(tracks, n_tracks=25, n_steps=600)
     #
@@ -347,15 +367,15 @@ if __name__ == '__main__':
     # tracks = tracks.append(short_remix).append(long_remix)
     # motility.plot(tracks, max_time=60)
 
-
-    """Create long tracks"""
+    # # Create long tracks
     # import datetime
     #
     # tracks = pd.read_csv('../Data/Parenchyme/Tracks_KO-WT.csv')
     # tracks = tracks[tracks.Condition == 'KO']
     #
-    # # tracks = pd.read_csv('../Data/FRC-depletion/Analysis/Tracks_Complete-Ctrl-Partial.csv')
-    # # tracks = tracks[tracks.Condition == 'Ctrl']
+    # tracks = pd.read_csv(
+    #     '../Data/FRC-depletion/Analysis/Tracks_Complete-Ctrl-Partial.csv')
+    # tracks = tracks[tracks.Condition == 'Ctrl']
     #
     # motility.plot(tracks)
     #
