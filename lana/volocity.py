@@ -73,7 +73,8 @@ def read_tracks_txt(
     for i, line in enumerate(lines[data_begin:]):
         words = line.split('\t')
         try:
-            tracks.loc[i, 'Track_ID'] = float(words[index_track_id])
+            tracks.loc[i, 'Track_ID'] = int(
+                words[index_track_id].replace('.', ''))
             tracks.loc[i, 'Time'] = (
                 float(words[index_time]) - 1) / 60 * time_step
             tracks.loc[i, 'X'] = float(words[index_X])
