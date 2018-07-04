@@ -61,8 +61,6 @@ def read_tracks_txt(
         if 'Centroid X' in line:
             words = line.split('\t')
             for j, word in enumerate(words):
-                if 'Name' in word:
-                    condition_id = j
                 if 'Track ID' in word:
                     index_track_id = j
                 if 'Timepoint' in word:
