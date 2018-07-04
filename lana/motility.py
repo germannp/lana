@@ -365,8 +365,8 @@ def plot(
         label = cond_tracks[condition].iloc[0]
         color = sns.color_palette()[i]
         displacements = cond_tracks[[
-            'Track Time', 'Displacement'
-        ]].groupby('Track Time').describe().unstack()['Displacement']
+            'Track Time',
+            'Displacement']].groupby('Track Time').describe()['Displacement']
         if max_time:
             displacements = displacements[displacements.index <= max_time]
         axes[0].plot(
