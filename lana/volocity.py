@@ -58,16 +58,17 @@ def read_tracks_txt(
         lines = volocity_file.readlines()
 
     for i, line in enumerate(lines):
-        if 'Centroid X' in line:
+        if 'x' in line.lower():
             words = line.split('\t')
             for j, word in enumerate(words):
-                if 'Track ID' in word:
+                if 'ID' in word:
                     index_track_id = j
-                if 'Timepoint' in word:
+                if 'timepoint' in word.lower():
                     index_time = j
-                if 'Centroid X' in word:
+                if 'x' in word.lower():
                     data_begin = i + 1
                     index_X = j
+            break
 
     tracks = pd.DataFrame()
     for i, line in enumerate(lines[data_begin:]):
@@ -80,7 +81,7 @@ def read_tracks_txt(
             tracks.loc[i, 'X'] = float(words[index_X])
             tracks.loc[i, 'Y'] = float(words[index_X + 1])
             tracks.loc[i, 'Z'] = float(words[index_X + 2])
-        except ValueError:
+        except:
             pass
 
     tracks['Source'] = 'Volocity'
