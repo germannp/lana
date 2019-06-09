@@ -210,9 +210,9 @@ def plot_tracks(
         changes = np.diff(track[condition].factorize()[0])
         return np.hstack((0, changes))
 
-    n_tracks = len(tracks['Track_ID'].unique())
+    n_tracks_before = len(tracks['Track_ID'].unique())
     _split(tracks, condition_changes, '')
-    if len(tracks['Track_ID'].unique()) != n_tracks:
+    if len(tracks['Track_ID'].unique()) != n_tracks_before:
         print('  Warning: Split tracks with several {}'.format(condition))
 
     if type(summary) == pd.core.frame.DataFrame:
@@ -249,7 +249,7 @@ def plot_tracks(
                 cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
         elif len(cond_tracks['Track_ID'].unique()) > n_tracks / n_conditions:
             choice = np.random.choice(
-                cond_tracks['Track_ID'].unique(), n_tracks / n_conditions,
+                cond_tracks['Track_ID'].unique(), int(n_tracks / n_conditions),
                 replace=False)
             cond_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
 

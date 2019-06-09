@@ -691,7 +691,7 @@ def plot_triples_vs_pairs(
 
     sns.set(style='ticks', context=context)
     # sns.set_style({"xtick.direction": "in","ytick.direction": "in"})
-    igure, axes = plt.subplots(ncols=2, figsize=(11, 5.5))
+    _, axes = plt.subplots(ncols=2, figsize=(11, 5.5))
     axes[0].set_xlabel('# CD8 in Triples')
     axes[0].set_ylabel('# CD8 in Pairs')
     axes[1].set_xlabel('arctan of # Triples/# Pairs')
@@ -824,7 +824,7 @@ def plot_situation(
 
     for i, (cond, cond_tracks) in enumerate(moved_tracks.groupby('Condition')):
         choice = np.random.choice(
-            cond_tracks['Track_ID'].unique(), n_tracks / n_conditions)
+            cond_tracks['Track_ID'].unique(), int(n_tracks / n_conditions))
         chosen_tracks = cond_tracks[cond_tracks['Track_ID'].isin(choice)]
         for _, track in chosen_tracks.groupby(
                 track_identifiers(chosen_tracks)):
