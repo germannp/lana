@@ -78,9 +78,9 @@ def simulate_priming(
     n_iter=10,
 ):
     """Simulate ensemble of pair-wise T cell/DC contacts within radius"""
-    print("\nSimulating pair-wise contacts {} times".format(n_iter))
+    print(f"\nSimulating pair-wise contacts {n_iter} times")
     assert (
-        max(t_cell_ns) < tracks["Track_ID"].unique().__len__()
+        max(t_cell_ns) < tracks["Track_ID"].nunique()
     ), "Max. t_cell_ns is larger than # of given tracks."
 
     if "Condition" not in tracks.columns:
@@ -101,7 +101,8 @@ def simulate_priming(
                 )
             ].copy()
             if min_std != 0:
-                # Such noise makes contacts seem to be none!
+                # Beware, introducing noise makes the returned pairs to not fit to the tracks,
+                # e.g. in plot_details there would be a mean distance around this std!
                 for track_id, track in t_tracks.groupby("Track_ID"):
                     t_tracks.loc[t_tracks["Track_ID"] == track_id, ["X", "Y", "Z"]] += (
                         np.random.randn(3) * min_std
@@ -122,26 +123,24 @@ def simulate_priming(
 
             run_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
             run_pairs["Run"] = n_run
-            run_pairs["Cell Numbers"] = "{} T cells, {} DCs".format(nt, ndc)
+            run_pairs["Cell Numbers"] = f"{nt} T cells, {ndc} DCs"
             run_pairs["T Cell Condition"] = cond
             run_pairs["Contact Radius"] = cr
             run_pairs["Minimal Initial Distance"] = min_dist
             run_pairs["Std. of Initial Position"] = min_std
             description = []
             if len(t_cell_ns) > 1 or len(conditions) > 1:
-                description.append(
-                    "{} {} T cells".format(nt, cond).replace("Default ", "")
-                )
+                description.append(f"{nt} {cond} T cells".replace("Default ", ""))
             if len(dc_ns) > 1:
-                description.append("{} DCs".format(ndc))
+                description.append(f"{ndc} DCs")
             if len(min_distances) > 1 or len(min_dist_stds) > 1:
-                description.append("Min. Distance {} +/- {}".format(min_dist, min_std))
+                description.append(f"Min. Distance {min_dist} +/- {min_std}")
             if len(contact_radii) > 1:
-                description.append("{} Contact Rad.".format(cr))
+                description.append(f"{cr} Contact Rad.")
             run_pairs["Description"] = ", ".join(description)
             pairs = pairs.append(run_pairs)
 
-        print("  Run {} done.".format(n_run + 1))
+        print(f"  Run {n_run + 1} done.")
 
     # Save duration and number of runs for analysis
     pairs.reset_index(drop=True, inplace=True)
@@ -165,11 +164,7 @@ def simulate_clustering(
     n_iter=10,
 ):
     """Simulate stable contacts among CD4/CD8/DCs w/ CD4 focusing CD8 on DC"""
-    print(
-        "\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {} times".format(
-            n_iter
-        )
-    )
+    print(f"\nSimulating triple contacts allowing CD4/DC & CD8/DC pairs {n_iter} times")
     assert (
         max(cd4_ns) < cd4_tracks["Track_ID"].unique().__len__()
     ), "Max. cd4_ns is larger than # of given CD4+ tracks."
@@ -189,17 +184,17 @@ def simulate_clustering(
 
             description = []
             if len(cd4_ns) > 1:
-                description.append("{} CD4".format(n4))
+                description.append(f"{n4} CD4")
             if len(cd8_delays) > 1:
-                description.append("{} CD8 {} min. later".format(n8, delay))
+                description.append(f"{n8} CD8 {delay} min. later")
             elif len(cd8_ns) > 1:
-                description.append("{} CD8".format(n8, delay))
+                description.append(f"{n8} CD8")
             if len(dc_ns) > 1:
-                description.append("{} DCs".format(ndc))
+                description.append(f"{ndc} DCs")
             if len(contact_radii) > 1:
-                description.append("{} Contact Rad.".format(cr))
+                description.append(f"{cr} Contact Rad.")
             if len(focusing_factors) > 1:
-                description.append("{}x Focusing".format(foc_fac))
+                description.append(f"{foc_fac}x Focusing")
 
             # Create DCs
             tcz_radius = (3 * tcz_volume / (4 * np.pi)) ** (1 / 3)
@@ -222,9 +217,7 @@ def simulate_clustering(
             ]
             run_cd4_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
             run_cd4_pairs["Run"] = n_run
-            run_cd4_pairs[
-                "Cell Numbers"
-            ] = "{} CD4+ T cells, {} CD8+ T cells, {} DCs".format(n4, n8, ndc)
+            run_cd4_pairs["Cell Numbers"] = f"{n4} CD4+ T cells, {n8} CD8+ T cells, {ndc} DCs"
             run_cd4_pairs["Contact Radius"] = cr
             run_cd4_pairs["Focusing Factor"] = foc_fac
             run_cd4_pairs["CD8 Delay"] = delay
@@ -240,9 +233,7 @@ def simulate_clustering(
             t_tracks["Time"] = t_tracks["Time"] + delay
             run_cd8_pairs = _find_by_distance(t_tracks, dcs, cr, tcz_radius)
             run_cd8_pairs["Run"] = n_run
-            run_cd8_pairs[
-                "Cell Numbers"
-            ] = "{} CD4+ T cells, {} CD8+ T cells, {} DCs".format(n4, n8, ndc)
+            run_cd8_pairs["Cell Numbers"] = f"{n4} CD4+ T cells, {n8} CD8+ T cells, {ndc} DCs"
             run_cd8_pairs["Contact Radius"] = cr
             run_cd8_pairs["Focusing Factor"] = foc_fac
             run_cd8_pairs["CD8 Delay"] = delay
@@ -266,9 +257,7 @@ def simulate_clustering(
                     t_tracks, dcs, cr * foc_fac, tcz_radius
                 )
                 lic_cd8_pairs["Run"] = n_run
-                lic_cd8_pairs[
-                    "Cell Numbers"
-                ] = "{} CD4+ T cells, {} CD8+ T cells, {} DCs".format(n4, n8, ndc)
+                lic_cd8_pairs["Cell Numbers"] = f"{n4} CD4+ T cells, {n8} CD8+ T cells, {ndc} DCs"
                 lic_cd8_pairs["Contact Radius"] = cr
                 lic_cd8_pairs["CD8 Delay"] = delay
                 run_cd8_pairs = run_cd8_pairs.append(lic_cd8_pairs)
@@ -309,12 +298,10 @@ def simulate_clustering(
                 run_triples.loc[max_index, "Run"] = n_run
                 run_triples.loc[
                     max_index, "Cell Numbers"
-                ] = "{} CD4+ T cells, {} CD8+ T cells, {} DCs".format(n4, n8, ndc)
+                ] = f"{n4} CD4+ T cells, {n8} CD8+ T cells, {ndc} DCs"
                 run_triples.loc[max_index, "Contact Radius"] = cr
                 run_triples.loc[max_index, "Focusing Factor"] = foc_fac
-                run_triples.loc[
-                    max_index, "CD8 Delay"
-                ] = "{} min. between injections".format(delay)
+                run_triples.loc[max_index, "CD8 Delay"] = "{delay} min. between injections"
                 max_index += 1
             try:
                 n_triples_of_run = len(run_triples)
@@ -342,7 +329,7 @@ def simulate_clustering(
             run_triples["Description"] = ", ".join(description)
             triples = triples.append(run_triples)
 
-        print("  Run {} done.".format(n_run + 1))
+        print(f"  Run {n_run + 1} done.")
 
     # Save duration and number of runs for analysis
     for df, tracks in zip(
@@ -353,16 +340,14 @@ def simulate_clustering(
         df.loc[max_index + 1, "Time"] = tracks["Time"].max()
         df.loc[max_index + 1, "Run"] = n_iter - 1
 
-    return pd.Panel(
-        {"CD4-DC-Pairs": cd4_pairs, "CD8-DC-Pairs": cd8_pairs, "Triples": triples}
-    )
+    return {"CD4-DC-Pairs": cd4_pairs, "CD8-DC-Pairs": cd8_pairs, "Triples": triples}
 
 
 def plot_details(contacts, tracks=None, parameters="Description", context="notebook"):
     """Plot distances over time, time in contact and time vs. distance to 0"""
     sns.set(style="ticks", context=context)
     if tracks is not None:
-        figure, axes = plt.subplots(ncols=3, figsize=(12, 6))
+        _, axes = plt.subplots(ncols=3, figsize=(12, 6))
         axes[0].set_xlabel("Time [min]")
         axes[0].set_ylabel(r"Distance [$\mu$m]")
         axes[1].set_xlabel("Time within Contact Radius [min]")
@@ -377,10 +362,10 @@ def plot_details(contacts, tracks=None, parameters="Description", context="noteb
     for i, (cond, cond_contacts) in enumerate(contacts.groupby(parameters)):
         color = sns.color_palette(n_colors=i + 1)[-1]
         if tracks is not None:
-            if len(cond_contacts["Contact Radius"].dropna().unique()) != 1:
+            if cond_contacts["Contact Radius"].dropna().nunique() != 1:
                 raise ValueError("Condition with more than one contact radius")
             radius = cond_contacts["Contact Radius"].max()
-            distances = pd.Series()
+            distances = pd.Series(dtype=float)
             durations = []
             for _, contact in cond_contacts.dropna().iterrows():
                 track = tracks[tracks["Track_ID"] == contact["Track_ID"]]
@@ -400,7 +385,7 @@ def plot_details(contacts, tracks=None, parameters="Description", context="noteb
                 durations.append(distance[distance <= radius].size * time_step)
 
             distances.index = np.round(distances.index, 5)  # Handle non-integer 'Times'
-            distats = distances.groupby(distances.index).describe().unstack()
+            distats = distances.groupby(distances.index).describe()
             axes[0].plot(distats.index, distats["50%"], color=color)
             axes[0].fill_between(
                 distats.index, distats["25%"], distats["75%"], color=color, alpha=0.2
@@ -409,14 +394,14 @@ def plot_details(contacts, tracks=None, parameters="Description", context="noteb
                 distats.index, distats["min"], distats["max"], color=color, alpha=0.2
             )
 
-            sns.distplot(
+            sns.histplot(
                 durations,
                 bins=np.arange(20 + 1),
                 kde=False,
-                norm_hist=True,
+                common_norm=True,
                 ax=axes[1],
                 color=color,
-                hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1},
+                fill=False,
             )
 
         if tracks is not None:
@@ -458,7 +443,7 @@ def plot_numbers(
     t_max = t_cells_in_contact["Time"].max()
     if t_detail > t_max:
         t_detail = t_max
-    detail_ax.set_ylabel("Distribution of T Cells in Contact at {}h".format(t_detail))
+    detail_ax.set_ylabel(f"Distribution of T Cells in Contact at {t_detail}h")
 
     final_sum = t_cells_in_contact.groupby(parameters).count()["Time"]
     order = list(final_sum.sort_values().index.values)[::-1]
@@ -521,7 +506,7 @@ def plot_numbers(
 
             percentage = detail_runs[n_contacts].iloc[-1] / n_runs * 100
             detail_ax.bar(
-                i * 2,
+                i * 2 + 0.38,
                 percentage,
                 color=color,
                 alpha=1 / runs_with_n_contacts.columns.max(),
@@ -550,6 +535,7 @@ def plot_numbers(
     detail_ax.set_yticks([0, 25, 50, 75, 100])
     detail_ax.set_ylim([0, 100])
     dynamic_ax.set_ylim([0, 100])
+    dynamic_ax.set_xlim(left=0)
     detail_ax.set_rasterization_zorder(0)
 
     sns.despine()
@@ -587,7 +573,7 @@ def plot_percentage(
 
     normalized_contacts = total_contacts / n_t_cells * 100
 
-    sorted_contacts = normalized_contacts.reindex_axis(
+    sorted_contacts = normalized_contacts.reindex(
         sorted(total_contacts.columns, key=lambda col: total_contacts[col].median()),
         axis=1,
     )
@@ -660,7 +646,7 @@ def plot_triples(pairs_and_triples, parameters="Description", context="notebook"
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1] / n_runs * 100
             activ_ax.bar(
-                i * 2,
+                i * 2 + 0.38,
                 percentage,
                 color=color,
                 alpha=1 / runs_with_n_contacts.columns.max(),
@@ -711,7 +697,7 @@ def plot_triples(pairs_and_triples, parameters="Description", context="notebook"
         for n_contacts in [n for n in runs_with_geq_n_contacts.columns if n > 0]:
             percentage = runs_with_geq_n_contacts[n_contacts].iloc[-1] / n_runs * 100
             triples_ax.bar(
-                i * 2,
+                i * 2 + 0.38,
                 percentage,
                 color=color,
                 alpha=1 / runs_with_n_contacts.columns.max(),
@@ -745,15 +731,17 @@ def plot_triples(pairs_and_triples, parameters="Description", context="notebook"
             )
             / 60
         )
-        sns.distplot(
+        sns.histplot(
             _triples["Time Between Contacts"] / 60,
             kde=False,
             bins=bins,
-            norm_hist=True,
+            common_norm=True,
             color=color,
+            fill=False,
             ax=timing_ax,
-            axlabel="Time [h]",
         )
+        timing_ax.set_xlabel("Time [h]")
+        timing_ax.set_ylabel("")
 
     triples_ax.set_xlim(left=-0.8)
     triples_ax.set_xticks([])
@@ -812,17 +800,15 @@ def plot_triples_vs_pairs(triples, parameters="Description", context="notebook")
             color=color,
         )
         ratios = np.arctan(numbers["# CD8 in Triples"] / numbers["# CD8 in Pairs"])
-        sns.distplot(
+        sns.histplot(
             ratios,
-            hist=True,
-            kde=False,
             color=color,
             ax=axes[1],
             bins=np.arange(21) * np.pi / 40,
-            hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1},
+            fill=False,
         )
         legend.append(par)
-    axes[0].legend(legend)
+    axes[0].legend(legend, frameon=False)
     sns.despine()
     plt.tight_layout()
     plt.show()
@@ -947,7 +933,7 @@ def plot_situation(
     reach_ax = plt.subplot(gs[1, -1])
     plt.locator_params(nbins=6)
 
-    space_ax.set_title("{} T Cell Tracks & {} DCs".format(n_tracks, n_dcs))
+    space_ax.set_title(f"{n_tracks} T Cell Tracks & {n_dcs} DCs")
 
     n_conditions = len(tracks["Condition"].unique())
     palette = itertools.cycle(sns.color_palette())
@@ -1016,10 +1002,10 @@ def plot_situation(
             residence_time(track) for _, track in cond_tracks.groupby("Track_ID")
         ]
         if not all(time == residence_times[0] for time in residence_times):
-            sns.distplot(
+            sns.histplot(
                 residence_times,
                 kde=False,
-                norm_hist=True,
+                common_norm=True,
                 ax=time_ax,
                 label=cond,
                 color=color,
@@ -1028,15 +1014,15 @@ def plot_situation(
             max(np.linalg.norm(track[["X", "Y", "Z"]], axis=1))
             for _, track in cond_tracks.groupby("Track_ID")
         ]
-        sns.distplot(
-            max_reaches, kde=False, norm_hist=True, ax=reach_ax, label=cond, color=color
+        sns.histplot(
+            max_reaches, kde=False, common_norm=True, ax=reach_ax, label=cond, color=color
         )
 
     time_ax.set_yticks([])
     time_ax.axvline(np.median(residence_times), c="0", ls=":")
     sns.despine(ax=time_ax)
     reach_ax.set_yticks([])
-    reach_ax.legend()
+    reach_ax.legend(frameon=False)
     reach_ax.axvline(tcz_radius, c="0", ls=":")
     sns.despine(ax=reach_ax)
     equalize_axis3d(space_ax, zoom)
@@ -1058,7 +1044,7 @@ if __name__ == "__main__":
     tracks["Time"] = tracks["Time"] / 3
     plot_situation(tracks, n_tracks=10, n_dcs=200, min_distance=60)
 
-    pairs = simulate_priming(tracks, min_dist_stds=(60,))
+    pairs = simulate_priming(tracks)
     plot_details(pairs, tracks)
     plot_numbers(pairs)
     plot_percentage(pairs, n_t_cells=[10, 10, 20, 20])

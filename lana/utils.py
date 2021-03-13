@@ -36,7 +36,7 @@ def equalize_axis3d(source_ax, zoom=1, target_ax=None):
         getattr(source_ax, "set_{}lim".format(dim))(
             center - r / zoom, center + r / zoom
         )
-    source_ax.set_aspect("equal")
+    source_ax.set_box_aspect(aspect=(1, 1, 1))
 
 
 def label_axes():

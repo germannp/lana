@@ -85,7 +85,7 @@ def read_tracks_txt(
                     index_track_id = j
                 if "timepoint" in word.lower():
                     index_time = j
-                if "x" in word.lower():
+                if "centroid x" in word.lower():
                     data_begin = i + 1
                     index_X = j
             break

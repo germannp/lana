@@ -52,15 +52,11 @@ def _uniquize_tracks(tracks, verbose=False):
                 max_track_id += n_clusters
                 pd.set_option("display.max_rows", 1000)
                 if verbose:
-                    print(
-                        "  Warning: Split non-unique track {} by clustering.".format(
-                            identifiers
-                        )
-                    )
+                    print(f"  Warning: Split non-unique track {identifiers} by clustering.")
             else:
                 tracks.drop(index, inplace=True)
                 if verbose:
-                    print("  Warning: Delete non-unique track {}.".format(identifiers))
+                    print(f"  Warning: Delete non-unique track {identifiers}.")
 
 
 def _split(tracks, skip, warning=None):
@@ -110,7 +106,7 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
         positions = track[["X", "Y", "Z"]]
         dr = positions.diff()
         dr_norms = np.linalg.norm(dr, axis=1)
-        return dr_norms > jump_threshold
+        return np.nan_to_num(dr_norms) > jump_threshold
 
     _split(
         tracks,
@@ -145,11 +141,7 @@ def analyze(
         if len(track) < min_length:
             tracks.drop(track.index, inplace=True)
             if verbose:
-                print(
-                    "  Warning: Delete track {} with {} timesteps.".format(
-                        criterium, len(track)
-                    )
-                )
+                print(f"  Warning: Delete track {criterium} with {len(track)} timesteps.")
         else:
             tracks.loc[track.index, "Track Time"] = (
                 track["Time"] - track["Time"].iloc[0]
@@ -185,7 +177,7 @@ def analyze(
             norm_products = n_norms[1:] * n_norms[:-1]
             angles = np.arccos(dot_products / norm_products)
             cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-            cross_dot_dr = np.sum(cross_products[2:] * dr.as_matrix()[2:-1], axis=1)
+            cross_dot_dr = np.sum(cross_products[2:] * dr.values[2:-1], axis=1)
             cross_norms = np.linalg.norm(cross_products[2:], axis=1)
             signs = cross_dot_dr / cross_norms / dr_norms[2:-1]
 
@@ -222,7 +214,7 @@ def plot_tracks(
     n_tracks_before = len(tracks["Track_ID"].unique())
     _split(tracks, condition_changes, "")
     if len(tracks["Track_ID"].unique()) != n_tracks_before:
-        print("  Warning: Split tracks with several {}".format(condition))
+        print(f"  Warning: Split tracks with several {condition}")
 
     if type(summary) == pd.core.frame.DataFrame:
         skip_steps = int(
@@ -283,7 +275,7 @@ def plot_tracks(
                     color=color,
                     alpha=alpha,
                     label=track_id,
-                    picker=5,
+                    pickradius=5,
                 )
             else:
                 ax.plot(
@@ -292,7 +284,7 @@ def plot_tracks(
                     color=color,
                     alpha=alpha,
                     label=track_id,
-                    picker=5,
+                    pickradius=5,
                 )
             if summary is not None and draw_turns:
                 turn_time = cond_summary[cond_summary["Track_ID"] == track_id][
@@ -334,7 +326,7 @@ def plot_tracks(
         sns.despine()
     handles, _ = ax.get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
-    ax.legend(unique_entries.values(), unique_entries.keys())
+    ax.legend(unique_entries.values(), unique_entries.keys(), frameon=False)
     plt.tight_layout()
 
     if save:
@@ -447,7 +439,7 @@ def plot(
         )
 
         # Plot turning angles
-        turning_angles = cond_tracks["Turning Angle"].dropna().as_matrix()
+        turning_angles = cond_tracks["Turning Angle"].dropna().values
         if "Z" in tracks.columns:
             x = np.arange(0, np.pi, 0.1)
             axes[2].plot(x, np.sin(x) / 2, "--k")
@@ -473,7 +465,7 @@ def plot(
 
         # Plot Plane Angles
         if "Plane Angle" in tracks.columns and plot_plane_angle:
-            plane_angles = cond_tracks["Plane Angle"].dropna().as_matrix()
+            plane_angles = cond_tracks["Plane Angle"].dropna().values
             plane_angles = np.concatenate(
                 (  # Mirror at boundaries.
                     -2 * np.pi + plane_angles,
@@ -482,14 +474,13 @@ def plot(
                 )
             )
             axes[3].plot([-np.pi, np.pi], [1 / (6 * np.pi), 1 / (6 * np.pi)], "--k")
-            # sns.distplot(plane_angles, ax=axes[3])
             sns.kdeplot(
                 plane_angles, color=color, shade=not plot_each_sample, ax=axes[3]
             )
 
     handles, labels = axes[0].get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
-    axes[0].legend(unique_entries.values(), unique_entries.keys(), loc="upper left")
+    axes[0].legend(unique_entries.values(), unique_entries.keys(), loc="upper left", frameon=False)
 
     sns.despine()
     plt.tight_layout()
@@ -541,7 +532,7 @@ def plot_dr(raw_tracks, save=False, condition="Condition", context="notebook"):
     axes[1].axis("equal")
     axes[1].set_xlim([differences["X"].quantile(0.1), differences["X"].quantile(0.9)])
     axes[1].set_ylim([differences["Y"].quantile(0.1), differences["Y"].quantile(0.9)])
-    sns.kdeplot(differences[["X", "Y"]], shade=False, cmap="Greys", ax=axes[1])
+    sns.kdeplot(data=differences, x="X", y="Y", shade=False, cmap="Greys", ax=axes[1])
 
     axes[2].set_title(r"$\Delta \vec r$ Lag Plot")
     axes[2].axis("equal")
@@ -589,10 +580,10 @@ def joint_plot(
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
         color = sns.color_palette()[i + skip_color]
         sns.jointplot(
-            cond_tracks["Turning Angle"],
-            cond_tracks["Velocity"],
+            data=cond_tracks,
+            x="Turning Angle",
+            y="Velocity",
             kind="kde",
-            stat_func=None,
             xlim=[0, np.pi],
             space=0,
             color=color,
@@ -674,10 +665,10 @@ def plot_arrest(
     axes[1].set_ylabel("Proportion")
 
     for i, (cond, cond_tracks) in enumerate(tracks.groupby(condition)):
-        velocities = pd.Series()
+        velocities = pd.Series(dtype="float64")
         arrested_segment_lengths = []
         for _, track in cond_tracks.groupby(track_identifiers(cond_tracks)):
-            min_index = track["Velocity"].argmin()
+            min_index = track["Velocity"].idxmin()
             track_velocities = pd.Series(
                 track["Velocity"].values, track["Time"] - track.loc[min_index, "Time"]
             )
@@ -689,7 +680,7 @@ def plot_arrest(
             )
 
         velocities.index = np.round(velocities.index, 5)  # Handle non-integer 'Times'
-        arrestats = velocities.groupby(velocities.index).describe().unstack()
+        arrestats = velocities.groupby(velocities.index).describe()
 
         color = sns.color_palette(n_colors=i + 1)[-1]
         axes[0].plot(arrestats.index, arrestats["50%"], color=color)
@@ -700,10 +691,10 @@ def plot_arrest(
             arrestats.index, arrestats["min"], arrestats["max"], color=color, alpha=0.2
         )
 
-        sns.distplot(
+        sns.histplot(
             arrested_segment_lengths,
             bins=np.arange(1, max(arrested_segment_lengths) + 1) - 0.5,
-            norm_hist=True,
+            common_norm=True,
             kde=False,
             color=color,
             ax=axes[1],
@@ -764,7 +755,7 @@ def lag_plot(
         ax[2].axis("equal")
 
     if null_model:
-        null_model = tracks.ix[np.random.choice(tracks.index, tracks.shape[0])]
+        null_model = tracks.sample(len(tracks))
         ax[0].scatter(
             null_model["Velocity"], null_model["Velocity"].shift(), facecolors="0.8"
         )
@@ -875,9 +866,7 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
             norm_products = dr_norms[skip_steps:] * dr_norms[:-skip_steps]
             turns = np.arccos(dot_products.iloc[1:-skip_steps] / norm_products[1:])
 
-            summary.loc[i, "Max. Turn Over {} Steps".format(skip_steps + 1)] = max(
-                turns
-            )
+            summary.loc[i, f"Max. Turn Over {skip_steps + 1} Steps"] = max(turns)
 
             summary.loc[i, "Turn Time"] = track.loc[turns.idxmax(), "Time"]
 
@@ -896,7 +885,7 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
                 )
             )
 
-        hull = ConvexHull(track[["X", "Y", "Z"]])
+        hull = ConvexHull(positions)
         summary.loc[i, "Scan. Area/Step"] = hull.area / len(track)
         summary.loc[i, "Scan. Vol./Step"] = hull.volume / len(track)
 
@@ -916,13 +905,9 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
             ).mean()
 
     for cond, cond_summary in summary.groupby("Condition"):
-        print(
-            "  {} tracks in {} with {} timesteps in total.".format(
-                cond_summary.__len__(),
-                cond,
-                tracks[tracks["Condition"] == cond].__len__(),
-            )
-        )
+        n_tracks = len(cond_summary)
+        n_steps = len(tracks[tracks["Condition"] == cond])
+        print(f"  {n_tracks} tracks in {cond} with {n_steps} timesteps in total.")
 
     return summary
 
@@ -992,10 +977,8 @@ def plot_uturns(
 
     skip_steps = int(next(word for word in turn_column.split() if word.isdigit()))
     print(
-        "\nPlotting turns with more than {} rad over {} steps narrower than a mean step".format(
-            critical_rad, skip_steps
+        f"\nPlotting turns with more than {critical_rad} rad over {skip_steps} steps narrower than a mean step"
         )
-    )
     for cond, cond_uturns in uturns.groupby(condition):
         n_tracks = len(summary[summary[condition] == cond])
         n_turns = len(cond_uturns)
@@ -1104,7 +1087,7 @@ if __name__ == "__main__":
     to_split = pd.DataFrame(
         {"Track_ID": 0, "Time": np.arange(10) / 3, "X": 0, "Y": 0, "Z": 0}
     ).drop(4)
-    to_split.iloc[-2:]["X"] = 666
+    to_split.loc[to_split.index[-2:], "X"] = 666
     _split_at_skip(to_split, 1, verbose=True)
     print(to_split)
 

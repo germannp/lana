@@ -123,7 +123,7 @@ def remix_dr(tracks, n_tracks=50, n_steps=60):
 
     new_tracks = pd.DataFrame()
     for track_id in range(n_tracks):
-        new_track = dx.ix[np.random.choice(dx.index, n_steps + 1)].cumsum()
+        new_track = dx.sample(n_steps + 1, replace=True).cumsum()
         new_track["Time"] = np.arange(n_steps + 1) / 60 * time_step
         new_track["Track_ID"] = track_id
         new_tracks = new_tracks.append(new_track)
@@ -136,65 +136,6 @@ def remix_dr(tracks, n_tracks=50, n_steps=60):
         new_tracks["Condition"] = "Remixed by Gerard et al."
 
     return new_tracks.dropna().reset_index()
-
-
-def sample_dr(tracks, n_tracks=50, n_steps=60):
-    """Sample from dr_i based on last"""
-    import statsmodels.api as sm
-
-    # Learn KDE
-    dep_data = tracks[tracks["Track Time"] != 0]
-    criteria = [
-        crit for crit in ["Condition", "Sample", "Track_ID"] if crit in tracks.columns
-    ]
-    indep_data = pd.DataFrame()
-    for _, track in tracks.groupby(criteria):
-        indep_data = indep_data.append(track.iloc[:-1])
-
-    next_step_kde = sm.nonparametric.KDEMultivariateConditional(
-        dep_data[["X", "Y", "Z"]].diff().stack().values,
-        indep_data[["X", "Y", "Z"]].diff().stack().values,
-        dep_type="c",
-        indep_type="c",
-        bw="normal_reference",
-    )
-    max_kde = max(next_step_kde.pdf())
-
-    # Generate new tracks
-    new_tracks = pd.DataFrame()
-    for track_id in range(n_tracks):
-        track = tracks.ix[np.random.choice(tracks.index.values, 1)][["X", "Y", "Z"]]
-        max_index = max(track.index)
-        while track.__len__() < n_steps + 1:
-            candidate = [
-                np.random.rand() * np.percentile(initial_data["Velocity"], 99.5),
-                np.random.rand() * np.pi,
-            ]
-            r = np.random.rand()
-            if (
-                next_step_kde.pdf(
-                    candidate, track.loc[max_index, ["Velocity", "Turning Angle"]]
-                )
-                > max_kde * r
-            ):
-                max_index = max_index + 1
-                track = track.append(
-                    pd.DataFrame(
-                        {"Velocity": candidate[0], "Turning Angle": candidate[1]},
-                        index=[max_index],
-                    )
-                )
-
-    #     new_track = new_track.cumsum()
-    #     new_track["Track_ID"] = track_id
-    #     new_tracks = new_tracks.append(new_track)
-    #
-    # if "Condition" in tracks.columns:
-    #     new_tracks["Condition"] = tracks["Condition"].iloc[0] + " Sampled"
-    # else:
-    #     new_tracks["Condition"] = "Sampled"
-    #
-    # return new_tracks.reset_index()
 
 
 def remix(tracks, n_tracks=50, n_steps=60):
@@ -216,18 +157,14 @@ def remix(tracks, n_tracks=50, n_steps=60):
 
     new_tracks = pd.DataFrame()
     for i in range(n_tracks):
-        track_data = velo_and_turn.ix[np.random.choice(velo_and_turn.index.values, 1)]
+        track_data = velo_and_turn.sample()
         track_data = track_data.append(
-            remaining_data.ix[
-                np.random.choice(remaining_data.index.values, n_steps - 2)
-            ]
+            remaining_data.sample(n_steps - 2, replace=True)
         )
         track_data = track_data.append(
             pd.DataFrame(
                 {
-                    "Velocity": velocities_only[
-                        np.random.choice(velocities_only.index.values, 1)
-                    ]
+                    "Velocity": velocities_only.sample()
                 }
             )
         )
@@ -265,7 +202,7 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
             n_tracks * n_steps, len(remix), time_step
         )
     )
-    remix = remix.ix[np.random.choice(remix.index.values, n_tracks * n_steps)]
+    remix = remix.sample(n_tracks * n_steps, replace=True)
     remix["Track_ID"] = 0
 
     # Shuffle until mean lag is preserved
@@ -281,23 +218,23 @@ def remix_preserving_lags(tracks, n_tracks=50, n_steps=60):
         cand = np.random.choice(index[1:-1], 2, replace=False)
         # fmt: off
         delta_lags[0] = \
-            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2*(cand[0] != cand[1]+1) \
-            - (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2*(cand[0] != cand[1]-1) \
-            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2*(cand[0] != cand[1]-1) \
-            - (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2*(cand[0] != cand[1]+1) \
-            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]-1]['Velocity'])**2 \
-            + (remix.ix[cand[1]]['Velocity'] - remix.ix[cand[0]+1]['Velocity'])**2 \
-            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]-1]['Velocity'])**2 \
-            + (remix.ix[cand[0]]['Velocity'] - remix.ix[cand[1]+1]['Velocity'])**2
+            - (remix.loc[cand[0], 'Velocity'] - remix.loc[cand[0]-1, 'Velocity'])**2*(cand[0] != cand[1]+1) \
+            - (remix.loc[cand[0], 'Velocity'] - remix.loc[cand[0]+1, 'Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.loc[cand[1], 'Velocity'] - remix.loc[cand[1]-1, 'Velocity'])**2*(cand[0] != cand[1]-1) \
+            - (remix.loc[cand[1], 'Velocity'] - remix.loc[cand[1]+1, 'Velocity'])**2*(cand[0] != cand[1]+1) \
+            + (remix.loc[cand[1], 'Velocity'] - remix.loc[cand[0]-1, 'Velocity'])**2 \
+            + (remix.loc[cand[1], 'Velocity'] - remix.loc[cand[0]+1, 'Velocity'])**2 \
+            + (remix.loc[cand[0], 'Velocity'] - remix.loc[cand[1]-1, 'Velocity'])**2 \
+            + (remix.loc[cand[0], 'Velocity'] - remix.loc[cand[1]+1, 'Velocity'])**2
         delta_lags[1] = \
-            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
-            - (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
-            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2*(cand[0] != cand[1]-1) \
-            - (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2*(cand[0] != cand[1]+1) \
-            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]-1]['Turning Angle'])**2 \
-            + (remix.ix[cand[1]]['Turning Angle'] - remix.ix[cand[0]+1]['Turning Angle'])**2 \
-            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]-1]['Turning Angle'])**2 \
-            + (remix.ix[cand[0]]['Turning Angle'] - remix.ix[cand[1]+1]['Turning Angle'])**2
+            - (remix.loc[cand[0], 'Turning Angle'] - remix.loc[cand[0]-1, 'Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            - (remix.loc[cand[0], 'Turning Angle'] - remix.loc[cand[0]+1, 'Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.loc[cand[1], 'Turning Angle'] - remix.loc[cand[1]-1, 'Turning Angle'])**2*(cand[0] != cand[1]-1) \
+            - (remix.loc[cand[1], 'Turning Angle'] - remix.loc[cand[1]+1, 'Turning Angle'])**2*(cand[0] != cand[1]+1) \
+            + (remix.loc[cand[1], 'Turning Angle'] - remix.loc[cand[0]-1, 'Turning Angle'])**2 \
+            + (remix.loc[cand[1], 'Turning Angle'] - remix.loc[cand[0]+1, 'Turning Angle'])**2 \
+            + (remix.loc[cand[0], 'Turning Angle'] - remix.loc[cand[1]-1, 'Turning Angle'])**2 \
+            + (remix.loc[cand[0], 'Turning Angle'] - remix.loc[cand[1]+1, 'Turning Angle'])**2
         # fmt: on
         if (np.sign(delta_lags[0]) != np.sign(diff_lags[0])) and (
             np.sign(delta_lags[1]) != np.sign(diff_lags[1])
@@ -334,88 +271,67 @@ if __name__ == "__main__":
     from lana import motility
 
     raw_tracks = pd.read_csv("Examples/ctrl.csv")
-    ctrl = raw_tracks[raw_tracks.Track_ID == 1015.0]
+    ctrl = raw_tracks[raw_tracks.Track_ID == 1015.0].copy()
 
     # Rebuild a single track
     ctrl[["X", "Y", "Z"]] = ctrl[["X", "Y", "Z"]] - ctrl[["X", "Y", "Z"]].iloc[0]
-    rebuilt = silly_steps(ctrl)
+    rebuilt = silly_steps(ctrl, time_step=20)
+    rebuilt["Track_ID"] = 0
     motility.plot_tracks(ctrl.append(rebuilt))
-    motility._analyze(rebuilt)
+    rebuilt = motility.analyze(rebuilt)
     print(ctrl[["Time", "Velocity", "Turning Angle", "Plane Angle"]])
     print(rebuilt[["Time", "Velocity", "Turning Angle", "Plane Angle"]])
 
     # Remix Ctrl
-    remix = remix(ctrl, n_tracks=1, n_steps=5)
-    motility._analyze(remix)
-    print(remix[["Time", "Velocity", "Turning Angle", "Plane Angle"]])
+    remixed_tracks = remix(ctrl, n_tracks=1, n_steps=5)
+    remixed_tracks = motility.analyze(remixed_tracks)
+    print(remixed_tracks[["Time", "Velocity", "Turning Angle", "Plane Angle"]])
     print(ctrl[["Time", "Velocity", "Turning Angle", "Plane Angle"]])
 
-    # Sample dr
-    sample_dr(tracks)
-
     # Compare Algorithms
-    remix_dr = remix_dr(raw_tracks)
-    remix = remix(raw_tracks)
-    remix_lags = remix_preserving_lags(raw_tracks)
-    raw_tracks = raw_tracks.append(remix_dr)
-    raw_tracks = raw_tracks.append(remix)
-    raw_tracks = raw_tracks.append(remix_lags).reset_index()
-    tracks = motility.analyze(raw_tracks)
+    remix_dr_tracks = remix_dr(raw_tracks)
+    remix_tracks = remix(raw_tracks)
+    remix_lags_tracks = remix_preserving_lags(raw_tracks)
+    all_tracks = pd.concat(
+        [remix_dr_tracks, remix_tracks, remix_lags_tracks]
+    )
+    tracks = motility.analyze(all_tracks)
     palette = [sns.color_palette()[i] for i in [1, 0, 2, 3]]
     motility.plot(tracks, palette=palette)
     motility.lag_plot(tracks, null_model=False)
 
     # Remix from short vs from long tracks
-    summary = motility.summarize(tracks)
+    summary = motility.summarize(raw_tracks)
 
-    # Is not prefect, at least if there are non-unique Track_IDs ...
     short_track_ids = [
-        summary.ix[index]["Track_ID"]
+        summary.loc[index]["Track_ID"]
         for index in summary.sort_values("Track Duration").index
-        if summary["Track Duration"].sort_values().cumsum().ix[index]
+        if summary["Track Duration"].sort_values().cumsum().loc[index]
         < summary["Track Duration"].sum() / 2
     ]
 
     short_remix = remix_preserving_lags(
-        tracks[tracks["Track_ID"].isin(short_track_ids)], n_tracks=25, n_steps=60
+        raw_tracks[raw_tracks["Track_ID"].isin(short_track_ids)], n_tracks=25, n_steps=60
     )
     long_remix = remix_preserving_lags(
-        tracks[~tracks["Track_ID"].isin(short_track_ids)], n_tracks=25, n_steps=60
+        raw_tracks[~raw_tracks["Track_ID"].isin(short_track_ids)], n_tracks=25, n_steps=60
     )
 
     short_remix["Condition"] = "Short Tracks Remixed"
     long_remix["Condition"] = "Long Tracks Remixed"
 
-    tracks = tracks.append(short_remix).append(long_remix)
+    tracks = pd.concat([raw_tracks, short_remix, long_remix])
+    # Might split some tracks as Sample-column is ignored because of NAs in remix
+    tracks = motility.analyze(tracks)
     motility.plot(tracks)
 
     # Remix long or short tracks
-    short_remix = remix_preserving_lags(tracks, n_tracks=50, n_steps=300)
-    long_remix = remix_preserving_lags(tracks, n_tracks=25, n_steps=600)
+    short_remix = remix_preserving_lags(raw_tracks, n_tracks=50, n_steps=300)
+    long_remix = remix_preserving_lags(raw_tracks, n_tracks=25, n_steps=600)
 
     short_remix["Condition"] = "Short Remix"
     long_remix["Condition"] = "Long Remix"
 
-    tracks = tracks.append(short_remix).append(long_remix)
+    tracks = pd.concat([raw_tracks, short_remix, long_remix])
+    tracks = motility.analyze(tracks)
     motility.plot(tracks, max_time=60)
-
-    # Create long tracks
-    import datetime
-
-    tracks = pd.read_csv("../Data/Parenchyme/Tracks_KO-WT.csv")
-    tracks = tracks[tracks.Condition == "KO"]
-
-    tracks = pd.read_csv(
-        "../Data/FRC-depletion/Analysis/Tracks_Complete-Ctrl-Partial.csv"
-    )
-    tracks = tracks[tracks.Condition == "Ctrl"]
-
-    motility.plot(tracks)
-
-    long_remix = pd.DataFrame()
-    for i in range(10):
-        remix = remix_preserving_lags(tracks, n_tracks=50, n_steps=24 * 60 * 3)
-        remix["Track_ID"] = remix["Track_ID"] + 50 * i
-        long_remix = long_remix.append(remix)
-        long_remix.to_csv("24h_remix_KO.csv")
-        print(i, datetime.datetime.now())
