@@ -52,7 +52,9 @@ def _uniquize_tracks(tracks, verbose=False):
                 max_track_id += n_clusters
                 pd.set_option("display.max_rows", 1000)
                 if verbose:
-                    print(f"  Warning: Split non-unique track {identifiers} by clustering.")
+                    print(
+                        f"  Warning: Split non-unique track {identifiers} by clustering."
+                    )
             else:
                 tracks.drop(index, inplace=True)
                 if verbose:
@@ -76,7 +78,7 @@ def _split(tracks, skip, warning=None):
             tracks.loc[index, "Track_ID"] = max_track_id + 1 + skip_sum
             max_track_id += max(skip_sum) + 1
             if warning:
-                print("  Warning: " + warning.format(criterium))
+                print(warning.format(criterium))
 
 
 def _split_at_skip(tracks, jump_threshold=None, verbose=False):
@@ -116,7 +118,12 @@ def _split_at_skip(tracks, jump_threshold=None, verbose=False):
 
 
 def analyze(
-    raw_tracks, uniform_timesteps=True, min_length=6, jump_threshold=None, verbose=False
+    raw_tracks,
+    uniform_timesteps=True,
+    min_length=6,
+    jump_threshold=None,
+    repeat_portion=0.25,
+    verbose=False,
 ):
     """Return dataframe with velocity, turning angle & plane angle"""
     print("\nAnalyzing tracks")
@@ -124,67 +131,98 @@ def analyze(
     tracks = raw_tracks.copy()
 
     if "Time" not in tracks.columns:
-        print("  Warning: no time given, using index!")
+        print("  Warning: No time given, using index!")
         tracks["Time"] = tracks.index
         if not tracks.index.is_unique:  # For inplace analysis!
             tracks.reset_index(drop=True, inplace=True)
     else:
+        # TODO: Test for unique, but unsorted times.
+        tracks = tracks.sort_values(track_identifiers(tracks) + ["Time"])
         _uniquize_tracks(tracks, verbose)
         if uniform_timesteps:
             _split_at_skip(tracks, jump_threshold, verbose)
 
     if not verbose and "Orig. Track_ID" in tracks.columns:
-        print("  Warning: Some tracks were split, verbose=True for more info.")
+        print("  Some tracks were split, verbose=True for more info.")
 
     n_i = tracks.Track_ID.unique().size
     for criterium, track in tracks.groupby(track_identifiers(tracks)):
-        if len(track) < min_length:
+        track_length = len(track)
+        if track_length < min_length:
             tracks.drop(track.index, inplace=True)
             if verbose:
-                print(f"  Warning: Delete track {criterium} with {len(track)} timesteps.")
+                print(f"  Delete track {criterium} with {len(track)} timesteps.")
+            continue
+
+        # Can't `continue` outer loop in Python, so no loop over coordinates
+        # TODO: Could be tested as well.
+        if (repeats := track["X"].duplicated().sum()) > track_length * repeat_portion:
+            tracks.drop(track.index, inplace=True)
+            if verbose:
+                print(f"  Delete track {criterium} with {repeats} X repeats.")
+            continue
+
+        if (repeats := track["Y"].duplicated().sum()) > track_length * repeat_portion:
+            tracks.drop(track.index, inplace=True)
+            if verbose:
+                print(f"  Delete track {criterium} with {repeats} Y repeats.")
+            continue
+
+        if (
+            "Z" in track.columns
+            and (repeats := track["Z"].duplicated().sum())
+            > track_length * repeat_portion
+        ):
+            tracks.drop(track.index, inplace=True)
+            if verbose:
+                print(f"  Delete track {criterium} with {repeats} Z repeats.")
+            continue
+
+        tracks.loc[track.index, "Track Time"] = (
+            track["Time"] - track["Time"].iloc[0]
+        ).round(4)
+
+        if "Z" in track.columns:
+            positions = track[["X", "Y", "Z"]]
         else:
-            tracks.loc[track.index, "Track Time"] = (
-                track["Time"] - track["Time"].iloc[0]
-            ).round(4)
+            positions = track[["X", "Y"]].copy()
+            positions["Z"] = 0
 
-            if "Z" in track.columns:
-                positions = track[["X", "Y", "Z"]]
-            else:
-                positions = track[["X", "Y"]].copy()
-                positions["Z"] = 0
+        tracks.loc[track.index, "Displacement"] = np.linalg.norm(
+            positions - positions.iloc[0], axis=1
+        )
 
-            tracks.loc[track.index, "Displacement"] = np.linalg.norm(
-                positions - positions.iloc[0], axis=1
-            )
+        dr = positions.diff()
+        dr_norms = np.linalg.norm(dr, axis=1)
 
-            dr = positions.diff()
-            dr_norms = np.linalg.norm(dr, axis=1)
+        tracks.loc[track.index, "Velocity"] = dr_norms / track["Time"].diff()
+        assert all(
+            tracks.loc[track.index, "Velocity"].dropna() >= 0
+        ), f"Track {criterium} has negative velocity."
 
-            tracks.loc[track.index, "Velocity"] = dr_norms / track["Time"].diff()
+        dot_products = np.sum(dr.shift(-1) * dr, axis=1)
+        norm_products = dr_norms[1:] * dr_norms[:-1]
 
-            dot_products = np.sum(dr.shift(-1) * dr, axis=1)
-            norm_products = dr_norms[1:] * dr_norms[:-1]
+        tracks.loc[track.index, "Turning Angle"] = np.arccos(
+            dot_products[:-1] / norm_products
+        )
 
-            tracks.loc[track.index, "Turning Angle"] = np.arccos(
-                dot_products[:-1] / norm_products
-            )
+        tracks.loc[track.index, "Plane Angle"] = np.nan
 
-            tracks.loc[track.index, "Plane Angle"] = np.nan
+        n_vectors = np.cross(dr, dr.shift())
+        n_norms = np.linalg.norm(n_vectors, axis=1)
+        dot_products = np.sum(n_vectors[1:] * n_vectors[:-1], axis=1)
+        norm_products = n_norms[1:] * n_norms[:-1]
+        angles = np.arccos(dot_products / norm_products)
+        cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
+        cross_dot_dr = np.sum(cross_products[2:] * dr.values[2:-1], axis=1)
+        cross_norms = np.linalg.norm(cross_products[2:], axis=1)
+        signs = cross_dot_dr / cross_norms / dr_norms[2:-1]
 
-            n_vectors = np.cross(dr, dr.shift())
-            n_norms = np.linalg.norm(n_vectors, axis=1)
-            dot_products = np.sum(n_vectors[1:] * n_vectors[:-1], axis=1)
-            norm_products = n_norms[1:] * n_norms[:-1]
-            angles = np.arccos(dot_products / norm_products)
-            cross_products = np.cross(n_vectors[1:], n_vectors[:-1])
-            cross_dot_dr = np.sum(cross_products[2:] * dr.values[2:-1], axis=1)
-            cross_norms = np.linalg.norm(cross_products[2:], axis=1)
-            signs = cross_dot_dr / cross_norms / dr_norms[2:-1]
-
-            if "Z" in track.columns:
-                tracks.loc[track.index[2:-1], "Plane Angle"] = signs * angles[2:]
-            else:
-                tracks.loc[track.index[2:-1], "Plane Angle"] = angles[2:]
+        if "Z" in track.columns:
+            tracks.loc[track.index[2:-1], "Plane Angle"] = signs * angles[2:]
+        else:
+            tracks.loc[track.index[2:-1], "Plane Angle"] = angles[2:]
 
     n_f = tracks.Track_ID.unique().size
     if not verbose and n_f != n_i:
@@ -480,7 +518,9 @@ def plot(
 
     handles, labels = axes[0].get_legend_handles_labels()
     unique_entries = OrderedDict(zip(labels, handles))
-    axes[0].legend(unique_entries.values(), unique_entries.keys(), loc="upper left", frameon=False)
+    axes[0].legend(
+        unique_entries.values(), unique_entries.keys(), loc="upper left", frameon=False
+    )
 
     sns.despine()
     plt.tight_layout()
@@ -694,7 +734,7 @@ def plot_arrest(
         sns.histplot(
             arrested_segment_lengths,
             bins=np.arange(1, max(arrested_segment_lengths) + 1) - 0.5,
-            common_norm=True,
+            stat="density",
             kde=False,
             color=color,
             ax=axes[1],
@@ -794,7 +834,7 @@ def lag_plot(
         plt.show()
 
 
-def summarize(tracks, arrest_velocity=3, skip_steps=4):
+def summarize(tracks, arrest_velocity=3, skip_steps=4, verbose=False):
     """Summarize track statistics, e.g. mean velocity per track"""
     if "Displacement" not in tracks.columns:
         tracks = analyze(tracks)
@@ -803,9 +843,18 @@ def summarize(tracks, arrest_velocity=3, skip_steps=4):
 
     summary = pd.DataFrame()
 
-    for i, (_, track) in enumerate(tracks.groupby(track_identifiers(tracks))):
+    identifiers = track_identifiers(tracks)
+    for i, (_, track) in enumerate(tracks.groupby(identifiers)):
+        if verbose:
+            print(
+                f"  Analysing "
+                + ", ".join(
+                    [str(track.iloc[0][identifier]) for identifier in identifiers]
+                )
+            )
         if "Track_ID" in track.columns:
-            summary.loc[i, "Track_ID"] = track.iloc[0]["Track_ID"]
+            track_id = track.iloc[0]["Track_ID"]
+            summary.loc[i, "Track_ID"] = track_id
         if "Condition" in track.columns:
             summary.loc[i, "Condition"] = track.iloc[0]["Condition"]
         else:
@@ -978,7 +1027,7 @@ def plot_uturns(
     skip_steps = int(next(word for word in turn_column.split() if word.isdigit()))
     print(
         f"\nPlotting turns with more than {critical_rad} rad over {skip_steps} steps narrower than a mean step"
-        )
+    )
     for cond, cond_uturns in uturns.groupby(condition):
         n_tracks = len(summary[summary[condition] == cond])
         n_turns = len(cond_uturns)
